@@ -22,6 +22,8 @@ import { detectDocumentType, DetectDocumentTypeOutput } from '@/ai/flows/detect-
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { Textarea } from './ui/textarea';
+import { format, parseISO } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 type AnalysisResult = DetectDocumentTypeOutput & Partial<ExtractInvoiceDataOutput>;
 
@@ -29,6 +31,28 @@ interface UploadDocumentDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   documentToEdit?: Document | null;
+}
+
+const frenchCategories = {
+    'Invoice': 'Facture',
+    'Receipt': 'Reçu',
+    'Contract': 'Contrat',
+    'Housing': 'Maison',
+    'Other': 'Autre'
+};
+
+function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
+    if (result.documentType === 'Invoice' && result.supplier && result.amount && result.billingStartDate && result.billingEndDate) {
+        try {
+            const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy');
+            const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy');
+            const amount = parseFloat(result.amount).toFixed(2);
+            return `Facture ${result.supplier} (${startDate} au ${endDate}) - ${amount} TND`;
+        } catch (e) {
+             return `Facture ${result.supplier}`;
+        }
+    }
+    return originalFileName;
 }
 
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null }: UploadDocumentDialogProps) {
@@ -47,7 +71,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
   }, [open]);
   
-  // Effect to handle opening in edit mode
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
       setFormData(documentToEdit);
@@ -83,10 +106,12 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           ]);
 
           const result: AnalysisResult = { ...typeResult, ...invoiceResult };
+          
+          const category = (frenchCategories[result.documentType as keyof typeof frenchCategories] || 'Autre') as Document['category'];
 
           const newDocument: Omit<Document, 'id' | 'createdAt'> = {
-              name: selectedFile.name,
-              category: result.documentType as Document['category'] || 'Autre',
+              name: formatDocumentName(result, selectedFile.name),
+              category: category,
               supplier: result.supplier,
               amount: result.amount ? parseFloat(result.amount) : undefined,
               dueDate: result.dueDate ? new Date(result.dueDate).toISOString() : undefined,
@@ -102,7 +127,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
           toast({
             title: "Document analysé et enregistré !",
-            description: `Le document "${selectedFile.name}" a été ajouté avec succès.`,
+            description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
           });
 
           handleOpenChange(false);

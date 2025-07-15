@@ -21,7 +21,7 @@ const DetectDocumentTypeInputSchema = z.object({
 export type DetectDocumentTypeInput = z.infer<typeof DetectDocumentTypeInputSchema>;
 
 const DetectDocumentTypeOutputSchema = z.object({
-  documentType: z.string().describe('The detected type of the document (e.g., insurance, lease, maintenance).'),
+  documentType: z.enum(['Invoice', 'Receipt', 'Housing', 'Contract', 'Other']).describe('The detected type of the document (e.g., Invoice, Receipt, Housing, Contract, Other).'),
   suggestedCategories: z.array(z.string()).describe('Suggested categories for the document.'),
   summary: z.string().optional().describe('A brief summary of the document if it is long.'),
 });
@@ -37,7 +37,7 @@ const detectDocumentTypePrompt = ai.definePrompt({
   name: 'detectDocumentTypePrompt',
   input: {schema: DetectDocumentTypeInputSchema},
   output: {schema: DetectDocumentTypeOutputSchema},
-  prompt: `You are an expert document classifier.  You will be provided with a document, and you will identify the type of document it is, suggest relevant categories for the document, and provide a summary of the document if it is long.
+  prompt: `You are an expert document classifier.  You will be provided with a document, and you will identify the type of document it is from the following choices: Invoice, Receipt, Housing, Contract, Other. If it is a housing-related document like a rental agreement or property deed, classify it as 'Housing'. You will also suggest relevant categories for the document, and provide a summary of the document if it is long.
 
 Document: {{media url=documentDataUri}}
 
