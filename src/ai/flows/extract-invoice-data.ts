@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -47,6 +48,8 @@ const prompt = ai.definePrompt({
   - Date de début de facturation : Le début de la période de consommation.
   - Date de fin de facturation : La fin de la période de consommation.
   - Numéro de référence
+
+  Détail important pour les factures SONEDE : La période de consommation est souvent un trimestre indiqué en haut à gauche sous un format comme "03-04-05-2025". Cela signifie Mars-Avril-Mai 2025. La date de début serait le premier jour du premier mois (01-03-2025) et la date de fin serait le dernier jour du dernier mois (31-05-2025). Interprétez cela correctement.
 
   Retournez toutes les dates au format AAAA-MM-JJ.
 
