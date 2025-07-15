@@ -5,8 +5,8 @@ import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays } from 'lucide-react';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,26 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
     default: return <FileText className="h-5 w-5 text-gray-500" />;
   }
 };
+
+const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
+  if (!dueDate) {
+    return <Badge variant="secondary" className="rounded-md">Payée</Badge>;
+  }
+
+  const daysDiff = differenceInDays(parseISO(dueDate), new Date());
+
+  if (daysDiff < 0) {
+    return <Badge variant="destructive" className="rounded-md">En retard</Badge>;
+  }
+  if (daysDiff <= 7) {
+    return <Badge className="bg-destructive/80 text-destructive-foreground rounded-md">Urgent</Badge>;
+  }
+  if (daysDiff <= 30) {
+    return <Badge className="bg-orange-400 text-black rounded-md">À venir</Badge>;
+  }
+  return <Badge variant="outline" className="rounded-md">Normal</Badge>;
+};
+
 
 interface DocumentsTableProps {
     documents: Document[];
@@ -43,11 +63,11 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
             <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nom du document</TableHead>
-                    <TableHead className="hidden sm:table-cell">Catégorie</TableHead>
-                    <TableHead className="hidden md:table-cell">Fournisseur</TableHead>
-                    <TableHead className="hidden lg:table-cell text-right">Montant</TableHead>
-                    <TableHead className="text-right">Ajouté le</TableHead>
+                    <TableHead>Fournisseur</TableHead>
+                    <TableHead className="hidden sm:table-cell">Période de consommation</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">Montant</TableHead>
+                    <TableHead className="hidden lg:table-cell text-center">Échéance</TableHead>
+                    <TableHead className="text-center">Statut</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -57,17 +77,34 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                       <TableCell>
                         <div className="flex items-center gap-3">
                            <CategoryIcon category={doc.category} />
-                           <span className="font-medium">{doc.name}</span>
+                           <div className="flex flex-col">
+                             <span className="font-medium">{doc.supplier || doc.category}</span>
+                             <span className="text-xs text-muted-foreground">{doc.name}</span>
+                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline" className="rounded-md">{doc.category}</Badge>
+                         {doc.billingStartDate && doc.billingEndDate ? (
+                             <div className="flex items-center gap-2">
+                                <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                                <span>{format(parseISO(doc.billingStartDate), 'd MMM yy', { locale: fr })} - {format(parseISO(doc.billingEndDate), 'd MMM yy', { locale: fr })}</span>
+                             </div>
+                         ) : doc.category === 'Reçu Bancaire' || doc.category === 'Autre' ? (
+                             <div className="flex items-center gap-2">
+                                <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                                <span>{format(parseISO(doc.createdAt), 'd MMMM yyyy', { locale: fr })}</span>
+                             </div>
+                         ) : 'N/A'}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{doc.supplier || 'N/A'}</TableCell>
-                       <TableCell className="hidden lg:table-cell text-right font-mono">
+                       <TableCell className="hidden md:table-cell text-right font-mono">
                         {doc.amount ? `${doc.amount.toFixed(2)} TND` : '-'}
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground">{format(parseISO(doc.createdAt), 'dd/MM/yy', { locale: fr })}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-center text-muted-foreground">
+                        {doc.dueDate ? format(parseISO(doc.dueDate), 'd MMMM yyyy', { locale: fr }) : '-'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                          <StatusBadge dueDate={doc.dueDate} />
+                      </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

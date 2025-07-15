@@ -1,6 +1,6 @@
 
 import { Document, Alert } from './types';
-import { subDays, addDays } from 'date-fns';
+import { subDays, addDays, startOfMonth, endOfMonth } from 'date-fns';
 
 const now = new Date();
 
@@ -14,6 +14,8 @@ export const mockDocuments: Document[] = [
     amount: 120.50,
     supplier: 'STEG',
     dueDate: addDays(now, 6).toISOString(),
+    billingStartDate: startOfMonth(subDays(now, 65)).toISOString(),
+    billingEndDate: endOfMonth(subDays(now, 65)).toISOString(),
   },
   {
     id: 'doc-2',
@@ -24,6 +26,8 @@ export const mockDocuments: Document[] = [
     amount: 75.00,
     supplier: 'SONEDE',
     dueDate: subDays(now, 2).toISOString(),
+    billingStartDate: subDays(now, 105).toISOString(),
+    billingEndDate: subDays(now, 75).toISOString(),
   },
    {
     id: 'doc-7',

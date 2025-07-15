@@ -9,6 +9,8 @@ export type Document = {
   amount?: number;
   supplier?: string;
   dueDate?: string; // ISO date string
+  billingStartDate?: string; // ISO date string
+  billingEndDate?: string; // ISO date string
 };
 
 export type Alert = {

@@ -119,6 +119,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               supplier: result.supplier,
               amount: result.amount ? parseFloat(result.amount) : undefined,
               dueDate: result.dueDate ? new Date(result.dueDate).toISOString() : undefined,
+              billingStartDate: result.billingStartDate ? new Date(result.billingStartDate).toISOString() : undefined,
+              billingEndDate: result.billingEndDate ? new Date(result.billingEndDate).toISOString() : undefined,
               summary: result.summary,
               fileUrl: URL.createObjectURL(selectedFile)
           };
@@ -148,7 +150,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
   };
 
-  const handleFormChange = (field: keyof Document, value: string | number) => {
+  const handleFormChange = (field: keyof Document, value: string | number | undefined) => {
     setFormData(prev => ({...prev, [field]: value}));
   }
 
@@ -166,7 +168,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       updateDocument(documentToEdit.id, formData);
       toast({
         title: "Document modifié !",
-        description: `Le document "${formData.name}" a été mis à jour.`,
+        description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`,
       });
     }
     handleOpenChange(false);
@@ -244,11 +246,19 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-amount">Montant (TND)</Label>
-                  <Input id="doc-amount" type="number" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value ? parseFloat(e.target.value) : '')} />
+                  <Input id="doc-amount" type="number" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value ? parseFloat(e.target.value) : undefined)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-due-date">Date d'échéance</Label>
-                  <Input id="doc-due-date" type="date" value={formData.dueDate ? new Date(formData.dueDate).toISOString().split('T')[0] : ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
+                  <Input id="doc-due-date" type="date" value={formData.dueDate ? new Date(formData.dueDate).toISOString().split('T')[0] : ''} onChange={e => handleFormChange('dueDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)} />
+              </div>
+               <div className="space-y-2">
+                  <Label htmlFor="doc-billing-start-date">Date de début de facturation</Label>
+                  <Input id="doc-billing-start-date" type="date" value={formData.billingStartDate ? new Date(formData.billingStartDate).toISOString().split('T')[0] : ''} onChange={e => handleFormChange('billingStartDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)} />
+              </div>
+               <div className="space-y-2">
+                  <Label htmlFor="doc-billing-end-date">Date de fin de facturation</Label>
+                  <Input id="doc-billing-end-date" type="date" value={formData.billingEndDate ? new Date(formData.billingEndDate).toISOString().split('T')[0] : ''} onChange={e => handleFormChange('billingEndDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-summary">Résumé</Label>
