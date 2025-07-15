@@ -55,8 +55,8 @@ export default function DashboardPage() {
             </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
-          <Card className="rounded-2xl shadow-sm">
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-5">
+          <Card className="rounded-2xl shadow-sm lg:col-span-3">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div >
                 <CardTitle className="text-lg font-medium font-headline">Alertes à venir</CardTitle>
@@ -82,7 +82,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl shadow-sm">
+          <Card className="rounded-2xl shadow-sm lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                <div>
                   <CardTitle className="text-lg font-medium font-headline">Documents Récents</CardTitle>
