@@ -11,14 +11,14 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateAlertsFromDatesInputSchema = z.object({
-  documentText: z.string().describe('The text content of the document.'),
+  documentText: z.string().describe('Le contenu textuel du document.'),
 });
 export type GenerateAlertsFromDatesInput = z.infer<typeof GenerateAlertsFromDatesInputSchema>;
 
 const GenerateAlertsFromDatesOutputSchema = z.array(z.object({
-  date: z.string().describe('The extracted date in ISO format (YYYY-MM-DD).'),
-  type: z.string().describe('The type of date (e.g., expiration, renewal, due date).'),
-  description: z.string().describe('A description of the event associated with the date.'),
+  date: z.string().describe('La date extraite au format ISO (AAAA-MM-JJ).'),
+  type: z.string().describe('Le type de date (ex: expiration, renouvellement, date d\'échéance).'),
+  description: z.string().describe('Une description de l\'événement associé à la date.'),
 }));
 export type GenerateAlertsFromDatesOutput = z.infer<typeof GenerateAlertsFromDatesOutputSchema>;
 
@@ -30,15 +30,15 @@ const prompt = ai.definePrompt({
   name: 'generateAlertsFromDatesPrompt',
   input: {schema: GenerateAlertsFromDatesInputSchema},
   output: {schema: GenerateAlertsFromDatesOutputSchema},
-  prompt: `You are an AI assistant that extracts dates from documents and generates alerts.
+  prompt: `Vous êtes un assistant IA qui extrait des dates de documents et génère des alertes.
 
-  Given the following document text, extract all dates that could be relevant for generating alerts (e.g., expiration dates, renewal dates, due dates).
+  À partir du texte du document suivant, extrayez toutes les dates qui pourraient être pertinentes pour générer des alertes (par exemple, les dates d'expiration, de renouvellement, d'échéance).
 
-  For each date, determine the type of date (e.g., expiration, renewal, due date) and generate a description of the event associated with the date.
+  Pour chaque date, déterminez le type de date (par exemple, expiration, renouvellement, date d'échéance) et générez une description de l'événement associé à la date.
 
-  Return the dates in ISO format (YYYY-MM-DD).
+  Retournez les dates au format ISO (AAAA-MM-JJ).
 
-  Document Text: {{{documentText}}}`, 
+  Texte du document : {{{documentText}}}`, 
 });
 
 const generateAlertsFromDatesFlow = ai.defineFlow(

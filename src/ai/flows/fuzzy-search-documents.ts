@@ -12,12 +12,12 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const FuzzySearchDocumentsInputSchema = z.object({
-  searchTerm: z.string().describe('The fuzzy search term entered by the user.'),
-  documentIds: z.array(z.string()).describe('A list of document IDs to search through.')
+  searchTerm: z.string().describe('Le terme de recherche approximatif saisi par l\'utilisateur.'),
+  documentIds: z.array(z.string()).describe('Une liste d\'ID de documents dans laquelle chercher.')
 });
 export type FuzzySearchDocumentsInput = z.infer<typeof FuzzySearchDocumentsInputSchema>;
 
-const FuzzySearchDocumentsOutputSchema = z.array(z.string()).describe('A list of relevant document IDs that match the search term.');
+const FuzzySearchDocumentsOutputSchema = z.array(z.string()).describe('Une liste d\'ID de documents pertinents qui correspondent au terme de recherche.');
 export type FuzzySearchDocumentsOutput = z.infer<typeof FuzzySearchDocumentsOutputSchema>;
 
 export async function fuzzySearchDocuments(input: FuzzySearchDocumentsInput): Promise<FuzzySearchDocumentsOutput> {
@@ -28,17 +28,17 @@ const prompt = ai.definePrompt({
   name: 'fuzzySearchDocumentsPrompt',
   input: {schema: FuzzySearchDocumentsInputSchema},
   output: {schema: FuzzySearchDocumentsOutputSchema},
-  prompt: `You are an expert search assistant. Given a user's search term, 
-your job is to identify which documents are relevant to the search term.
-Even if the search term contains misspellings, synonyms, or abbreviations,
-you should still try to identify the correct documents. The document IDs that
-are available to you are listed in the documentIds input field. If no documents
-are relevant, return an empty array.
+  prompt: `Vous êtes un expert en assistance à la recherche. Étant donné un terme de recherche d'un utilisateur,
+votre travail consiste à identifier quels documents sont pertinents pour ce terme de recherche.
+Même si le terme de recherche contient des fautes d'orthographe, des synonymes ou des abréviations,
+vous devez tout de même essayer d'identifier les bons documents. Les ID des documents
+qui sont à votre disposition sont listés dans le champ d'entrée documentIds. Si aucun document
+n'est pertinent, retournez un tableau vide.
 
-Search Term: {{{searchTerm}}}
-Available Documents: {{{documentIds}}}
+Terme de recherche : {{{searchTerm}}}
+Documents disponibles : {{{documentIds}}}
 
-Relevant Document IDs:`, // Ensure output is a JSON array of strings.
+IDs de documents pertinents :`,
 });
 
 const fuzzySearchDocumentsFlow = ai.defineFlow(

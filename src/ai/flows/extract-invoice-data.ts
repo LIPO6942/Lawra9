@@ -21,12 +21,12 @@ const ExtractInvoiceDataInputSchema = z.object({
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
 const ExtractInvoiceDataOutputSchema = z.object({
-  supplier: z.string().describe('The name of the supplier. Should be "STEG" for electricity, "SONEDE" for water, or the provider name like "Orange" for others.'),
-  amount: z.string().describe('The total amount due on the invoice.'),
-  dueDate: z.string().describe('The due date of the invoice in YYYY-MM-DD format.'),
-  billingStartDate: z.string().optional().describe('The start date of the billing period in YYYY-MM-DD format.'),
-  billingEndDate: z.string().optional().describe('The end date of the billing period in YYYY-MM-DD format.'),
-  reference: z.string().describe('The invoice reference number.'),
+  supplier: z.string().describe('Le nom du fournisseur. Doit être "STEG" pour l\'électricité, "SONEDE" pour l\'eau, ou le nom du fournisseur comme "Orange" pour les autres.'),
+  amount: z.string().describe('Le montant total à payer sur la facture.'),
+  dueDate: z.string().describe('La date d\'échéance de la facture au format AAAA-MM-JJ.'),
+  billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ.'),
+  billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ.'),
+  reference: z.string().describe('Le numéro de référence de la facture.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
@@ -38,19 +38,19 @@ const prompt = ai.definePrompt({
   name: 'extractInvoiceDataPrompt',
   input: {schema: ExtractInvoiceDataInputSchema},
   output: {schema: ExtractInvoiceDataOutputSchema},
-  prompt: `You are an expert at extracting data from Tunisian invoices.
+  prompt: `Vous êtes un expert dans l'extraction de données à partir de factures tunisiennes.
 
-  Please extract the following information from the invoice image provided:
-  - Supplier Name: Be specific. For electricity, it must be "STEG". For water, it must be "SONEDE". For telecom, it can be "Orange", "Ooredoo", etc.
-  - Amount: The total amount to pay.
-  - Due Date: The payment deadline.
-  - Billing Start Date: The start of the consumption period.
-  - Billing End Date: The end of the consumption period.
-  - Reference Number
+  Veuillez extraire les informations suivantes de l'image de la facture fournie :
+  - Nom du fournisseur : Soyez précis. Pour l'électricité, ce doit être "STEG". Pour l'eau, ce doit être "SONEDE". Pour les télécommunications, ça peut être "Orange", "Ooredoo", etc.
+  - Montant : Le montant total à payer.
+  - Date d'échéance : La date limite de paiement.
+  - Date de début de facturation : Le début de la période de consommation.
+  - Date de fin de facturation : La fin de la période de consommation.
+  - Numéro de référence
 
-  Return all dates in YYYY-MM-DD format.
+  Retournez toutes les dates au format AAAA-MM-JJ.
 
-  Here is the invoice:
+  Voici la facture :
   {{media url=invoiceDataUri}}
   `,
 });

@@ -21,9 +21,9 @@ const DetectDocumentTypeInputSchema = z.object({
 export type DetectDocumentTypeInput = z.infer<typeof DetectDocumentTypeInputSchema>;
 
 const DetectDocumentTypeOutputSchema = z.object({
-  documentType: z.enum(['Invoice', 'Receipt', 'Housing', 'Contract', 'Other']).describe('The detected type of the document (e.g., Invoice, Receipt, Housing, Contract, Other).'),
-  suggestedCategories: z.array(z.string()).describe('Suggested categories for the document.'),
-  summary: z.string().optional().describe('A brief summary of the document if it is long.'),
+  documentType: z.enum(['Invoice', 'Receipt', 'Housing', 'Contract', 'Other']).describe('Le type de document détecté (par exemple, Invoice, Receipt, Housing, Contract, Other).'),
+  suggestedCategories: z.array(z.string()).describe('Catégories suggérées pour le document.'),
+  summary: z.string().optional().describe('Un bref résumé du document s\'il est long.'),
 });
 export type DetectDocumentTypeOutput = z.infer<typeof DetectDocumentTypeOutputSchema>;
 
@@ -37,7 +37,7 @@ const detectDocumentTypePrompt = ai.definePrompt({
   name: 'detectDocumentTypePrompt',
   input: {schema: DetectDocumentTypeInputSchema},
   output: {schema: DetectDocumentTypeOutputSchema},
-  prompt: `You are an expert document classifier.  You will be provided with a document, and you will identify the type of document it is from the following choices: Invoice, Receipt, Housing, Contract, Other. If it is a housing-related document like a rental agreement or property deed, classify it as 'Housing'. You will also suggest relevant categories for the document, and provide a summary of the document if it is long.
+  prompt: `Vous êtes un expert en classification de documents. Vous recevrez un document et vous devrez identifier son type parmi les choix suivants : Invoice, Receipt, Housing, Contract, Other. S'il s'agit d'un document lié au logement comme un contrat de location ou un titre de propriété, classez-le comme 'Housing'. Vous suggérerez également des catégories pertinentes pour le document et fournirez un résumé du document s'il est long.
 
 Document: {{media url=documentDataUri}}
 
