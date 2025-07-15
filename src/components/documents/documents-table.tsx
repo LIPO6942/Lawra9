@@ -1,14 +1,17 @@
 
 'use client';
 
+import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { UploadDocumentDialog } from '../upload-document-dialog';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -21,9 +24,19 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
 
 interface DocumentsTableProps {
     documents: Document[];
+    onUpdate: (id: string, data: Partial<Document>) => void;
+    onDelete: (id: string) => void;
 }
 
-export function DocumentsTable({ documents }: DocumentsTableProps) {
+export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTableProps) {
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+
+    const handleEdit = (doc: Document) => {
+        setSelectedDocument(doc);
+        setIsEditModalOpen(true);
+    }
+    
     return (
         <>
             <Table>
@@ -63,18 +76,35 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.open(doc.fileUrl, '_blank')}>
                               <Eye className="mr-2 h-4 w-4" />
                               Consulter
                             </DropdownMenuItem>
-                             <DropdownMenuItem>
+                             <DropdownMenuItem onClick={() => handleEdit(doc)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Modifier
                             </DropdownMenuItem>
-                             <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Supprimer
-                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => e.preventDefault()}>
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Supprimer
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Cette action est irréversible. Le document "{doc.name}" sera définitivement supprimé.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => onDelete(doc.id)} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -87,6 +117,13 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                     <p className="text-muted-foreground">Aucun document trouvé.</p>
                     <p className="text-sm text-muted-foreground/80">Ajoutez un nouveau document pour commencer.</p>
                 </div>
+            )}
+            {selectedDocument && (
+                <UploadDocumentDialog
+                    open={isEditModalOpen}
+                    onOpenChange={setIsEditModalOpen}
+                    documentToEdit={selectedDocument}
+                />
             )}
         </>
     );

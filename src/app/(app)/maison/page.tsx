@@ -1,16 +1,15 @@
 
 'use client';
 
-import { useState } from 'react';
-import { mockDocuments } from '@/lib/data';
-import { Document } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { DocumentsTable } from '@/components/documents/documents-table';
 import { Home } from 'lucide-react';
+import { useDocuments } from '@/contexts/document-context';
 
 export default function MaisonPage() {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments.filter(doc => doc.category === 'Maison'));
+  const { documents, updateDocument, deleteDocument } = useDocuments();
+  const maisonDocuments = documents.filter(doc => doc.category === 'Maison');
 
   return (
     <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
@@ -29,7 +28,11 @@ export default function MaisonPage() {
 
       <Card className="rounded-2xl shadow-sm">
         <CardContent className="pt-6">
-          <DocumentsTable documents={documents} />
+          <DocumentsTable
+             documents={maisonDocuments}
+             onUpdate={updateDocument}
+             onDelete={deleteDocument}
+          />
         </CardContent>
       </Card>
     </div>

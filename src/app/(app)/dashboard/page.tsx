@@ -1,17 +1,14 @@
 
 'use client';
 
-import { mockAlerts } from '@/lib/data';
-import { Alert } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { AlertsCard } from '@/components/dashboard/alerts-card';
 import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
-import { parseISO } from 'date-fns';
-import { differenceInDays } from 'date-fns';
+import { useDocuments } from '@/contexts/document-context';
 
 export default function DashboardPage() {
-  const alerts: Alert[] = mockAlerts.sort((a,b) => differenceInDays(parseISO(a.dueDate), new Date()) - differenceInDays(parseISO(b.dueDate), new Date()));
+  const { alerts } = useDocuments();
   
   return (
     <ScrollArea className="h-full">

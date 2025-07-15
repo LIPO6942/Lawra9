@@ -2,22 +2,23 @@
 'use client';
 
 import { useState } from 'react';
-import { mockDocuments } from '@/lib/data';
-import { Document } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { DocumentsTable } from '@/components/documents/documents-table';
+import { useDocuments } from '@/contexts/document-context';
+import { Document } from '@/lib/types';
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments.filter(doc => doc.category !== 'Maison'));
+  const { documents, updateDocument, deleteDocument } = useDocuments();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredDocuments = documents.filter(doc => 
-    doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.category !== 'Maison' &&
+    (doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doc.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
+    doc.supplier?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -43,7 +44,11 @@ export default function DocumentsPage() {
 
       <Card className="rounded-2xl shadow-sm">
         <CardContent className="pt-6">
-          <DocumentsTable documents={filteredDocuments} />
+          <DocumentsTable 
+            documents={filteredDocuments}
+            onUpdate={updateDocument}
+            onDelete={deleteDocument}
+          />
         </CardContent>
       </Card>
     </div>
