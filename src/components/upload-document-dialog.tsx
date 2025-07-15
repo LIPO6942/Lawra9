@@ -121,7 +121,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               dueDate: result.dueDate ? new Date(result.dueDate).toISOString() : undefined,
               billingStartDate: result.billingStartDate ? new Date(result.billingStartDate).toISOString() : undefined,
               billingEndDate: result.billingEndDate ? new Date(result.billingEndDate).toISOString() : undefined,
-              summary: result.summary,
               fileUrl: URL.createObjectURL(selectedFile)
           };
           

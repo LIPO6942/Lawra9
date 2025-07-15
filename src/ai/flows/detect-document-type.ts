@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -23,7 +24,6 @@ export type DetectDocumentTypeInput = z.infer<typeof DetectDocumentTypeInputSche
 const DetectDocumentTypeOutputSchema = z.object({
   documentType: z.enum(['STEG', 'SONEDE', 'Reçu Bancaire', 'Maison', 'Autre']).describe('Le type de document détecté (STEG, SONEDE, Reçu Bancaire, Maison, Autre).'),
   suggestedCategories: z.array(z.string()).describe('Catégories suggérées pour le document.'),
-  summary: z.string().optional().describe('Un bref résumé du document s\'il est long.'),
 });
 export type DetectDocumentTypeOutput = z.infer<typeof DetectDocumentTypeOutputSchema>;
 
