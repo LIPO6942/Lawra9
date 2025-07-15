@@ -6,7 +6,7 @@ import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays } from 'lucide-react';
-import { format, parseISO, differenceInDays, isValid } from 'date-fns';
+import { format, parseISO, differenceInDays, isValid, getMonth, getYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -58,21 +58,25 @@ const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
                 return <span>Période invalide</span>;
             }
 
-            if (doc.category === 'SONEDE') {
-                const year = format(start, 'yyyy');
+            if (doc.category === 'SONEDE' && getMonth(start) !== getMonth(end)) {
+                const year = getYear(start);
                 const months = [];
                 let current = start;
-                while (current <= end) {
+                 // Loop from start month to end month
+                while (getMonth(current) <= getMonth(end)) {
                     months.push(format(current, 'MMMM', { locale: fr }));
-                    // Use setMonth to avoid issues with date objects
                     const newDate = new Date(current);
                     newDate.setMonth(newDate.getMonth() + 1);
                     current = newDate;
                 }
+
+                // Capitalize first letter of each month
+                const formattedMonths = months.map(m => m.charAt(0).toUpperCase() + m.slice(1));
+
                 return (
                     <div className="flex items-center gap-2">
                         <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                        <span>{months.join('-')} {year}</span>
+                        <span>{formattedMonths.join('-')} {year}</span>
                     </div>
                 );
             }
@@ -134,8 +138,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
             <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Fournisseur</TableHead>
-                    <TableHead className="hidden sm:table-cell">Période de consommation</TableHead>
+                    <TableHead>Fournisseur / Nom</TableHead>
+                    <TableHead className="hidden sm:table-cell">Période / Date</TableHead>
                     <TableHead className="hidden md:table-cell text-right">Montant</TableHead>
                     <TableHead className="hidden lg:table-cell text-center">Échéance</TableHead>
                     <TableHead className="text-center">Statut</TableHead>
@@ -150,7 +154,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                            <CategoryIcon category={doc.category} />
                            <div className="flex flex-col">
                              <span className="font-medium">{doc.supplier || doc.category}</span>
-                             <span className="text-xs text-muted-foreground">{doc.name}</span>
+                             <span className="text-xs text-muted-foreground max-w-xs truncate">{doc.name}</span>
                            </div>
                         </div>
                       </TableCell>

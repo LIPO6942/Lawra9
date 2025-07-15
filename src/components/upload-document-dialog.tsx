@@ -53,9 +53,14 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
         }
     }
     if (docType === 'Reçu Bancaire' && result.amount) {
-         return `Reçu Bancaire - ${result.amount} TND`;
+         try {
+            const date = result.dueDate ? format(parseISO(result.dueDate), 'dd/MM/yyyy', { locale: fr }) : '';
+            return `Reçu Bancaire du ${date} - ${result.amount} TND`;
+         } catch(e) {
+            return `Reçu Bancaire - ${result.amount} TND`;
+         }
     }
-    return originalFileName;
+    return originalFileName.split('.').slice(0, -1).join('.');
 }
 
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null }: UploadDocumentDialogProps) {
