@@ -1,3 +1,4 @@
+
 export type Document = {
   id: string;
   name: string;
@@ -7,6 +8,7 @@ export type Document = {
   fileUrl: string;
   amount?: number;
   supplier?: string;
+  dueDate?: string; // ISO date string
 };
 
 export type Alert = {

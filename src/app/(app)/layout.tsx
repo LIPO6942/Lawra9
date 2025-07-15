@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -52,7 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/documents')}>
-                 <Link href="/dashboard">
+                 <Link href="/documents">
                   <Files />
                   Documents
                  </Link>
@@ -89,7 +90,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src="https://placehold.co/100x100" alt="User" />
+                    <AvatarImage src="https://placehold.co/100x100" alt="User" data-ai-hint="profile picture" />
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                 </Button>

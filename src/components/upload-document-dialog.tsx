@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -16,53 +17,67 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, UploadCloud, FileCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { extractInvoiceData, ExtractInvoiceDataOutput } from '@/ai/flows/extract-invoice-data';
+import { detectDocumentType, DetectDocumentTypeOutput } from '@/ai/flows/detect-document-type';
 
-type AnalysisResult = {
-  documentType: string;
-  suggestedCategories: string[];
-  supplier?: string;
-  amount?: string;
-  dueDate?: string;
-};
+type AnalysisResult = DetectDocumentTypeOutput & Partial<ExtractInvoiceDataOutput>;
 
 export function UploadDocumentDialog() {
   const [isOpen, setIsOpen] = useState(false);
-  const [fileName, setFileName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [step, setStep] = useState<'upload' | 'analyzing' | 'form'>('upload');
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const { toast } = useToast();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
       setStep('analyzing');
-      // Simulate AI analysis
-      setTimeout(() => {
-        // Mocked AI response
-        const result: AnalysisResult = {
-          documentType: 'Facture',
-          suggestedCategories: ['Facture', 'Finance', 'Logement'],
-          supplier: 'STEG',
-          amount: '145.75',
-          dueDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString().split('T')[0],
+      
+      try {
+        const reader = new FileReader();
+        reader.readAsDataURL(selectedFile);
+        reader.onload = async () => {
+          const documentDataUri = reader.result as string;
+
+          // Run analyses in parallel
+          const [typeResult, invoiceResult] = await Promise.all([
+            detectDocumentType({ documentDataUri }),
+            extractInvoiceData({ invoiceDataUri: documentDataUri })
+          ]);
+
+          const result: AnalysisResult = {
+            ...typeResult,
+            ...invoiceResult,
+          };
+
+          setAnalysisResult(result);
+          setStep('form');
         };
-        setAnalysisResult(result);
-        setStep('form');
-      }, 2500);
+      } catch(error) {
+        console.error('Analysis failed:', error);
+        toast({
+            variant: 'destructive',
+            title: "L'analyse a échoué",
+            description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."
+        });
+        resetDialog();
+      }
     }
   };
 
   const resetDialog = () => {
-    setFileName('');
+    setFile(null);
     setStep('upload');
     setAnalysisResult(null);
   };
 
   const handleSave = () => {
+    if (!file) return;
     toast({
       title: "Document enregistré !",
-      description: `Le document "${fileName}" a été ajouté à votre espace.`,
+      description: `Le document "${file.name}" a été ajouté à votre espace.`,
     });
     setIsOpen(false);
   };
@@ -105,11 +120,11 @@ export function UploadDocumentDialog() {
           <div className="flex flex-col items-center justify-center space-y-4 py-12">
             <Loader2 className="h-16 w-16 animate-spin text-accent" />
             <p className="font-semibold text-lg">Analyse en cours...</p>
-            <p className="text-sm text-muted-foreground">{fileName}</p>
+            <p className="text-sm text-muted-foreground">{file?.name}</p>
           </div>
         )}
 
-        {step === 'form' && analysisResult && (
+        {step === 'form' && analysisResult && file && (
           <div className="space-y-4 py-4">
              <div className="flex items-center space-x-3 rounded-md bg-green-50 p-3 border border-green-200 dark:bg-green-950 dark:border-green-800">
                 <FileCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -117,7 +132,7 @@ export function UploadDocumentDialog() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="doc-name">Nom du document</Label>
-              <Input id="doc-name" defaultValue={fileName} />
+              <Input id="doc-name" defaultValue={file.name} />
             </div>
             <div className="space-y-2">
                 <Label htmlFor="doc-category">Catégorie</Label>
@@ -129,6 +144,7 @@ export function UploadDocumentDialog() {
                         {analysisResult.suggestedCategories.map(cat => (
                             <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                         ))}
+                         <SelectItem value="Autre">Autre</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -147,7 +163,13 @@ export function UploadDocumentDialog() {
             {analysisResult.dueDate && (
                  <div className="space-y-2">
                     <Label htmlFor="doc-due-date">Date d'échéance</Label>
-                    <Input id="doc-due-date" type="date" defaultValue={analysisResult.dueDate} />
+                    <Input id="doc-due-date" type="date" defaultValue={analysisResult.dueDate.split('T')[0]} />
+                </div>
+            )}
+             {analysisResult.summary && (
+                 <div className="space-y-2">
+                    <Label htmlFor="doc-summary">Résumé</Label>
+                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md">{analysisResult.summary}</p>
                 </div>
             )}
           </div>
