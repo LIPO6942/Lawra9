@@ -3,13 +3,12 @@ import { Alert, Document } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Bell, FileText, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Bell, FileText, AlertTriangle, CheckCircle, Clock, Files, Search } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
 
 function getAlertBadge(dueDate: string) {
   const daysDiff = differenceInDays(parseISO(dueDate), new Date());
