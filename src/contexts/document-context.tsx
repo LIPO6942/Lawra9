@@ -20,6 +20,7 @@ interface DocumentContextType {
   addDocument: (doc: Document) => void;
   updateDocument: (id: string, data: Partial<Document>) => void;
   deleteDocument: (id: string) => void;
+  markAsPaid: (id: string) => void;
 }
 
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
@@ -39,6 +40,12 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteDocument = useCallback((id: string) => {
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
+  }, []);
+  
+  const markAsPaid = useCallback((id: string) => {
+    setDocuments(prevDocs =>
+      prevDocs.map(doc => (doc.id === id ? { ...doc, dueDate: undefined } : doc))
+    );
   }, []);
 
   const alerts = useMemo(() => {
@@ -96,6 +103,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addDocument,
     updateDocument,
     deleteDocument,
+    markAsPaid,
   };
 
   return (

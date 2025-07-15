@@ -4,14 +4,16 @@
 import { Alert } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bell, AlertTriangle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Bell, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useDocuments } from '@/contexts/document-context';
 
 function getAlertBadge(dueDate: string) {
   const daysDiff = differenceInDays(parseISO(dueDate), new Date());
   if (daysDiff < 0) {
-    return <Badge variant="destructive" className="rounded-md">Urgent</Badge>;
+    return <Badge variant="destructive" className="rounded-md">En retard</Badge>;
   }
   if (daysDiff <= 7) {
     return <Badge className="bg-destructive/80 rounded-md">Urgent</Badge>;
@@ -27,6 +29,8 @@ interface AlertsCardProps {
 }
 
 export function AlertsCard({ alerts }: AlertsCardProps) {
+    const { markAsPaid } = useDocuments();
+
     return (
         <Card className="rounded-2xl shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -48,7 +52,13 @@ export function AlertsCard({ alerts }: AlertsCardProps) {
                         <p className="text-sm font-medium leading-none">{alert.documentName}</p>
                         <p className="text-sm text-muted-foreground">{alert.type} - Échéance: {format(parseISO(alert.dueDate), 'd MMMM yyyy', { locale: fr })}</p>
                       </div>
-                      {getAlertBadge(alert.dueDate)}
+                      <div className="flex items-center space-x-2">
+                        {getAlertBadge(alert.dueDate)}
+                        <Button variant="ghost" size="sm" onClick={() => markAsPaid(alert.documentId)} className="h-auto px-2 py-1 text-xs">
+                           <CheckCircle className="mr-1 h-3 w-3" />
+                           Payée
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
