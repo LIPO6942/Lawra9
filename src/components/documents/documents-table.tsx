@@ -6,7 +6,7 @@ import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays } from 'lucide-react';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,13 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
   if (!dueDate) {
     return <Badge variant="secondary" className="rounded-md">Payée</Badge>;
   }
-
-  const daysDiff = differenceInDays(parseISO(dueDate), new Date());
+  
+  const date = parseISO(dueDate);
+  if (!isValid(date)) {
+    return <Badge variant="secondary" className="rounded-md">Date invalide</Badge>;
+  }
+  
+  const daysDiff = differenceInDays(date, new Date());
 
   if (daysDiff < 0) {
     return <Badge variant="destructive" className="rounded-md">En retard</Badge>;
@@ -44,47 +49,61 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
 
 
 const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
-  if (doc.category === 'SONEDE' && doc.billingStartDate && doc.billingEndDate) {
-      try {
-          const start = parseISO(doc.billingStartDate);
-          const end = parseISO(doc.billingEndDate);
-          const year = format(start, 'yyyy');
-          const months = [];
-          let current = start;
-          while (current <= end) {
-              months.push(format(current, 'MMMM', { locale: fr }));
-              current.setMonth(current.getMonth() + 1);
-          }
-          return (
-              <div className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                  <span>{months.join('-')} {year}</span>
-              </div>
-          );
-      } catch (e) {
-        // fallback
-      }
-  }
+    if (doc.billingStartDate && doc.billingEndDate) {
+        try {
+            const start = parseISO(doc.billingStartDate);
+            const end = parseISO(doc.billingEndDate);
 
-  if (doc.billingStartDate && doc.billingEndDate) {
-    return (
-        <div className="flex items-center gap-2">
-           <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-           <span>{format(parseISO(doc.billingStartDate), 'd MMM yy', { locale: fr })} - {format(parseISO(doc.billingEndDate), 'd MMM yy', { locale: fr })}</span>
-        </div>
-    );
-  }
+            if (!isValid(start) || !isValid(end)) {
+                return <span>Période invalide</span>;
+            }
+
+            if (doc.category === 'SONEDE') {
+                const year = format(start, 'yyyy');
+                const months = [];
+                let current = start;
+                while (current <= end) {
+                    months.push(format(current, 'MMMM', { locale: fr }));
+                    // Use setMonth to avoid issues with date objects
+                    const newDate = new Date(current);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    current = newDate;
+                }
+                return (
+                    <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                        <span>{months.join('-')} {year}</span>
+                    </div>
+                );
+            }
+      
+            return (
+                <div className="flex items-center gap-2">
+                   <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                   <span>{format(start, 'd MMM yy', { locale: fr })} - {format(end, 'd MMM yy', { locale: fr })}</span>
+                </div>
+            );
+        } catch (e) {
+            return <span>Période invalide</span>;
+        }
+    }
   
-  if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre') {
-    return (
-        <div className="flex items-center gap-2">
-           <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-           <span>{format(parseISO(doc.createdAt), 'd MMMM yyyy', { locale: fr })}</span>
-        </div>
-    );
-  }
+    if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre') {
+      try {
+        const createdAtDate = parseISO(doc.createdAt);
+        if(!isValid(createdAtDate)) return <span>Date invalide</span>
+        return (
+            <div className="flex items-center gap-2">
+               <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+               <span>{format(createdAtDate, 'd MMMM yyyy', { locale: fr })}</span>
+            </div>
+        );
+      } catch(e) {
+          return <span>Date invalide</span>;
+      }
+    }
 
-  return <span>N/A</span>;
+    return <span>N/A</span>;
 }
 
 
@@ -101,6 +120,13 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
     const handleEdit = (doc: Document) => {
         setSelectedDocument(doc);
         setIsEditModalOpen(true);
+    }
+
+    const formatDate = (dateString: string | undefined) => {
+        if (!dateString) return '-';
+        const date = parseISO(dateString);
+        if (!isValid(date)) return 'Date invalide';
+        return format(date, 'd MMMM yyyy', { locale: fr });
     }
     
     return (
@@ -135,7 +161,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                         {doc.amount ? `${doc.amount} TND` : '-'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-center text-muted-foreground">
-                        {doc.dueDate ? format(parseISO(doc.dueDate), 'd MMMM yyyy', { locale: fr }) : '-'}
+                         {formatDate(doc.dueDate)}
                       </TableCell>
                       <TableCell className="text-center">
                           <StatusBadge dueDate={doc.dueDate} />

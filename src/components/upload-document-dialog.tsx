@@ -45,8 +45,8 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     const docType = result.documentType as Document['category'];
     if ((docType === 'STEG' || docType === 'SONEDE') && result.supplier && result.amount && result.billingStartDate && result.billingEndDate) {
         try {
-            const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy');
-            const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy');
+            const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy', { locale: fr });
+            const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy', { locale: fr });
             return `Facture ${result.supplier} (${startDate} au ${endDate}) - ${result.amount} TND`;
         } catch (e) {
              return `Facture ${result.supplier}`;
@@ -117,9 +117,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               category: category,
               supplier: result.supplier,
               amount: result.amount,
-              dueDate: result.dueDate ? new Date(result.dueDate).toISOString() : undefined,
-              billingStartDate: result.billingStartDate ? new Date(result.billingStartDate).toISOString() : undefined,
-              billingEndDate: result.billingEndDate ? new Date(result.billingEndDate).toISOString() : undefined,
+              dueDate: result.dueDate,
+              billingStartDate: result.billingStartDate,
+              billingEndDate: result.billingEndDate,
               fileUrl: URL.createObjectURL(selectedFile)
           };
           
@@ -247,16 +247,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                   <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} />
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="doc-due-date">Date d'échéance</Label>
-                  <Input id="doc-due-date" type="date" value={formData.dueDate ? new Date(formData.dueDate).toISOString().split('T')[0] : ''} onChange={e => handleFormChange('dueDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)} />
+                  <Label htmlFor="doc-due-date">Date d'échéance (AAAA-MM-JJ)</Label>
+                  <Input id="doc-due-date" type="text" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
               </div>
                <div className="space-y-2">
-                  <Label htmlFor="doc-billing-start-date">Date de début de facturation</Label>
-                  <Input id="doc-billing-start-date" type="date" value={formData.billingStartDate ? new Date(formData.billingStartDate).toISOString().split('T')[0] : ''} onChange={e => handleFormChange('billingStartDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)} />
+                  <Label htmlFor="doc-billing-start-date">Date de début de facturation (AAAA-MM-JJ)</Label>
+                  <Input id="doc-billing-start-date" type="text" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
               </div>
                <div className="space-y-2">
-                  <Label htmlFor="doc-billing-end-date">Date de fin de facturation</Label>
-                  <Input id="doc-billing-end-date" type="date" value={formData.billingEndDate ? new Date(formData.billingEndDate).toISOString().split('T')[0] : ''} onChange={e => handleFormChange('billingEndDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)} />
+                  <Label htmlFor="doc-billing-end-date">Date de fin de facturation (AAAA-MM-JJ)</Label>
+                  <Input id="doc-billing-end-date" type="text" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-summary">Résumé</Label>
