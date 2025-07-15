@@ -8,7 +8,7 @@ import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
 import { useDocuments } from '@/contexts/document-context';
 
 export default function DashboardPage() {
-  const { alerts } = useDocuments();
+  const { alerts, monthlyExpenses } = useDocuments();
   
   return (
     <ScrollArea className="h-full">
@@ -23,9 +23,13 @@ export default function DashboardPage() {
             </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-          <AlertsCard alerts={alerts} />
-          <ExpensesChartCard />
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-5">
+          <div className="col-span-1 lg:col-span-3">
+              <ExpensesChartCard data={monthlyExpenses} />
+          </div>
+          <div className="col-span-1 lg:col-span-2">
+            <AlertsCard alerts={alerts} />
+          </div>
         </div>
       </div>
     </ScrollArea>

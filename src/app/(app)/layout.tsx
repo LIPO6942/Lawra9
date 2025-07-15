@@ -17,7 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, User } from 'lucide-react';
+import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentProvider } from '@/contexts/document-context';
@@ -58,6 +58,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                    <Link href="/documents">
                     <Files />
                     Documents
+                   </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+                <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith('/historique')}>
+                   <Link href="/historique">
+                    <History />
+                    Historique
                    </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

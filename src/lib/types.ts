@@ -2,7 +2,7 @@
 export type Document = {
   id: string;
   name: string;
-  category: 'Facture' | 'Reçu' | 'Maison' | 'Autre';
+  category: 'STEG' | 'SONEDE' | 'Reçu Bancaire' | 'Maison' | 'Autre';
   createdAt: string; // ISO date string
   summary?: string;
   fileUrl: string;

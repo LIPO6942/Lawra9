@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -15,8 +15,9 @@ import { UploadDocumentDialog } from '../upload-document-dialog';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
-    case 'Facture': return <FileText className="h-5 w-5 text-blue-500" />;
-    case 'Reçu': return <FileText className="h-5 w-5 text-indigo-500" />;
+    case 'STEG': return <Zap className="h-5 w-5 text-yellow-500" />;
+    case 'SONEDE': return <Droplets className="h-5 w-5 text-blue-500" />;
+    case 'Reçu Bancaire': return <Landmark className="h-5 w-5 text-indigo-500" />;
     case 'Maison': return <Home className="h-5 w-5 text-green-500" />;
     default: return <FileText className="h-5 w-5 text-gray-500" />;
   }

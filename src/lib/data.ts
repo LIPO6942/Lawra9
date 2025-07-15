@@ -8,8 +8,8 @@ export const mockDocuments: Document[] = [
   {
     id: 'doc-1',
     name: 'Facture STEG - Janvier 2024',
-    category: 'Facture',
-    createdAt: subDays(now, 5).toISOString(),
+    category: 'STEG',
+    createdAt: subDays(now, 65).toISOString(),
     fileUrl: '/mock/facture-steg.pdf',
     amount: 120.50,
     supplier: 'STEG',
@@ -18,8 +18,8 @@ export const mockDocuments: Document[] = [
   {
     id: 'doc-2',
     name: 'Facture SONEDE - Q4 2023',
-    category: 'Facture',
-    createdAt: subDays(now, 15).toISOString(),
+    category: 'SONEDE',
+    createdAt: subDays(now, 75).toISOString(),
     fileUrl: '/mock/facture-sonede.pdf',
     amount: 75.00,
     supplier: 'SONEDE',
@@ -28,8 +28,8 @@ export const mockDocuments: Document[] = [
    {
     id: 'doc-7',
     name: 'Facture Orange - Fev 2024',
-    category: 'Facture',
-    createdAt: subDays(now, 10).toISOString(),
+    category: 'Autre',
+    createdAt: subDays(now, 40).toISOString(),
     fileUrl: '/mock/facture-orange.pdf',
     amount: 55.00,
     supplier: 'Orange',
@@ -54,12 +54,12 @@ export const mockDocuments: Document[] = [
   },
   {
     id: 'doc-5',
-    name: 'Reçu Achat Carrefour',
-    category: 'Reçu',
+    name: 'Reçu Bancaire - Retrait',
+    category: 'Reçu Bancaire',
     createdAt: subDays(now, 2).toISOString(),
     fileUrl: '/mock/recu-carrefour.jpg',
     amount: 230.15,
-    supplier: 'Carrefour'
+    supplier: 'Banque ABC'
   },
    {
     id: 'doc-6',
@@ -80,5 +80,5 @@ export const mockAlerts: Alert[] = mockDocuments
     documentId: doc.id,
     documentName: doc.name,
     dueDate: doc.dueDate!,
-    type: doc.category === 'Facture' ? 'Paiement' : 'Renouvellement',
+    type: (doc.category === 'STEG' || doc.category === 'SONEDE') ? 'Paiement' : 'Renouvellement',
 }));

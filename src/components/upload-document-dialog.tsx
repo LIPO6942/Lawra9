@@ -33,16 +33,17 @@ interface UploadDocumentDialogProps {
   documentToEdit?: Document | null;
 }
 
-const frenchCategories = {
-    'Invoice': 'Facture',
-    'Receipt': 'Reçu',
-    'Contract': 'Contrat',
-    'Housing': 'Maison',
-    'Other': 'Autre'
+const frenchCategories: { [key: string]: Document['category'] } = {
+    'STEG': 'STEG',
+    'SONEDE': 'SONEDE',
+    'Reçu Bancaire': 'Reçu Bancaire',
+    'Maison': 'Maison',
+    'Autre': 'Autre',
 };
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
-    if (result.documentType === 'Invoice' && result.supplier && result.amount && result.billingStartDate && result.billingEndDate) {
+    const docType = result.documentType as Document['category'];
+    if ((docType === 'STEG' || docType === 'SONEDE') && result.supplier && result.amount && result.billingStartDate && result.billingEndDate) {
         try {
             const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy');
             const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy');
@@ -51,6 +52,9 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
         } catch (e) {
              return `Facture ${result.supplier}`;
         }
+    }
+    if (docType === 'Reçu Bancaire' && result.amount) {
+         return `Reçu Bancaire - ${parseFloat(result.amount).toFixed(2)} TND`;
     }
     return originalFileName;
 }
@@ -226,8 +230,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                           <SelectValue placeholder="Sélectionnez une catégorie" />
                       </SelectTrigger>
                       <SelectContent>
-                           <SelectItem value="Facture">Facture</SelectItem>
-                           <SelectItem value="Reçu">Reçu</SelectItem>
+                           <SelectItem value="STEG">STEG</SelectItem>
+                           <SelectItem value="SONEDE">SONEDE</SelectItem>
+                           <SelectItem value="Reçu Bancaire">Reçu Bancaire</SelectItem>
                            <SelectItem value="Maison">Maison</SelectItem>
                            <SelectItem value="Autre">Autre</SelectItem>
                       </SelectContent>
