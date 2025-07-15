@@ -2,7 +2,7 @@
 export type Document = {
   id: string;
   name: string;
-  category: 'Facture' | 'Contrat' | 'Garantie' | 'Reçu' | 'Autre';
+  category: 'Facture' | 'Reçu' | 'Maison' | 'Autre';
   createdAt: string; // ISO date string
   summary?: string;
   fileUrl: string;

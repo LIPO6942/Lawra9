@@ -4,7 +4,6 @@ import { subDays, addDays } from 'date-fns';
 
 const now = new Date();
 
-// We will keep mock data for now, but the app will primarily use dynamic, AI-analyzed data.
 export const mockDocuments: Document[] = [
   {
     id: 'doc-1',
@@ -26,22 +25,32 @@ export const mockDocuments: Document[] = [
     supplier: 'SONEDE',
     dueDate: subDays(now, 2).toISOString(),
   },
+   {
+    id: 'doc-7',
+    name: 'Facture Orange - Fev 2024',
+    category: 'Facture',
+    createdAt: subDays(now, 10).toISOString(),
+    fileUrl: '/mock/facture-orange.pdf',
+    amount: 55.00,
+    supplier: 'Orange',
+    dueDate: addDays(now, 12).toISOString(),
+  },
   {
     id: 'doc-3',
     name: 'Contrat de location - Apt Sahloul',
-    category: 'Contrat',
+    category: 'Maison',
     createdAt: subDays(now, 90).toISOString(),
     fileUrl: '/mock/contrat-location.pdf',
     summary: "Contrat de location pour l'appartement situé à Sahloul, Sousse. Loyer mensuel de 850 TND.",
-    dueDate: addDays(now, 35).toISOString(),
   },
   {
-    id: 'doc-4',
-    name: 'Garantie TV Samsung',
-    category: 'Garantie',
-    createdAt: subDays(now, 180).toISOString(),
-    fileUrl: '/mock/garantie-tv.pdf',
-    dueDate: addDays(now, 14).toISOString(),
+    id: 'doc-8',
+    name: 'Tableau Amortissement Emprunt',
+    category: 'Maison',
+    createdAt: subDays(now, 120).toISOString(),
+    fileUrl: '/mock/tableau-amortissement.pdf',
+    summary: "Tableau d'amortissement pour l'emprunt immobilier de la maison.",
+    supplier: 'Banque XYZ'
   },
   {
     id: 'doc-5',
@@ -54,8 +63,8 @@ export const mockDocuments: Document[] = [
   },
    {
     id: 'doc-6',
-    name: 'Assurance Auto AMI',
-    category: 'Contrat',
+    name: 'Assurance Habitation AMI',
+    category: 'Maison',
     createdAt: subDays(now, 200).toISOString(),
     fileUrl: '/mock/assurance-ami.pdf',
     amount: 750,
@@ -71,5 +80,5 @@ export const mockAlerts: Alert[] = mockDocuments
     documentId: doc.id,
     documentName: doc.name,
     dueDate: doc.dueDate!,
-    type: doc.category === 'Facture' ? 'Paiement' : (doc.category === 'Garantie' ? 'Expiration' : 'Renouvellement'),
+    type: doc.category === 'Facture' ? 'Paiement' : 'Renouvellement',
 }));

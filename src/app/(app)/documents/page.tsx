@@ -11,7 +11,7 @@ import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { DocumentsTable } from '@/components/documents/documents-table';
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
+  const [documents, setDocuments] = useState<Document[]>(mockDocuments.filter(doc => doc.category !== 'Maison'));
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredDocuments = documents.filter(doc => 
@@ -25,7 +25,7 @@ export default function DocumentsPage() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
           <div>
                <h2 className="text-3xl font-bold tracking-tight font-headline">Mes Documents</h2>
-               <p className="text-muted-foreground">Consultez, gérez et organisez tous vos documents importants.</p>
+               <p className="text-muted-foreground">Consultez et gérez vos factures et documents quotidiens.</p>
           </div>
           <div className="flex items-center space-x-2 w-full md:w-auto">
               <div className="relative w-full md:w-64">
