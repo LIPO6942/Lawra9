@@ -43,6 +43,51 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
 };
 
 
+const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
+  if (doc.category === 'SONEDE' && doc.billingStartDate && doc.billingEndDate) {
+      try {
+          const start = parseISO(doc.billingStartDate);
+          const end = parseISO(doc.billingEndDate);
+          const year = format(start, 'yyyy');
+          const months = [];
+          let current = start;
+          while (current <= end) {
+              months.push(format(current, 'MMMM', { locale: fr }));
+              current.setMonth(current.getMonth() + 1);
+          }
+          return (
+              <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                  <span>{months.join('-')} {year}</span>
+              </div>
+          );
+      } catch (e) {
+        // fallback
+      }
+  }
+
+  if (doc.billingStartDate && doc.billingEndDate) {
+    return (
+        <div className="flex items-center gap-2">
+           <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+           <span>{format(parseISO(doc.billingStartDate), 'd MMM yy', { locale: fr })} - {format(parseISO(doc.billingEndDate), 'd MMM yy', { locale: fr })}</span>
+        </div>
+    );
+  }
+  
+  if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre') {
+    return (
+        <div className="flex items-center gap-2">
+           <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+           <span>{format(parseISO(doc.createdAt), 'd MMMM yyyy', { locale: fr })}</span>
+        </div>
+    );
+  }
+
+  return <span>N/A</span>;
+}
+
+
 interface DocumentsTableProps {
     documents: Document[];
     onUpdate: (id: string, data: Partial<Document>) => void;
@@ -84,20 +129,10 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                         {doc.billingStartDate && doc.billingEndDate ? (
-                             <div className="flex items-center gap-2">
-                                <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                                <span>{format(parseISO(doc.billingStartDate), 'd MMM yy', { locale: fr })} - {format(parseISO(doc.billingEndDate), 'd MMM yy', { locale: fr })}</span>
-                             </div>
-                         ) : doc.category === 'Reçu Bancaire' || doc.category === 'Autre' ? (
-                             <div className="flex items-center gap-2">
-                                <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                                <span>{format(parseISO(doc.createdAt), 'd MMMM yyyy', { locale: fr })}</span>
-                             </div>
-                         ) : 'N/A'}
+                         <ConsumptionPeriod doc={doc} />
                       </TableCell>
                        <TableCell className="hidden md:table-cell text-right font-mono">
-                        {doc.amount ? `${doc.amount.toFixed(2)} TND` : '-'}
+                        {doc.amount ? `${doc.amount} TND` : '-'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-center text-muted-foreground">
                         {doc.dueDate ? format(parseISO(doc.dueDate), 'd MMMM yyyy', { locale: fr }) : '-'}

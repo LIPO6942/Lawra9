@@ -47,14 +47,13 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
         try {
             const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy');
             const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy');
-            const amount = parseFloat(result.amount).toFixed(2);
-            return `Facture ${result.supplier} (${startDate} au ${endDate}) - ${amount} TND`;
+            return `Facture ${result.supplier} (${startDate} au ${endDate}) - ${result.amount} TND`;
         } catch (e) {
              return `Facture ${result.supplier}`;
         }
     }
     if (docType === 'Reçu Bancaire' && result.amount) {
-         return `Reçu Bancaire - ${parseFloat(result.amount).toFixed(2)} TND`;
+         return `Reçu Bancaire - ${result.amount} TND`;
     }
     return originalFileName;
 }
@@ -117,7 +116,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               name: formatDocumentName(result, selectedFile.name),
               category: category,
               supplier: result.supplier,
-              amount: result.amount ? parseFloat(result.amount) : undefined,
+              amount: result.amount,
               dueDate: result.dueDate ? new Date(result.dueDate).toISOString() : undefined,
               billingStartDate: result.billingStartDate ? new Date(result.billingStartDate).toISOString() : undefined,
               billingEndDate: result.billingEndDate ? new Date(result.billingEndDate).toISOString() : undefined,
@@ -245,7 +244,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-amount">Montant (TND)</Label>
-                  <Input id="doc-amount" type="number" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value ? parseFloat(e.target.value) : undefined)} />
+                  <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-due-date">Date d'échéance</Label>

@@ -6,7 +6,7 @@ export type Document = {
   createdAt: string; // ISO date string
   summary?: string;
   fileUrl: string;
-  amount?: number;
+  amount?: string;
   supplier?: string;
   dueDate?: string; // ISO date string
   billingStartDate?: string; // ISO date string

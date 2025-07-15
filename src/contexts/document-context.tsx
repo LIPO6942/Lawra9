@@ -70,6 +70,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .forEach(doc => {
             const month = format(parseISO(doc.createdAt), 'MMM', { locale: fr });
             const category = doc.category;
+            const amount = parseFloat(doc.amount!.replace(',', '.'));
 
             if (!expensesByMonth[month]) {
                 expensesByMonth[month] = {};
@@ -77,7 +78,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (!expensesByMonth[month][category]) {
                 expensesByMonth[month][category] = 0;
             }
-            expensesByMonth[month][category] += doc.amount!;
+            expensesByMonth[month][category] += amount;
         });
 
     const monthOrder = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
