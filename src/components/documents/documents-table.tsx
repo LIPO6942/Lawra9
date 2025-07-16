@@ -57,30 +57,34 @@ const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
             if (!isValid(start) || !isValid(end)) {
                 return <span>Période invalide</span>;
             }
-
-            if (doc.category === 'SONEDE' && getMonth(start) !== getMonth(end)) {
+            
+            // Special handling for SONEDE quarterly bills
+            if (doc.category === 'SONEDE') {
                 const year = getYear(start);
                 const months = [];
-                let current = start;
-                 // Loop from start month to end month
-                while (getMonth(current) <= getMonth(end)) {
+                let current = new Date(start);
+                
+                // Loop from start month to end month within the same year
+                while (getYear(current) === year && getMonth(current) <= getMonth(end)) {
                     months.push(format(current, 'MMMM', { locale: fr }));
+                    // Move to the next month
                     const newDate = new Date(current);
                     newDate.setMonth(newDate.getMonth() + 1);
                     current = newDate;
                 }
 
-                // Capitalize first letter of each month
-                const formattedMonths = months.map(m => m.charAt(0).toUpperCase() + m.slice(1));
-
-                return (
-                    <div className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                        <span>{formattedMonths.join('-')} {year}</span>
-                    </div>
-                );
+                if (months.length > 1) {
+                    const formattedMonths = months.map(m => m.charAt(0).toUpperCase() + m.slice(1));
+                    return (
+                        <div className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                            <span>{formattedMonths.join('-')} {year}</span>
+                        </div>
+                    );
+                }
             }
       
+            // Default display for other bills
             return (
                 <div className="flex items-center gap-2">
                    <CalendarDays className="h-4 w-4 text-muted-foreground"/>
