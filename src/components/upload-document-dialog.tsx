@@ -43,14 +43,20 @@ const frenchCategories: { [key: string]: Document['category'] } = {
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
     const docType = result.documentType as Document['category'];
-    if ((docType === 'STEG' || docType === 'SONEDE') && result.supplier && result.amount && result.billingStartDate && result.billingEndDate) {
-        try {
-            const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy', { locale: fr });
-            const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy', { locale: fr });
-            return `Facture ${result.supplier} (${startDate} au ${endDate}) - ${result.amount} TND`;
-        } catch (e) {
-             return `Facture ${result.supplier}`;
+    if ((docType === 'STEG' || docType === 'SONEDE') && result.supplier && result.amount) {
+        let period = '';
+        if (docType === 'SONEDE' && result.consumptionPeriod) {
+            period = result.consumptionPeriod;
+        } else if (result.billingStartDate && result.billingEndDate) {
+            try {
+                const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy', { locale: fr });
+                const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy', { locale: fr });
+                period = `${startDate} au ${endDate}`;
+            } catch (e) {
+                // Ignore formatting error
+            }
         }
+        return `Facture ${result.supplier} (${period}) - ${result.amount} TND`.replace('()', '').trim();
     }
     if (docType === 'Reçu Bancaire' && result.amount) {
          try {
@@ -125,6 +131,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               dueDate: result.dueDate,
               billingStartDate: result.billingStartDate,
               billingEndDate: result.billingEndDate,
+              consumptionPeriod: result.consumptionPeriod,
               fileUrl: URL.createObjectURL(selectedFile)
           };
           
@@ -262,6 +269,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                <div className="space-y-2">
                   <Label htmlFor="doc-billing-end-date">Date de fin de facturation (AAAA-MM-JJ)</Label>
                   <Input id="doc-billing-end-date" type="text" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
+              </div>
+               <div className="space-y-2">
+                  <Label htmlFor="doc-consumption-period">Période de consommation (SONEDE)</Label>
+                  <Input id="doc-consumption-period" type="text" value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.target.value)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-summary">Résumé</Label>

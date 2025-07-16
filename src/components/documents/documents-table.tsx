@@ -49,6 +49,17 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
 
 
 const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
+    // Priority for SONEDE special format
+    if (doc.category === 'SONEDE' && doc.consumptionPeriod) {
+        return (
+            <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                <span>{doc.consumptionPeriod}</span>
+            </div>
+        );
+    }
+    
+    // Fallback for regular billing periods
     if (doc.billingStartDate && doc.billingEndDate) {
         try {
             const start = parseISO(doc.billingStartDate);
@@ -58,33 +69,6 @@ const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
                 return <span>Période invalide</span>;
             }
             
-            // Special handling for SONEDE quarterly bills
-            if (doc.category === 'SONEDE') {
-                const year = getYear(start);
-                const months = [];
-                let current = new Date(start);
-                
-                // Loop from start month to end month within the same year
-                while (getYear(current) === year && getMonth(current) <= getMonth(end)) {
-                    months.push(format(current, 'MMMM', { locale: fr }));
-                    // Move to the next month
-                    const newDate = new Date(current);
-                    newDate.setMonth(newDate.getMonth() + 1);
-                    current = newDate;
-                }
-
-                if (months.length > 1) {
-                    const formattedMonths = months.map(m => m.charAt(0).toUpperCase() + m.slice(1));
-                    return (
-                        <div className="flex items-center gap-2">
-                            <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                            <span>{formattedMonths.join('-')} {year}</span>
-                        </div>
-                    );
-                }
-            }
-      
-            // Default display for other bills
             return (
                 <div className="flex items-center gap-2">
                    <CalendarDays className="h-4 w-4 text-muted-foreground"/>
@@ -96,6 +80,7 @@ const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
         }
     }
   
+    // Fallback for single date documents like receipts
     if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre') {
       try {
         const createdAtDate = parseISO(doc.createdAt);
@@ -132,9 +117,13 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
 
     const formatDate = (dateString: string | undefined) => {
         if (!dateString) return '-';
-        const date = parseISO(dateString);
-        if (!isValid(date)) return 'Date invalide';
-        return format(date, 'd MMMM yyyy', { locale: fr });
+        try {
+            const date = parseISO(dateString);
+            if (!isValid(date)) return 'Date invalide';
+            return format(date, 'd MMMM yyyy', { locale: fr });
+        } catch(e) {
+            return 'Date invalide';
+        }
     }
     
     return (
@@ -158,7 +147,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                            <CategoryIcon category={doc.category} />
                            <div className="flex flex-col">
                              <span className="font-medium">{doc.supplier || doc.category}</span>
-                             <span className="text-xs text-muted-foreground max-w-xs truncate">{doc.name}</span>
+                             <span className="text-xs text-muted-foreground max-w-[200px] sm:max-w-xs truncate">{doc.name}</span>
                            </div>
                         </div>
                       </TableCell>

@@ -11,6 +11,7 @@ export type Document = {
   dueDate?: string; // ISO date string
   billingStartDate?: string; // ISO date string
   billingEndDate?: string; // ISO date string
+  consumptionPeriod?: string; // For special cases like SONEDE
 };
 
 export type Alert = {

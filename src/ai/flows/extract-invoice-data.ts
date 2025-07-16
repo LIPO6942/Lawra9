@@ -25,8 +25,9 @@ const ExtractInvoiceDataOutputSchema = z.object({
   supplier: z.string().describe('Le nom du fournisseur. Doit être "STEG" pour l\'électricité, "SONEDE" pour l\'eau, ou le nom du fournisseur comme "Orange" pour les autres.'),
   amount: z.string().describe('Le montant total à payer sur la facture.'),
   dueDate: z.string().describe('La date d\'échéance de la facture au format AAAA-MM-JJ.'),
-  billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ.'),
-  billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ.'),
+  billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Pour la SONEDE, laissez vide et utilisez consumptionPeriod.'),
+  billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Pour la SONEDE, laissez vide et utilisez consumptionPeriod.'),
+  consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
   reference: z.string().describe('Le numéro de référence de la facture.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
@@ -49,9 +50,9 @@ const prompt = ai.definePrompt({
   - Date de fin de facturation : La fin de la période de consommation.
   - Numéro de référence
 
-  Détail important pour les factures SONEDE : La période de consommation est souvent un trimestre indiqué en haut à gauche sous un format comme "03-04-05-2025". Cela signifie Mars-Avril-Mai 2025. La date de début serait le premier jour du premier mois (01-03-2025) et la date de fin serait le dernier jour du dernier mois (31-05-2025). Interprétez cela correctement.
+  Détail important pour les factures SONEDE : La période de consommation est un trimestre indiqué en haut à gauche sous un format comme "03-04-05-2025". Pour les factures SONEDE UNIQUEMENT, extrayez cette chaîne de caractères exacte dans le champ "consumptionPeriod" et laissez les champs "billingStartDate" et "billingEndDate" vides.
 
-  Retournez toutes les dates au format AAAA-MM-JJ.
+  Retournez toutes les autres dates au format AAAA-MM-JJ.
 
   Voici la facture :
   {{media url=invoiceDataUri}}
