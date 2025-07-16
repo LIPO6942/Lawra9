@@ -38,12 +38,13 @@ const frenchCategories: { [key: string]: Document['category'] } = {
     'SONEDE': 'SONEDE',
     'Reçu Bancaire': 'Reçu Bancaire',
     'Maison': 'Maison',
+    'Internet': 'Internet',
     'Autre': 'Autre',
 };
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
     const docType = result.documentType as Document['category'];
-    if ((docType === 'STEG' || docType === 'SONEDE') && result.supplier && result.amount) {
+    if ((docType === 'STEG' || docType === 'SONEDE' || docType === 'Internet') && result.supplier && result.amount) {
         let period = '';
         if (docType === 'SONEDE' && result.consumptionPeriod) {
             period = result.consumptionPeriod;
@@ -246,6 +247,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                            <SelectItem value="SONEDE">SONEDE</SelectItem>
                            <SelectItem value="Reçu Bancaire">Reçu Bancaire</SelectItem>
                            <SelectItem value="Maison">Maison</SelectItem>
+                           <SelectItem value="Internet">Internet</SelectItem>
                            <SelectItem value="Autre">Autre</SelectItem>
                       </SelectContent>
                   </Select>

@@ -22,7 +22,7 @@ const DetectDocumentTypeInputSchema = z.object({
 export type DetectDocumentTypeInput = z.infer<typeof DetectDocumentTypeInputSchema>;
 
 const DetectDocumentTypeOutputSchema = z.object({
-  documentType: z.enum(['STEG', 'SONEDE', 'Reçu Bancaire', 'Maison', 'Autre']).describe('Le type de document détecté (STEG, SONEDE, Reçu Bancaire, Maison, Autre).'),
+  documentType: z.enum(['STEG', 'SONEDE', 'Reçu Bancaire', 'Maison', 'Internet', 'Autre']).describe('Le type de document détecté (STEG, SONEDE, Reçu Bancaire, Maison, Internet, Autre).'),
   suggestedCategories: z.array(z.string()).describe('Catégories suggérées pour le document.'),
 });
 export type DetectDocumentTypeOutput = z.infer<typeof DetectDocumentTypeOutputSchema>;
@@ -37,7 +37,7 @@ const detectDocumentTypePrompt = ai.definePrompt({
   name: 'detectDocumentTypePrompt',
   input: {schema: DetectDocumentTypeInputSchema},
   output: {schema: DetectDocumentTypeOutputSchema},
-  prompt: `Vous êtes un expert en classification de documents tunisiens. Vous recevrez un document et vous devrez identifier son type parmi les choix suivants : STEG (facture d'électricité), SONEDE (facture d'eau), Reçu Bancaire (reçu de retrait, de dépôt, etc.), Maison (contrat de location, titre de propriété), ou Autre.
+  prompt: `Vous êtes un expert en classification de documents tunisiens. Vous recevrez un document et vous devrez identifier son type parmi les choix suivants : STEG (facture d'électricité), SONEDE (facture d'eau), Reçu Bancaire (reçu de retrait, de dépôt, etc.), Maison (contrat de location, titre de propriété), Internet (facture de fournisseur d'accès comme Orange, Ooredoo, Topnet), ou Autre.
 
 Document: {{media url=documentDataUri}}
 

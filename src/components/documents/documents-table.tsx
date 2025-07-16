@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid, getMonth, getYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -19,6 +19,7 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
     case 'SONEDE': return <Droplets className="h-5 w-5 text-blue-500" />;
     case 'Reçu Bancaire': return <Landmark className="h-5 w-5 text-indigo-500" />;
     case 'Maison': return <Home className="h-5 w-5 text-green-500" />;
+    case 'Internet': return <Wifi className="h-5 w-5 text-purple-500" />;
     default: return <FileText className="h-5 w-5 text-gray-500" />;
   }
 };

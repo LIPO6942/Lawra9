@@ -43,7 +43,7 @@ const prompt = ai.definePrompt({
   prompt: `Vous êtes un expert dans l'extraction de données à partir de factures tunisiennes.
 
   Veuillez extraire les informations suivantes de l'image de la facture fournie :
-  - Nom du fournisseur : Soyez précis. Pour l'électricité, ce doit être "STEG". Pour l'eau, ce doit être "SONEDE". Pour les télécommunications, ça peut être "Orange", "Ooredoo", etc.
+  - Nom du fournisseur : Soyez précis. Pour l'électricité, ce doit être "STEG". Pour l'eau, ce doit être "SONEDE". Pour les télécommunications ou internet, ça peut être "Orange", "Ooredoo", "Topnet", etc.
   - Montant : Le montant total à payer.
   - Date d'échéance : La date limite de paiement.
   - Date de début de facturation : Le début de la période de consommation.

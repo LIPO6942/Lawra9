@@ -10,6 +10,7 @@ const chartConfig = {
   STEG: { label: "STEG", color: "hsl(var(--chart-1))" },
   SONEDE: { label: "SONEDE", color: "hsl(var(--chart-2))" },
   "Reçu Bancaire": { label: "Reçu Bancaire", color: "hsl(var(--chart-3))" },
+  Internet: { label: "Internet", color: "hsl(var(--chart-4))" },
   Autre: { label: "Autre", color: "hsl(var(--chart-5))" },
 } satisfies import("@/components/ui/chart").ChartConfig;
 
@@ -47,6 +48,7 @@ export function ExpensesChartCard({ data }: ExpensesChartCardProps) {
                     <Bar dataKey="STEG" fill="var(--color-STEG)" radius={4} stackId="a" />
                     <Bar dataKey="SONEDE" fill="var(--color-SONEDE)" radius={4} stackId="a" />
                     <Bar dataKey="Reçu Bancaire" fill="var(--color-Reçu Bancaire)" radius={4} stackId="a" />
+                    <Bar dataKey="Internet" fill="var(--color-Internet)" radius={4} stackId="a" />
                     <Bar dataKey="Autre" fill="var(--color-Autre)" radius={4} stackId="a" />
                   </BarChart>
                 </ChartContainer>
