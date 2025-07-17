@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { Document, Alert } from '@/lib/types';
-import { parseISO, differenceInDays, format, getYear } from 'date-fns';
+import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const LOCAL_STORAGE_KEY = 'lawra9-documents';
@@ -70,7 +70,14 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const alerts = useMemo(() => {
     return documents
-      .filter(doc => !!doc.dueDate)
+      .filter(doc => {
+        if (!doc.dueDate) return false;
+        try {
+          return isValid(parseISO(doc.dueDate));
+        } catch(e) {
+          return false;
+        }
+      })
       .map(doc => ({
         id: `alert-${doc.id}`,
         documentId: doc.id,
@@ -85,37 +92,50 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const expensesByMonth: { [key: string]: { [key: string]: number } } = {};
     const currentYear = getYear(new Date());
 
-    documents
-        .filter(doc => doc.amount && doc.createdAt && getYear(parseISO(doc.createdAt)) === currentYear)
-        .forEach(doc => {
-            try {
-              const month = format(parseISO(doc.createdAt), 'MMM', { locale: fr });
-              const category = doc.category;
-              const amount = parseFloat(doc.amount!.replace(',', '.'));
+    documents.forEach(doc => {
+      if (!doc.amount) return;
 
-              if (!expensesByMonth[month]) {
-                  expensesByMonth[month] = {};
-              }
-              if (!expensesByMonth[month][category]) {
-                  expensesByMonth[month][category] = 0;
-              }
-              expensesByMonth[month][category] += amount;
-            } catch(e) {
-              // Ignore documents with invalid creation dates
-            }
-        });
+      // Determine the relevant date for the expense
+      let expenseDate: Date | null = null;
+      if (doc.billingEndDate && isValid(parseISO(doc.billingEndDate))) {
+        expenseDate = parseISO(doc.billingEndDate);
+      } else if (doc.dueDate && isValid(parseISO(doc.dueDate))) {
+        expenseDate = parseISO(doc.dueDate);
+      } else if (doc.createdAt && isValid(parseISO(doc.createdAt))) {
+        expenseDate = parseISO(doc.createdAt);
+      }
 
-    const monthOrder = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+      if (expenseDate && getYear(expenseDate) === currentYear) {
+        try {
+          const month = format(expenseDate, 'MMM', { locale: fr }).replace('.', '');
+          const category = doc.category;
+          const amount = parseFloat(doc.amount.replace(',', '.'));
+
+          if (isNaN(amount)) return;
+
+          if (!expensesByMonth[month]) {
+            expensesByMonth[month] = {};
+          }
+          if (!expensesByMonth[month][category]) {
+            expensesByMonth[month][category] = 0;
+          }
+          expensesByMonth[month][category] += amount;
+        } catch (e) {
+          console.error(`Could not process expense for doc ${doc.id}:`, e);
+        }
+      }
+    });
+
+    const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
     const result: MonthlyExpense[] = monthOrder.slice(0, new Date().getMonth() + 1).map(monthName => {
-        const monthData: MonthlyExpense = { month: monthName };
-        const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Autre'];
-        
-        const cleanMonthName = monthName.replace('.', '');
-        categories.forEach(cat => {
-            monthData[cat] = expensesByMonth[cleanMonthName]?.[cat] || 0;
-        });
-        
-        return monthData;
+      const monthData: MonthlyExpense = { month: `${monthName}.` };
+      const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Autre'];
+      
+      categories.forEach(cat => {
+        monthData[cat] = expensesByMonth[monthName]?.[cat] || 0;
+      });
+      
+      return monthData;
     });
     
     return result;
