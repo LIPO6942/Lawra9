@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, UploadCloud, Loader2 } from 'lucide-react';
+import { PlusCircle, UploadCloud, Loader2, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { extractInvoiceData, ExtractInvoiceDataOutput } from '@/ai/flows/extract-invoice-data';
@@ -24,6 +24,8 @@ import { Document } from '@/lib/types';
 import { Textarea } from './ui/textarea';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 type AnalysisResult = DetectDocumentTypeOutput & Partial<ExtractInvoiceDataOutput>;
 
@@ -77,6 +79,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const isEditMode = !!documentToEdit;
 
@@ -91,6 +96,48 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       setFormData(documentToEdit);
     }
   }, [isOpen, isEditMode, documentToEdit]);
+  
+  const handleTabChange = (value: string) => {
+    if (value === 'camera' && !hasCameraPermission) {
+      getCameraPermission();
+    }
+  }
+  
+  const getCameraPermission = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast({
+            variant: 'destructive',
+            title: 'Fonctionnalité non supportée',
+            description: 'Votre navigateur ne supporte pas l\'accès à la caméra.',
+        });
+        setHasCameraPermission(false);
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Accès Caméra Refusé',
+          description: 'Veuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.',
+        });
+      }
+  };
+
+  const stopCameraStream = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  };
 
   const handleOpenChange = (open: boolean) => {
     if (onOpenChange) {
@@ -103,52 +150,43 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
   };
   
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      setFileName(selectedFile.name);
-      setIsAnalyzing(true);
-      
-      try {
-        const reader = new FileReader();
-        reader.readAsDataURL(selectedFile);
-        reader.onload = async () => {
-          const documentDataUri = reader.result as string;
+  const processDocument = async (documentDataUri: string, docName: string) => {
+    setIsAnalyzing(true);
+    setFileName(docName);
+     try {
+        const [typeResult, invoiceResult] = await Promise.all([
+          detectDocumentType({ documentDataUri }),
+          extractInvoiceData({ invoiceDataUri: documentDataUri })
+        ]);
 
-          const [typeResult, invoiceResult] = await Promise.all([
-            detectDocumentType({ documentDataUri }),
-            extractInvoiceData({ invoiceDataUri: documentDataUri })
-          ]);
+        const result: AnalysisResult = { ...typeResult, ...invoiceResult };
+        
+        const category = (frenchCategories[result.documentType as keyof typeof frenchCategories] || 'Autre') as Document['category'];
 
-          const result: AnalysisResult = { ...typeResult, ...invoiceResult };
-          
-          const category = (frenchCategories[result.documentType as keyof typeof frenchCategories] || 'Autre') as Document['category'];
-
-          const newDocument: Omit<Document, 'id' | 'createdAt'> = {
-              name: formatDocumentName(result, selectedFile.name),
-              category: category,
-              supplier: result.supplier,
-              amount: result.amount,
-              dueDate: result.dueDate,
-              billingStartDate: result.billingStartDate,
-              billingEndDate: result.billingEndDate,
-              consumptionPeriod: result.consumptionPeriod,
-              fileUrl: URL.createObjectURL(selectedFile)
-          };
-          
-          addDocument({
-              ...newDocument,
-              id: `doc-${Date.now()}`,
-              createdAt: new Date().toISOString(),
-          });
-
-          toast({
-            title: "Document analysé et enregistré !",
-            description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
-          });
-
-          handleOpenChange(false);
+        const newDocument: Omit<Document, 'id' | 'createdAt'> = {
+            name: formatDocumentName(result, docName),
+            category: category,
+            supplier: result.supplier,
+            amount: result.amount,
+            dueDate: result.dueDate,
+            billingStartDate: result.billingStartDate,
+            billingEndDate: result.billingEndDate,
+            consumptionPeriod: result.consumptionPeriod,
+            fileUrl: documentDataUri
         };
+        
+        addDocument({
+            ...newDocument,
+            id: `doc-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+        });
+
+        toast({
+          title: "Document analysé et enregistré !",
+          description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
+        });
+
+        handleOpenChange(false);
       } catch(error) {
         console.error('Analysis failed:', error);
         toast({
@@ -158,8 +196,35 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         });
         handleOpenChange(false);
       }
+  }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+        const reader = new FileReader();
+        reader.readAsDataURL(selectedFile);
+        reader.onload = async () => {
+          const documentDataUri = reader.result as string;
+          processDocument(documentDataUri, selectedFile.name);
+        };
     }
   };
+  
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if(context){
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        const dataUri = canvas.toDataURL('image/jpeg');
+        processDocument(dataUri, `Capture-${new Date().toISOString()}.jpg`);
+      }
+    }
+  };
+
 
   const handleFormChange = (field: keyof Document, value: string | number | undefined) => {
     setFormData(prev => ({...prev, [field]: value}));
@@ -169,6 +234,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setIsAnalyzing(false);
     setFileName(null);
     setFormData({});
+    stopCameraStream();
+    setHasCameraPermission(null);
      if(onOpenChange && !isEditMode) {
       onOpenChange(false);
     }
@@ -188,7 +255,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const dialogTitle = isEditMode ? "Modifier le document" : "Ajouter un nouveau document";
   const dialogDescription = isEditMode 
     ? "Modifiez les informations de votre document ci-dessous." 
-    : "Uploadez votre fichier. Notre IA l'analysera et l'enregistrera automatiquement pour vous.";
+    : "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -209,16 +276,44 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         </DialogHeader>
         
         {!isEditMode && !isAnalyzing && (
-          <div className="py-8">
-            <label htmlFor="file-upload" className="cursor-pointer">
-              <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
-                <UploadCloud className="h-12 w-12 text-muted-foreground" />
-                <p className="font-semibold">Cliquez ou glissez-déposez pour uploader</p>
-                <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 5MB)</p>
-              </div>
-            </label>
-            <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" />
-          </div>
+            <Tabs defaultValue="file" className="w-full" onValueChange={handleTabChange}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="file">Fichier</TabsTrigger>
+                <TabsTrigger value="camera">Appareil photo</TabsTrigger>
+              </TabsList>
+              <TabsContent value="file">
+                 <div className="py-8">
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
+                        <UploadCloud className="h-12 w-12 text-muted-foreground" />
+                        <p className="font-semibold">Cliquez ou glissez-déposez</p>
+                        <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 5MB)</p>
+                      </div>
+                    </label>
+                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" />
+                  </div>
+              </TabsContent>
+              <TabsContent value="camera">
+                <div className="py-4 space-y-4">
+                  <div className="relative aspect-video w-full bg-muted rounded-lg overflow-hidden">
+                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                    <canvas ref={canvasRef} className="hidden" />
+                  </div>
+                  {hasCameraPermission === false && (
+                    <Alert variant="destructive">
+                      <AlertTitle>Accès Caméra Requis</AlertTitle>
+                      <AlertDescription>
+                        Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <Button onClick={handleCapture} disabled={!hasCameraPermission} className="w-full">
+                    <Camera className="mr-2 h-4 w-4" />
+                    Capturer
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
         )}
 
         {isAnalyzing && (
