@@ -27,6 +27,10 @@ import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { useAuth } from '@/contexts/auth-context';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { app } from '@/lib/firebase';
+
+const storage = getStorage(app);
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -87,7 +91,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
-  const { user, getAuthToken } = useAuth();
+  const { user } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -281,27 +285,19 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         return;
     }
 
+    if (!user) {
+        toast({ variant: 'destructive', title: "Utilisateur non authentifié." });
+        setIsProcessing(false);
+        return;
+    }
+
     try {
-        const authToken = await getAuthToken();
-        if (!authToken) {
-            throw new Error("Utilisateur non authentifié.");
-        }
+        const destination = `documents/${user.uid}/${Date.now()}-${fileToUpload.name}`;
+        const storageRef = ref(storage, destination);
+
+        const uploadResult = await uploadBytes(storageRef, fileToUpload);
+        const fileUrl = await getDownloadURL(uploadResult.ref);
         
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', fileToUpload);
-
-        const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${authToken}` },
-            body: uploadFormData,
-        });
-
-        if (!uploadResponse.ok) {
-            const errorData = await uploadResponse.json().catch(() => ({error: 'Upload failed and could not parse error response.'}));
-            throw new Error(errorData.error || 'Upload failed');
-        }
-        const { fileUrl } = await uploadResponse.json();
-
         const finalDocument: Document = {
             id: `doc-${Date.now()}`,
             createdAt: new Date().toISOString(),
@@ -322,7 +318,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         handleOpenChange(false);
     } catch (error: any) {
         console.error("Save error:", error);
-        toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: error.message });
+        toast({ variant: 'destructive', title: "Erreur de téléversement", description: error.message });
     } finally {
         setIsProcessing(false);
     }
@@ -420,7 +416,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-category">Catégorie</Label>
-                  <Select value={formData.category || ''} onValueChange={(value) => handleFormChange('category', value)}>
+                  <Select value={formData.category || ''} onValueChange={(value) => handleFormChange('category', value as Document['category'])}>
                       <SelectTrigger id="doc-category" className="w-full">
                           <SelectValue placeholder="Sélectionnez une catégorie" />
                       </SelectTrigger>
