@@ -185,20 +185,27 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   };
 
   const processDocument = async (documentDataUri: string, docName: string) => {
+    console.log('[DEBUG] 1. Démarrage de processDocument pour :', docName);
     setIsAnalyzing(true);
     setFileName(docName);
 
-    let hadError = false;
     let fileUrl = '';
     let result: AnalysisResult = {};
+    let hadError = false;
 
     try {
-        if (!userId) throw new Error("Utilisateur non authentifié.");
+        if (!userId) {
+            console.error('[DEBUG] ERREUR : User ID manquant.');
+            throw new Error("Utilisateur non authentifié.");
+        }
         
+        console.log('[DEBUG] 2. Upload sur Firebase Storage...');
         const storageRef = ref(storage, `documents/${userId}/${Date.now()}-${docName}`);
         const snapshot = await uploadString(storageRef, documentDataUri, 'data_url');
         fileUrl = await getDownloadURL(snapshot.ref);
+        console.log('[DEBUG] 3. Upload réussi. URL du fichier :', fileUrl);
 
+        console.log('[DEBUG] 4. Appel des flux Genkit...');
         const settledResults = await Promise.allSettled([
             detectDocumentType({ documentDataUri }),
             extractInvoiceData({ invoiceDataUri: documentDataUri })
@@ -208,21 +215,25 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         const invoiceResult = settledResults[1];
 
         if (typeResult.status === 'fulfilled') {
+            console.log('[DEBUG] 5a. Résultat de detectDocumentType :', typeResult.value);
             result = { ...result, ...typeResult.value };
         } else {
-            console.warn("L'API de détection de type a échoué:", typeResult.reason);
+            console.warn("[DEBUG] 5a. ERREUR : L'API de détection de type a échoué:", typeResult.reason);
         }
 
         if (invoiceResult.status === 'fulfilled') {
+            console.log('[DEBUG] 5b. Résultat de extractInvoiceData :', invoiceResult.value);
             result = { ...result, ...invoiceResult.value };
         } else {
-            console.warn("L'API d'extraction de données a échoué:", invoiceResult.reason);
+            console.warn("[DEBUG] 5b. ERREUR : L'API d'extraction de données a échoué:", invoiceResult.reason);
         }
+        console.log('[DEBUG] 6. Traitement des résultats de l\'IA terminé.');
 
     } catch (error) {
-        console.error('Le traitement du document a échoué :', error);
+        console.error('[DEBUG] ERREUR CATCH : Le traitement du document a échoué :', error);
         hadError = true;
     } finally {
+        console.log('[DEBUG] 7. Entrée dans le bloc finally. hadError =', hadError);
         setIsAnalyzing(false); 
 
         if (hadError || !fileUrl) {
@@ -231,8 +242,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 title: "Le traitement a échoué",
                 description: "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
             });
-            // We don't close the dialog on error so the user can try again
+            handleOpenChange(false);
         } else {
+            console.log('[DEBUG] 8. Création du nouveau document...');
             const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
             const category = defaultCategory || aiCategory;
 
@@ -247,7 +259,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 consumptionPeriod: result.consumptionPeriod,
                 fileUrl: fileUrl,
             };
-
+            
+            console.log('[DEBUG] 9. Document créé, ajout en cours :', newDocument);
             addDocument({
                 ...newDocument,
                 id: `doc-${Date.now()}`,
@@ -258,7 +271,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 title: "Document enregistré !",
                 description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
             });
-            handleOpenChange(false); // Close on success
+            handleOpenChange(false);
         }
     }
   }
@@ -436,7 +449,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </div>
                <div className="space-y-2">
                   <Label htmlFor="doc-consumption-period">Période de consommation (SONEDE)</Label>
-                  <Input id="doc-consumption-period" type="text" value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.g.target.value)} />
+                  <Input id="doc-consumption-period" type="text" value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.target.value)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-summary">Résumé</Label>
