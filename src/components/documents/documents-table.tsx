@@ -148,7 +148,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                            <CategoryIcon category={doc.category} />
                            <div className="flex flex-col">
                              <span className="font-medium">{doc.supplier || doc.category}</span>
-                             <span className="text-xs text-muted-foreground max-w-[200px] sm:max-w-xs truncate">{doc.name}</span>
+                             <span className="text-xs text-muted-foreground max-w-[150px] sm:max-w-xs truncate">{doc.name}</span>
                            </div>
                         </div>
                       </TableCell>
