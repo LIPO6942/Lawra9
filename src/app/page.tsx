@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRouter } from 'next/navigation';
+
+const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+        <polyline points="14 2 14 8 20 8" />
+    </svg>
+);
+
 
 const AppleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -37,7 +46,10 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <Card className="w-full max-w-sm mx-auto shadow-2xl rounded-2xl bg-card">
         <CardHeader className="text-center">
-          <h1 className="text-4xl font-bold font-headline text-primary-foreground tracking-tighter">Lawra9</h1>
+            <div className="flex items-center justify-center gap-2">
+                <PaperworkIcon className="h-8 w-8 text-primary-foreground" />
+                <h1 className="text-4xl font-bold font-headline text-primary-foreground tracking-tighter">Lawra9</h1>
+            </div>
           <CardDescription className="pt-2">Gérez toute votre paperasse en un seul endroit.</CardDescription>
         </CardHeader>
         <CardContent>
