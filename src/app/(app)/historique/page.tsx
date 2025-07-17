@@ -86,7 +86,7 @@ export default function HistoryPage() {
 
   return (
     <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
+        <div className="flex flex-col md:flex-row items-start justify-between space-y-4 md:space-y-0 md:items-center">
             <div className="flex items-center space-x-3">
                 <History className="h-8 w-8 text-accent"/>
                 <div>
@@ -94,9 +94,9 @@ export default function HistoryPage() {
                     <p className="text-muted-foreground">Analysez vos dépenses passées par catégorie.</p>
                 </div>
             </div>
-            <div className="flex items-center space-x-2 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full md:w-auto">
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectTrigger className="w-[120px] rounded-lg">
+                    <SelectTrigger className="w-full sm:w-[120px] rounded-lg">
                         <SelectValue placeholder="Année" />
                     </SelectTrigger>
                     <SelectContent>
@@ -104,7 +104,7 @@ export default function HistoryPage() {
                     </SelectContent>
                 </Select>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger className="w-[150px] rounded-lg">
+                    <SelectTrigger className="w-full sm:w-[150px] rounded-lg">
                         <SelectValue placeholder="Mois" />
                     </SelectTrigger>
                     <SelectContent>
@@ -128,7 +128,7 @@ export default function HistoryPage() {
                 {Object.keys(filteredExpenses).length > 0 ? (
                     <div className="space-y-4">
                         {Object.entries(filteredExpenses).map(([category, data]) => (
-                            <div key={category} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/50">
+                            <div key={category} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg hover:bg-secondary/50 space-y-2 sm:space-y-0">
                                 <div className="flex items-center gap-4">
                                     <CategoryIcon category={category as Document['category']} />
                                     <div>
@@ -136,7 +136,7 @@ export default function HistoryPage() {
                                         <p className="text-sm text-muted-foreground">{data.count} document{data.count > 1 ? 's' : ''}</p>
                                     </div>
                                 </div>
-                                <p className="font-mono text-lg font-medium">{data.total.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND</p>
+                                <p className="font-mono text-lg font-medium self-end sm:self-center">{data.total.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND</p>
                             </div>
                         ))}
                     </div>

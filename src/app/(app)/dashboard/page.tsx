@@ -13,7 +13,7 @@ export default function DashboardPage() {
   return (
     <ScrollArea className="h-full">
       <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
+        <div className="flex flex-col md:flex-row items-start justify-between space-y-4 md:space-y-0 md:items-center">
             <div>
                  <h2 className="text-3xl font-bold tracking-tight font-headline">Tableau de bord</h2>
                  <p className="text-muted-foreground">Bienvenue ! Voici un aperçu de vos activités récentes.</p>
