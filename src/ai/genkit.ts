@@ -2,7 +2,12 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-const apiKey = process.env.GOOGLE_API_KEY;
+let apiKey = process.env.GOOGLE_API_KEY;
+
+if (apiKey) {
+  // Nettoie la clé pour enlever les espaces et les guillemets potentiels
+  apiKey = apiKey.trim().replace(/^"|"$/g, '');
+}
 
 if (!apiKey) {
   console.error("ERREUR CRITIQUE: La variable d'environnement GOOGLE_API_KEY est manquante dans votre fichier .env.");
