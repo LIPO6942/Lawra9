@@ -22,7 +22,7 @@ import { detectDocumentType, DetectDocumentTypeOutput } from '@/ai/flows/detect-
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { Textarea } from './ui/textarea';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -56,9 +56,11 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
             period = result.consumptionPeriod;
         } else if (result.billingStartDate && result.billingEndDate) {
             try {
-                const startDate = format(parseISO(result.billingStartDate), 'dd/MM/yy', { locale: fr });
-                const endDate = format(parseISO(result.billingEndDate), 'dd/MM/yy', { locale: fr });
-                period = `${startDate} au ${endDate}`;
+                const startDate = parseISO(result.billingStartDate);
+                const endDate = parseISO(result.billingEndDate);
+                 if (isValid(startDate) && isValid(endDate)) {
+                    period = `${format(startDate, 'dd/MM/yy', { locale: fr })} au ${format(endDate, 'dd/MM/yy', { locale: fr })}`;
+                }
             } catch (e) {
                 // Ignore formatting error
             }
@@ -67,8 +69,10 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     }
     if (docType === 'Reçu Bancaire' && result.amount) {
          try {
-            const date = result.dueDate ? format(parseISO(result.dueDate), 'dd/MM/yyyy', { locale: fr }) : '';
-            return `Reçu Bancaire du ${date} - ${result.amount} TND`;
+            const dateStr = result.dueDate || '';
+            const date = parseISO(dateStr);
+            const formattedDate = isValid(date) ? format(date, 'dd/MM/yyyy', { locale: fr }) : '';
+            return `Reçu Bancaire du ${formattedDate} - ${result.amount} TND`;
          } catch(e) {
             return `Reçu Bancaire - ${result.amount} TND`;
          }
@@ -182,30 +186,43 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const processDocument = async (documentDataUri: string, docName: string) => {
     setIsAnalyzing(true);
     setFileName(docName);
-    
+
     let result: AnalysisResult = {};
     let fileUrl = '';
+    let hadError = false;
 
     try {
         fileUrl = await uploadToFirebase(documentDataUri, docName);
         
-        try {
-            const typeResult = await detectDocumentType({ documentDataUri });
-            result = { ...result, ...typeResult };
-        } catch (e) {
+        const typeResult = await detectDocumentType({ documentDataUri }).catch(e => {
             console.error("Échec de la détection du type de document :", e);
-            result.documentType = 'Autre'; // Fallback
-        }
-        
-        try {
-            const invoiceResult = await extractInvoiceData({ invoiceDataUri: documentDataUri });
-            result = { ...result, ...invoiceResult };
-        } catch (e) {
-            console.error("Échec de l'extraction des données de la facture :", e);
-            // C'est ok, le document pourrait ne pas être une facture
-        }
+            return { documentType: 'Autre', suggestedCategories: [] };
+        });
+        result = { ...result, ...typeResult };
 
-        const aiCategory = (frenchCategories[result.documentType as keyof typeof frenchCategories] || 'Autre') as Document['category'];
+        const invoiceResult = await extractInvoiceData({ invoiceDataUri: documentDataUri }).catch(e => {
+            console.error("Échec de l'extraction des données de la facture :", e);
+            return {};
+        });
+        result = { ...result, ...invoiceResult };
+
+    } catch (error) {
+        console.error('L\'analyse a échoué :', error);
+        toast({
+            variant: 'destructive',
+            title: "L'analyse a échoué",
+            description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."
+        });
+        hadError = true;
+    }
+
+    if (hadError) {
+        handleOpenChange(false);
+        return;
+    }
+    
+    try {
+        const aiCategory = (frenchCategories[result.documentType as string] || 'Autre') as Document['category'];
         const category = defaultCategory || aiCategory;
 
         const newDocument: Omit<Document, 'id' | 'createdAt'> = {
@@ -219,7 +236,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             consumptionPeriod: result.consumptionPeriod,
             fileUrl: fileUrl,
         };
-        
+
         addDocument({
             ...newDocument,
             id: `doc-${Date.now()}`,
@@ -227,22 +244,20 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         });
 
         toast({
-          title: "Document analysé et enregistré !",
-          description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
+            title: "Document analysé et enregistré !",
+            description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
         });
-
-        handleOpenChange(false);
-
-      } catch(error) {
-        console.error('L\'analyse a échoué :', error);
+    } catch (formattingError) {
+        console.error('Erreur lors du formatage des données du document :', formattingError);
         toast({
             variant: 'destructive',
-            title: "L'analyse a échoué",
-            description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."
+            title: "Erreur de traitement",
+            description: "Le document a été analysé mais nous avons rencontré un problème pour l'enregistrer. Veuillez le modifier manuellement."
         });
-        handleOpenChange(false);
-      }
-  }
+    }
+
+    handleOpenChange(false);
+}
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
