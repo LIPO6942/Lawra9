@@ -28,7 +28,7 @@ const ExtractInvoiceDataOutputSchema = z.object({
   billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
-  reference: z.string().describe('Le numéro de référence de la facture ou de la transaction.'),
+  reference: z.string().optional().describe('Le numéro de référence de la facture ou de la transaction.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 

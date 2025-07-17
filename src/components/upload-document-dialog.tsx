@@ -50,6 +50,7 @@ const frenchCategories: { [key: string]: Document['category'] } = {
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
     const docType = result.documentType as Document['category'];
+
     if ((docType === 'STEG' || docType === 'SONEDE' || docType === 'Internet') && result.supplier && result.amount) {
         let period = '';
         if (docType === 'SONEDE' && result.consumptionPeriod) {
@@ -61,23 +62,22 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
                  if (isValid(startDate) && isValid(endDate)) {
                     period = `${format(startDate, 'dd/MM/yy', { locale: fr })} au ${format(endDate, 'dd/MM/yy', { locale: fr })}`;
                 }
-            } catch (e) {
-                // Ignore formatting error
-            }
+            } catch (e) { /* Ignore formatting error */ }
         }
-        return `Facture ${result.supplier} (${period}) - ${result.amount} TND`.replace('()', '').trim();
+        return `Facture ${result.supplier}${period ? ` (${period})` : ''} - ${result.amount} TND`;
     }
+
     if (docType === 'Reçu Bancaire' && result.amount) {
          try {
             const dateStr = result.dueDate || '';
             const date = parseISO(dateStr);
-            const formattedDate = isValid(date) ? format(date, 'dd/MM/yyyy', { locale: fr }) : '';
-            return `Reçu Bancaire du ${formattedDate} - ${result.amount} TND`;
+            const formattedDate = isValid(date) ? ` du ${format(date, 'dd/MM/yyyy', { locale: fr })}` : '';
+            return `Reçu Bancaire${formattedDate} - ${result.amount} TND`;
          } catch(e) {
             return `Reçu Bancaire - ${result.amount} TND`;
          }
     }
-    return originalFileName.split('.').slice(0, -1).join('.');
+    return originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
 }
 
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
@@ -137,7 +137,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       } catch (error) {
         console.error('Error accessing rear camera, trying default:', error);
         try {
-            // Fallback to default camera
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             setHasCameraPermission(true);
             if (videoRef.current) {
@@ -174,87 +173,96 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
   };
 
-  const uploadToFirebase = async (dataUri: string, docName: string) => {
-    if (!userId) {
-        throw new Error("Utilisateur non authentifié.");
+  const resetDialog = () => {
+    setIsAnalyzing(false);
+    setFileName(null);
+    setFormData({});
+    stopCameraStream();
+    setHasCameraPermission(null);
+    if (onOpenChange && !isEditMode) {
+      onOpenChange(false);
     }
-    const storageRef = ref(storage, `documents/${userId}/${Date.now()}-${docName}`);
-    const snapshot = await uploadString(storageRef, dataUri, 'data_url');
-    return getDownloadURL(snapshot.ref);
-  }
-  
+  };
+
   const processDocument = async (documentDataUri: string, docName: string) => {
     setIsAnalyzing(true);
     setFileName(docName);
 
+    let hadError = false;
+    let fileUrl = '';
+    let result: AnalysisResult = {};
+
     try {
-        const fileUrl = await uploadToFirebase(documentDataUri, docName);
+        if (!userId) throw new Error("Utilisateur non authentifié.");
         
-        let result: AnalysisResult = {};
+        const storageRef = ref(storage, `documents/${userId}/${Date.now()}-${docName}`);
+        const snapshot = await uploadString(storageRef, documentDataUri, 'data_url');
+        fileUrl = await getDownloadURL(snapshot.ref);
 
-        // Run AI analysis
-        try {
-            const typeResult = await detectDocumentType({ documentDataUri });
-            result = { ...result, ...typeResult };
-            
-            const invoiceResult = await extractInvoiceData({ invoiceDataUri: documentDataUri });
-            result = { ...result, ...invoiceResult };
-        } catch (aiError) {
-            console.warn("AI analysis failed, but continuing with upload:", aiError);
-            toast({
-                variant: 'destructive',
-                title: "L'analyse IA a échoué",
-                description: "Le document a été sauvegardé, mais vous devrez remplir les détails manuellement."
-            });
+        const [typeResult, invoiceResult] = await Promise.allSettled([
+            detectDocumentType({ documentDataUri }),
+            extractInvoiceData({ invoiceDataUri: documentDataUri })
+        ]);
+
+        if (typeResult.status === 'fulfilled') {
+            result = { ...result, ...typeResult.value };
+        } else {
+            console.warn("L'API de détection de type a échoué:", typeResult.reason);
         }
-        
-        // Process results
-        const aiCategory = (result.documentType && frenchCategories[result.documentType]) ? frenchCategories[result.documentType] : 'Autre';
-        const category = defaultCategory || aiCategory;
 
-        const newDocument: Omit<Document, 'id' | 'createdAt'> = {
-            name: formatDocumentName(result, docName),
-            category: category,
-            supplier: result.supplier,
-            amount: result.amount,
-            dueDate: result.dueDate,
-            billingStartDate: result.billingStartDate,
-            billingEndDate: result.billingEndDate,
-            consumptionPeriod: result.consumptionPeriod,
-            fileUrl: fileUrl,
-        };
-
-        addDocument({
-            ...newDocument,
-            id: `doc-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-        });
-
-        toast({
-            title: "Document enregistré !",
-            description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
-        });
+        if (invoiceResult.status === 'fulfilled') {
+            result = { ...result, ...invoiceResult.value };
+        } else {
+            console.warn("L'API d'extraction de données a échoué:", invoiceResult.reason);
+        }
 
     } catch (error) {
         console.error('Le traitement du document a échoué :', error);
-        toast({
-            variant: 'destructive',
-            title: "Le traitement a échoué",
-            description: "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
-        });
+        hadError = true;
     } finally {
-        // This block will always execute, ensuring the dialog closes.
+        if (hadError || !fileUrl) {
+            toast({
+                variant: 'destructive',
+                title: "Le traitement a échoué",
+                description: "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
+            });
+        } else {
+            const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
+            const category = defaultCategory || aiCategory;
+
+            const newDocument: Omit<Document, 'id' | 'createdAt'> = {
+                name: formatDocumentName(result, docName),
+                category: category,
+                supplier: result.supplier,
+                amount: result.amount,
+                dueDate: result.dueDate,
+                billingStartDate: result.billingStartDate,
+                billingEndDate: result.billingEndDate,
+                consumptionPeriod: result.consumptionPeriod,
+                fileUrl: fileUrl,
+            };
+
+            addDocument({
+                ...newDocument,
+                id: `doc-${Date.now()}`,
+                createdAt: new Date().toISOString(),
+            });
+
+            toast({
+                title: "Document enregistré !",
+                description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
+            });
+        }
         handleOpenChange(false);
     }
-}
-
+  }
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
         const reader = new FileReader();
         reader.readAsDataURL(selectedFile);
-        reader.onload = async () => {
+        reader.onload = () => {
           const documentDataUri = reader.result as string;
           processDocument(documentDataUri, selectedFile.name);
         };
@@ -277,21 +285,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
   };
 
-
   const handleFormChange = (field: keyof Document, value: string | number | undefined) => {
     setFormData(prev => ({...prev, [field]: value}));
   }
-
-  const resetDialog = () => {
-    setIsAnalyzing(false);
-    setFileName(null);
-    setFormData({});
-    stopCameraStream();
-    setHasCameraPermission(null);
-     if(onOpenChange && !isEditMode) {
-      onOpenChange(false);
-    }
-  };
 
   const handleSave = () => {
     if (isEditMode && documentToEdit) {
