@@ -78,6 +78,17 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     return originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
 }
 
+const dataURItoFile = (dataURI: string, filename: string): File => {
+  const byteString = atob(dataURI.split(',')[1]);
+  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new File([ab], filename, { type: mimeString });
+};
+
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -194,15 +205,19 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         if (!authToken) {
           throw new Error('User not authenticated.');
         }
+
+        const fileToUpload = dataURItoFile(documentDataUri, docName);
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', fileToUpload);
+        uploadFormData.append('fileName', docName);
         
         // Step 1: Upload file via our API route
         const uploadResponse = await fetch('/api/upload', {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ fileData: documentDataUri, fileName: docName }),
+            body: uploadFormData,
         });
 
         if (!uploadResponse.ok) {
