@@ -26,7 +26,6 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { useAuth } from '@/contexts/auth-context';
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -78,17 +77,6 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     return originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
 }
 
-const dataURItoFile = (dataURI: string, filename: string): File => {
-  const byteString = atob(dataURI.split(',')[1]);
-  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
-  }
-  return new File([ab], filename, { type: mimeString });
-};
-
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -96,7 +84,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
-  const { getAuthToken } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -197,38 +184,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setIsAnalyzing(true);
     setFileName(docName);
     
-    let fileUrl: string | null = null;
-    let hadError = false;
-
     try {
-        const authToken = await getAuthToken();
-        if (!authToken) {
-          throw new Error('User not authenticated.');
-        }
-
-        const fileToUpload = dataURItoFile(documentDataUri, docName);
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', fileToUpload);
-        uploadFormData.append('fileName', docName);
-        
-        // Step 1: Upload file via our API route
-        const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: uploadFormData,
-        });
-
-        if (!uploadResponse.ok) {
-            const errorData = await uploadResponse.json();
-            throw new Error(errorData.error || 'Upload failed');
-        }
-
-        const uploadResult = await uploadResponse.json();
-        fileUrl = uploadResult.fileUrl;
-
-        // Step 2: Run AI flows
+        // Step 1: Run AI flows
         const settledResults = await Promise.allSettled([
             detectDocumentType({ documentDataUri }),
             extractInvoiceData({ invoiceDataUri: documentDataUri })
@@ -249,7 +206,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
              console.warn("Extract invoice data flow failed:", invoiceResult.reason);
         }
         
-        // Step 3: Add document to context
+        // Step 2: Add document to context with dataURI as fileUrl
         const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
         const category = defaultCategory || aiCategory;
         const newDocument: Omit<Document, 'id' | 'createdAt'> = {
@@ -261,7 +218,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             billingStartDate: result.billingStartDate,
             billingEndDate: result.billingEndDate,
             consumptionPeriod: result.consumptionPeriod,
-            fileUrl: fileUrl,
+            fileUrl: documentDataUri, // Store the dataURI directly
         };
         
         addDocument({
@@ -276,7 +233,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         });
 
     } catch (error) {
-        hadError = true;
         console.error('Le traitement du document a échoué :', error);
         toast({
             variant: 'destructive',
