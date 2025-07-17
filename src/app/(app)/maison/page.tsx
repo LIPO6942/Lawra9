@@ -22,7 +22,7 @@ export default function MaisonPage() {
                </div>
           </div>
           <div className="flex items-center space-x-2 w-full md:w-auto">
-              <UploadDocumentDialog />
+              <UploadDocumentDialog defaultCategory="Maison" />
           </div>
       </div>
 

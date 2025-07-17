@@ -71,7 +71,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const alerts = useMemo(() => {
     return documents
       .filter(doc => {
-        if (!doc.dueDate) return false;
+        if (!doc.dueDate || doc.category === 'Maison') return false;
         try {
           return isValid(parseISO(doc.dueDate));
         } catch(e) {

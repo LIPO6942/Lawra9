@@ -33,6 +33,7 @@ interface UploadDocumentDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   documentToEdit?: Document | null;
+  defaultCategory?: Document['category'];
 }
 
 const frenchCategories: { [key: string]: Document['category'] } = {
@@ -72,7 +73,7 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     return originalFileName.split('.').slice(0, -1).join('.');
 }
 
-export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null }: UploadDocumentDialogProps) {
+export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -176,7 +177,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
         const result: AnalysisResult = { ...typeResult, ...invoiceResult };
         
-        const category = (frenchCategories[result.documentType as keyof typeof frenchCategories] || 'Autre') as Document['category'];
+        const aiCategory = (frenchCategories[result.documentType as keyof typeof frenchCategories] || 'Autre') as Document['category'];
+        const category = defaultCategory || aiCategory;
 
         const newDocument: Omit<Document, 'id' | 'createdAt'> = {
             name: formatDocumentName(result, docName),
@@ -270,7 +272,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const dialogTitle = isEditMode ? "Modifier le document" : "Ajouter un nouveau document";
   const dialogDescription = isEditMode 
     ? "Modifiez les informations de votre document ci-dessous." 
-    : "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous.";
+    : defaultCategory === 'Maison' 
+      ? "Uploadez un document à archiver dans votre Espace Maison."
+      : "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
