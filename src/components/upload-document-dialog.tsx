@@ -185,6 +185,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const processDocument = async (documentDataUri: string, docName: string) => {
     setIsAnalyzing(true);
     setFileName(docName);
+    
+    let fileUrl: string | null = null;
+    let hadError = false;
 
     try {
         const authToken = await getAuthToken();
@@ -207,7 +210,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             throw new Error(errorData.error || 'Upload failed');
         }
 
-        const { fileUrl } = await uploadResponse.json();
+        const uploadResult = await uploadResponse.json();
+        fileUrl = uploadResult.fileUrl;
 
         // Step 2: Run AI flows
         const settledResults = await Promise.allSettled([
@@ -219,11 +223,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         const typeResult = settledResults[0];
         if (typeResult.status === 'fulfilled') {
             result = { ...result, ...typeResult.value };
+        } else {
+            console.warn("Detect document type flow failed:", typeResult.reason);
         }
 
         const invoiceResult = settledResults[1];
         if (invoiceResult.status === 'fulfilled') {
             result = { ...result, ...invoiceResult.value };
+        } else {
+             console.warn("Extract invoice data flow failed:", invoiceResult.reason);
         }
         
         // Step 3: Add document to context
@@ -253,6 +261,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         });
 
     } catch (error) {
+        hadError = true;
         console.error('Le traitement du document a échoué :', error);
         toast({
             variant: 'destructive',
@@ -260,7 +269,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             description: (error as Error).message || "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
         });
     } finally {
-        setIsAnalyzing(false); 
+        setIsAnalyzing(false);
         handleOpenChange(false);
     }
   }
