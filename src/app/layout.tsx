@@ -6,17 +6,12 @@ import './globals.css';
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-provider";
 import React from "react";
-import { usePathname } from 'next/navigation';
-import AppLayoutWrapper from './(app)/layout';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const isAppRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/documents') || pathname.startsWith('/historique') || pathname.startsWith('/maison') || pathname.startsWith('/settings');
-
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
@@ -33,7 +28,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {isAppRoute ? <AppLayoutWrapper>{children}</AppLayoutWrapper> : children}
+            {children}
             <Toaster />
           </ThemeProvider>
         </AuthProvider>
