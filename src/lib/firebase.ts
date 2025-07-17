@@ -14,6 +14,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Check if all required environment variables are set
+if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+  console.error(
+    'Firebase config is missing. Make sure you have set up your .env file with all the required NEXT_PUBLIC_FIREBASE_* variables.'
+  );
+  // You might want to throw an error or handle this case appropriately
+  // For now, we will log an error to the console.
+}
+
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
