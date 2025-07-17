@@ -30,7 +30,7 @@ import { storage } from '@/lib/firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/auth-context';
 
-type AnalysisResult = DetectDocumentTypeOutput & Partial<ExtractInvoiceDataOutput>;
+type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
 interface UploadDocumentDialogProps {
   open?: boolean;
@@ -182,16 +182,29 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const processDocument = async (documentDataUri: string, docName: string) => {
     setIsAnalyzing(true);
     setFileName(docName);
-     try {
-        const fileUrl = await uploadToFirebase(documentDataUri, docName);
-     
-        const [typeResult, invoiceResult] = await Promise.all([
-          detectDocumentType({ documentDataUri }),
-          extractInvoiceData({ invoiceDataUri: documentDataUri })
-        ]);
+    
+    let result: AnalysisResult = {};
+    let fileUrl = '';
 
-        const result: AnalysisResult = { ...typeResult, ...invoiceResult };
+    try {
+        fileUrl = await uploadToFirebase(documentDataUri, docName);
         
+        try {
+            const typeResult = await detectDocumentType({ documentDataUri });
+            result = { ...result, ...typeResult };
+        } catch (e) {
+            console.error("Échec de la détection du type de document :", e);
+            result.documentType = 'Autre'; // Fallback
+        }
+        
+        try {
+            const invoiceResult = await extractInvoiceData({ invoiceDataUri: documentDataUri });
+            result = { ...result, ...invoiceResult };
+        } catch (e) {
+            console.error("Échec de l'extraction des données de la facture :", e);
+            // C'est ok, le document pourrait ne pas être une facture
+        }
+
         const aiCategory = (frenchCategories[result.documentType as keyof typeof frenchCategories] || 'Autre') as Document['category'];
         const category = defaultCategory || aiCategory;
 
@@ -219,8 +232,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         });
 
         handleOpenChange(false);
+
       } catch(error) {
-        console.error('Analysis failed:', error);
+        console.error('L\'analyse a échoué :', error);
         toast({
             variant: 'destructive',
             title: "L'analyse a échoué",
