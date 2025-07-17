@@ -84,17 +84,11 @@ function ProviderLinks() {
     );
 }
 
-function ProtectedLayout({ children }: { children: React.ReactNode }) {
+function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
   
   const handleSignOut = async () => {
     try {
@@ -104,6 +98,21 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     } catch (error) {
         toast({ variant: 'destructive', title: "Erreur lors de la déconnexion." });
     }
+  }
+
+  const getInitials = (name?: string | null, email?: string | null) => {
+    if (name) {
+      const names = name.split(' ');
+      const initials = names.map(n => n[0]).join('');
+      if (initials.length > 2) {
+          return initials.substring(0, 2).toUpperCase();
+      }
+      return initials.toUpperCase();
+    }
+    if (email) {
+      return email[0].toUpperCase();
+    }
+    return 'U';
   }
 
   if (loading || !user) {
@@ -193,8 +202,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={user.photoURL || "https://placehold.co/100x100"} alt="User" data-ai-hint="profile picture" />
-                        <AvatarFallback>{user.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
+                        <AvatarImage src={user.photoURL || undefined} alt="User" />
+                        <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
@@ -239,8 +248,39 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
     return (
-        <ProtectedLayout>{children}</ProtectedLayout>
+        <div className="flex items-center justify-center min-h-screen bg-background">
+            <p>Chargement...</p>
+        </div>
+    );
+  }
+  
+  return <AppLayout>{children}</AppLayout>
+}
+
+export default function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
+    return (
+        <AuthProvider>
+            <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+            >
+                <ProtectedLayout>{children}</ProtectedLayout>
+            </ThemeProvider>
+        </AuthProvider>
     )
 }
