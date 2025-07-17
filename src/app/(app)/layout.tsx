@@ -21,11 +21,12 @@ import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History, User, Za
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentProvider } from '@/contexts/document-context';
-import { useAuth } from '@/contexts/auth-context';
+import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { UserPreferencesProvider, useUserPreferences } from '@/contexts/user-preferences-context';
+import { ThemeProvider } from '@/contexts/theme-provider';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
