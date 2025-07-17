@@ -16,8 +16,10 @@ try {
 
 export async function POST(request: Request) {
   try {
+    // Check if Admin SDK was initialized
     if (admin.apps.length === 0) {
-        throw new Error("Firebase Admin SDK not initialized. Check server logs for details.");
+        console.error("CRITICAL: Firebase Admin SDK not initialized in API route. Check server logs for details.");
+        throw new Error("Server configuration error: Firebase Admin SDK not initialized.");
     }
 
     const authToken = request.headers.get('Authorization')?.split('Bearer ')[1];
@@ -42,10 +44,10 @@ export async function POST(request: Request) {
     const destination = `documents/${userId}/${Date.now()}-${file.name}`;
     const storageRef = ref(storage, destination);
 
-    // Convert file to buffer
+    // Convert file to buffer to upload from server
     const arrayBuffer = await file.arrayBuffer();
     
-    // Upload using the client SDK from the server
+    // Upload using the client SDK's uploadBytes function from the server context
     await uploadBytes(storageRef, arrayBuffer, {
         contentType: file.type,
     });
@@ -60,9 +62,10 @@ export async function POST(request: Request) {
     if (error.code === 'auth/id-token-expired') {
         return NextResponse.json({ error: 'Authentication token has expired' }, { status: 401 });
     }
-    if (error.code === 403 || (error.message && error.message.includes("permission"))) {
+    if (error.message && error.message.includes("permission")) {
       return NextResponse.json({ error: 'Permission denied. Make sure your Storage Rules in Firebase allow writes for authenticated users.' }, { status: 403 });
     }
+    // Return a generic error message to the client
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -211,7 +211,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               });
 
               if (!uploadResponse.ok) {
-                  const errorData = await uploadResponse.json();
+                  const errorData = await uploadResponse.json().catch(() => ({error: 'Upload failed and could not parse error response.'}));
                   throw new Error(errorData.error || 'Upload failed');
               }
               const { fileUrl } = await uploadResponse.json();
