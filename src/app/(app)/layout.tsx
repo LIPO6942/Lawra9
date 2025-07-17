@@ -25,6 +25,7 @@ import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeProvider } from '@/contexts/theme-provider';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -133,9 +134,11 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
           <SidebarFooter>
              <SidebarMenu>
                <SidebarMenuItem>
-                  <SidebarMenuButton disabled>
-                    <Settings />
-                    Paramètres
+                  <SidebarMenuButton asChild isActive={pathname.startsWith('/settings')}>
+                    <Link href="/settings">
+                      <Settings />
+                      Paramètres
+                    </Link>
                   </SidebarMenuButton>
                </SidebarMenuItem>
              </SidebarMenu>
@@ -164,13 +167,17 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profil</span>
+                   <DropdownMenuItem asChild>
+                    <Link href="/settings">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profil</span>
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Paramètres</span>
+                  <DropdownMenuItem asChild>
+                     <Link href="/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Paramètres</span>
+                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
@@ -192,7 +199,14 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
             <ProtectedLayout>{children}</ProtectedLayout>
+          </ThemeProvider>
         </AuthProvider>
     )
 }
