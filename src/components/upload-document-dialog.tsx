@@ -187,42 +187,29 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setIsAnalyzing(true);
     setFileName(docName);
 
-    let result: AnalysisResult = {};
-    let fileUrl = '';
-    let hadError = false;
-
     try {
-        fileUrl = await uploadToFirebase(documentDataUri, docName);
+        const fileUrl = await uploadToFirebase(documentDataUri, docName);
         
-        const typeResult = await detectDocumentType({ documentDataUri }).catch(e => {
-            console.error("Échec de la détection du type de document :", e);
-            return { documentType: 'Autre', suggestedCategories: [] };
-        });
-        result = { ...result, ...typeResult };
+        let result: AnalysisResult = {};
 
-        const invoiceResult = await extractInvoiceData({ invoiceDataUri: documentDataUri }).catch(e => {
-            console.error("Échec de l'extraction des données de la facture :", e);
-            return {};
-        });
-        result = { ...result, ...invoiceResult };
-
-    } catch (error) {
-        console.error('L\'analyse a échoué :', error);
-        toast({
-            variant: 'destructive',
-            title: "L'analyse a échoué",
-            description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."
-        });
-        hadError = true;
-    }
-
-    if (hadError) {
-        handleOpenChange(false);
-        return;
-    }
-    
-    try {
-        const aiCategory = (frenchCategories[result.documentType as string] || 'Autre') as Document['category'];
+        // Run AI analysis
+        try {
+            const typeResult = await detectDocumentType({ documentDataUri });
+            result = { ...result, ...typeResult };
+            
+            const invoiceResult = await extractInvoiceData({ invoiceDataUri: documentDataUri });
+            result = { ...result, ...invoiceResult };
+        } catch (aiError) {
+            console.warn("AI analysis failed, but continuing with upload:", aiError);
+            toast({
+                variant: 'destructive',
+                title: "L'analyse IA a échoué",
+                description: "Le document a été sauvegardé, mais vous devrez remplir les détails manuellement."
+            });
+        }
+        
+        // Process results
+        const aiCategory = (result.documentType && frenchCategories[result.documentType]) ? frenchCategories[result.documentType] : 'Autre';
         const category = defaultCategory || aiCategory;
 
         const newDocument: Omit<Document, 'id' | 'createdAt'> = {
@@ -244,20 +231,23 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         });
 
         toast({
-            title: "Document analysé et enregistré !",
+            title: "Document enregistré !",
             description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
         });
-    } catch (formattingError) {
-        console.error('Erreur lors du formatage des données du document :', formattingError);
+
+    } catch (error) {
+        console.error('Le traitement du document a échoué :', error);
         toast({
             variant: 'destructive',
-            title: "Erreur de traitement",
-            description: "Le document a été analysé mais nous avons rencontré un problème pour l'enregistrer. Veuillez le modifier manuellement."
+            title: "Le traitement a échoué",
+            description: "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
         });
+    } finally {
+        // This block will always execute, ensuring the dialog closes.
+        handleOpenChange(false);
     }
-
-    handleOpenChange(false);
 }
+
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -268,6 +258,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           const documentDataUri = reader.result as string;
           processDocument(documentDataUri, selectedFile.name);
         };
+        event.target.value = ''; // Reset file input
     }
   };
   
