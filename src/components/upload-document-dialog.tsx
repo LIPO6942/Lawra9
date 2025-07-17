@@ -113,21 +113,36 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         setHasCameraPermission(false);
         return;
       }
+      
+      const videoConstraints: MediaStreamConstraints['video'] = {
+        facingMode: { ideal: 'environment' }
+      };
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
         setHasCameraPermission(true);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
       } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Accès Caméra Refusé',
-          description: 'Veuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.',
-        });
+        console.error('Error accessing rear camera, trying default:', error);
+        try {
+            // Fallback to default camera
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setHasCameraPermission(true);
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (fallbackError) {
+             console.error('Error accessing any camera:', fallbackError);
+            setHasCameraPermission(false);
+            toast({
+              variant: 'destructive',
+              title: 'Accès Caméra Refusé',
+              description: 'Veuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.',
+            });
+        }
       }
   };
 
