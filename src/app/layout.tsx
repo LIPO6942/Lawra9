@@ -1,14 +1,11 @@
 
-import type {Metadata} from 'next';
+'use client';
+
 import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
-import { AuthProvider } from '@/contexts/auth-context';
-import { ThemeProvider } from '@/contexts/theme-provider';
-
-export const metadata: Metadata = {
-  title: 'Lawra9',
-  description: 'Gérez toute votre paperasse tunisienne en un seul endroit.',
-};
+import { AuthProvider } from "@/contexts/auth-context";
+import { ThemeProvider } from "@/contexts/theme-provider";
+import React from "react";
 
 export default function RootLayout({
   children,
@@ -24,16 +21,16 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-            <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-            >
-                {children}
-            </ThemeProvider>
+           <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
         </AuthProvider>
-        <Toaster />
       </body>
     </html>
   );

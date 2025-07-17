@@ -21,11 +21,10 @@ import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History, User, Za
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentProvider } from '@/contexts/document-context';
-import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { ThemeProvider } from '@/contexts/theme-provider';
 import { UserPreferencesProvider, useUserPreferences } from '@/contexts/user-preferences-context';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -242,15 +241,6 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
-        <AuthProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <ProtectedLayout>{children}</ProtectedLayout>
-          </ThemeProvider>
-        </AuthProvider>
+        <ProtectedLayout>{children}</ProtectedLayout>
     )
 }

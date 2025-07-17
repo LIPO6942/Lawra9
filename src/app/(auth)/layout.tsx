@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
 
-export default function AuthLayout({
+function AuthLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -28,4 +28,15 @@ export default function AuthLayout({
   }
 
   return <>{children}</>;
+}
+
+
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+ return (
+    <AuthLayoutContent>{children}</AuthLayoutContent>
+ )
 }
