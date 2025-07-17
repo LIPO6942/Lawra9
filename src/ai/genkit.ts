@@ -2,13 +2,19 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-if (!process.env.GOOGLE_API_KEY) {
+const apiKey = process.env.GOOGLE_API_KEY;
+
+if (!apiKey) {
+  console.error("ERREUR CRITIQUE: La variable d'environnement GOOGLE_API_KEY est manquante dans votre fichier .env.");
   throw new Error("La variable d'environnement GOOGLE_API_KEY est manquante. Veuillez l'ajouter à votre fichier .env pour utiliser les fonctionnalités IA.");
+} else {
+  // Affiche un message pour confirmer que la clé est chargée, sans l'exposer entièrement.
+  console.log(`Clé d'API Google chargée avec succès (commence par: ${apiKey.substring(0, 4)}...).`);
 }
 
 export const ai = genkit({
   plugins: [googleAI({
-    apiKey: process.env.GOOGLE_API_KEY
+    apiKey: apiKey
   })],
   model: 'googleai/gemini-2.0-flash',
 });
