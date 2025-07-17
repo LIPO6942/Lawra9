@@ -26,6 +26,9 @@ import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { storage } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { useAuth } from '@/contexts/auth-context';
 
 type AnalysisResult = DetectDocumentTypeOutput & Partial<ExtractInvoiceDataOutput>;
 
@@ -80,6 +83,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
+  const { userId } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -165,11 +169,22 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       resetDialog();
     }
   };
+
+  const uploadToFirebase = async (dataUri: string, docName: string) => {
+    if (!userId) {
+        throw new Error("Utilisateur non authentifié.");
+    }
+    const storageRef = ref(storage, `documents/${userId}/${Date.now()}-${docName}`);
+    const snapshot = await uploadString(storageRef, dataUri, 'data_url');
+    return getDownloadURL(snapshot.ref);
+  }
   
   const processDocument = async (documentDataUri: string, docName: string) => {
     setIsAnalyzing(true);
     setFileName(docName);
      try {
+        const fileUrl = await uploadToFirebase(documentDataUri, docName);
+     
         const [typeResult, invoiceResult] = await Promise.all([
           detectDocumentType({ documentDataUri }),
           extractInvoiceData({ invoiceDataUri: documentDataUri })
@@ -189,7 +204,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             billingStartDate: result.billingStartDate,
             billingEndDate: result.billingEndDate,
             consumptionPeriod: result.consumptionPeriod,
-            fileUrl: documentDataUri
+            fileUrl: fileUrl,
         };
         
         addDocument({

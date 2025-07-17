@@ -21,6 +21,10 @@ import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History, User } f
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentProvider } from '@/contexts/document-context';
+import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -40,9 +44,35 @@ function Logo() {
   );
 }
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, loading } = useAuth();
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  const handleSignOut = async () => {
+    try {
+        await signOut(auth);
+        toast({ title: "Déconnexion réussie." });
+        router.push('/login');
+    } catch (error) {
+        toast({ variant: 'destructive', title: "Erreur lors de la déconnexion." });
+    }
+  }
+
+  if (loading || !user) {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+            <p>Chargement...</p>
+        </div>
+    );
+  }
 
   return (
     <DocumentProvider>
@@ -91,7 +121,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
                <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/alerts')}>
+                <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')}>
                   <Link href="/dashboard">
                     <Bell />
                     Alertes
@@ -119,17 +149,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src="https://placehold.co/100x100" alt="User" data-ai-hint="profile picture" />
-                      <AvatarFallback>U</AvatarFallback>
+                      <AvatarImage src={user.photoURL || "https://placehold.co/100x100"} alt="User" data-ai-hint="profile picture" />
+                      <AvatarFallback>{user.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">Utilisateur</p>
+                      <p className="text-sm font-medium leading-none">{user.displayName || 'Utilisateur'}</p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        utilisateur@lawra9.tn
+                        {user.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
@@ -143,7 +173,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <span>Paramètres</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/')}>
+                  <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Se déconnecter</span>
                   </DropdownMenuItem>
@@ -157,4 +187,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </SidebarProvider>
     </DocumentProvider>
   );
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <AuthProvider>
+            <ProtectedLayout>{children}</ProtectedLayout>
+        </AuthProvider>
+    )
 }

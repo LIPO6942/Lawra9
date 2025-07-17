@@ -5,8 +5,7 @@ import React, { createContext, useContext, useState, useMemo, useCallback, useEf
 import { Document, Alert } from '@/lib/types';
 import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-const LOCAL_STORAGE_KEY = 'lawra9-documents';
+import { useAuth } from './auth-context';
 
 interface MonthlyExpense {
   month: string;
@@ -27,25 +26,40 @@ const DocumentContext = createContext<DocumentContextType | undefined>(undefined
 
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const { userId } = useAuth();
+  
+  const getLocalStorageKey = useCallback(() => {
+    return userId ? `lawra9-documents-${userId}` : null;
+  }, [userId]);
 
   useEffect(() => {
-    try {
-      const storedDocuments = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (storedDocuments) {
-        setDocuments(JSON.parse(storedDocuments));
-      }
-    } catch (error) {
-      console.error("Failed to load documents from local storage", error);
+    const key = getLocalStorageKey();
+    if (key) {
+        try {
+          const storedDocuments = localStorage.getItem(key);
+          if (storedDocuments) {
+            setDocuments(JSON.parse(storedDocuments));
+          } else {
+            setDocuments([]); // Clear documents if user changes
+          }
+        } catch (error) {
+          console.error("Failed to load documents from local storage", error);
+        }
+    } else {
+        setDocuments([]); // Clear documents if no user
     }
-  }, []);
+  }, [userId, getLocalStorageKey]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(documents));
-    } catch (error) {
-      console.error("Failed to save documents to local storage", error);
+    const key = getLocalStorageKey();
+    if (key) {
+        try {
+          localStorage.setItem(key, JSON.stringify(documents));
+        } catch (error) {
+          console.error("Failed to save documents to local storage", error);
+        }
     }
-  }, [documents]);
+  }, [documents, userId, getLocalStorageKey]);
 
 
   const addDocument = useCallback((doc: Document) => {
@@ -95,21 +109,23 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     documents.forEach(doc => {
       if (!doc.amount) return;
 
-      // Determine the relevant date for the expense
       let expenseDate: Date | null = null;
-      if (doc.billingEndDate && isValid(parseISO(doc.billingEndDate))) {
-        expenseDate = parseISO(doc.billingEndDate);
-      } else if (doc.dueDate && isValid(parseISO(doc.dueDate))) {
-        expenseDate = parseISO(doc.dueDate);
-      } else if (doc.createdAt && isValid(parseISO(doc.createdAt))) {
-        expenseDate = parseISO(doc.createdAt);
+      const datePriority = [doc.billingEndDate, doc.dueDate, doc.createdAt];
+      for (const dateStr of datePriority) {
+          if(dateStr) {
+              const date = parseISO(dateStr);
+              if(isValid(date)) {
+                  expenseDate = date;
+                  break;
+              }
+          }
       }
 
       if (expenseDate && getYear(expenseDate) === currentYear) {
         try {
           const month = format(expenseDate, 'MMM', { locale: fr }).replace('.', '');
           const category = doc.category;
-          const amount = parseFloat(doc.amount.replace(',', '.'));
+          const amount = parseFloat(String(doc.amount).replace(',', '.'));
 
           if (isNaN(amount)) return;
 
