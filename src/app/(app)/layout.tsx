@@ -49,12 +49,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader className="p-4">
-            <div className="group-data-[collapsible=icon]:hidden">
+            <Link href="/dashboard" className="group-data-[collapsible=icon]:hidden">
               <Logo />
-            </div>
-             <div className="hidden group-data-[collapsible=icon]:block mx-auto">
+            </Link>
+             <Link href="/dashboard" className="hidden group-data-[collapsible=icon]:block mx-auto">
                 <PaperworkIcon className="h-6 w-6 text-primary-foreground" />
-            </div>
+            </Link>
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
