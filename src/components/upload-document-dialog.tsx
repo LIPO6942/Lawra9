@@ -199,10 +199,13 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         const snapshot = await uploadString(storageRef, documentDataUri, 'data_url');
         fileUrl = await getDownloadURL(snapshot.ref);
 
-        const [typeResult, invoiceResult] = await Promise.allSettled([
+        const settledResults = await Promise.allSettled([
             detectDocumentType({ documentDataUri }),
             extractInvoiceData({ invoiceDataUri: documentDataUri })
         ]);
+
+        const typeResult = settledResults[0];
+        const invoiceResult = settledResults[1];
 
         if (typeResult.status === 'fulfilled') {
             result = { ...result, ...typeResult.value };
@@ -220,12 +223,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         console.error('Le traitement du document a échoué :', error);
         hadError = true;
     } finally {
+        setIsAnalyzing(false); 
+
         if (hadError || !fileUrl) {
             toast({
                 variant: 'destructive',
                 title: "Le traitement a échoué",
                 description: "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
             });
+            // We don't close the dialog on error so the user can try again
         } else {
             const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
             const category = defaultCategory || aiCategory;
@@ -252,8 +258,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 title: "Document enregistré !",
                 description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
             });
+            handleOpenChange(false); // Close on success
         }
-        handleOpenChange(false);
     }
   }
 
@@ -264,6 +270,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         reader.readAsDataURL(selectedFile);
         reader.onload = () => {
           const documentDataUri = reader.result as string;
+          if (!documentDataUri) {
+            toast({ variant: "destructive", title: "Erreur", description: "Impossible de lire le fichier." });
+            return;
+          }
           processDocument(documentDataUri, selectedFile.name);
         };
         event.target.value = ''; // Reset file input
@@ -333,14 +343,14 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </TabsList>
               <TabsContent value="file">
                  <div className="py-8">
-                    <label htmlFor="file-upload" className="cursor-pointer">
+                    <label htmlFor="file-upload" className={isAnalyzing ? 'cursor-not-allowed' : 'cursor-pointer'}>
                       <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
                         <UploadCloud className="h-12 w-12 text-muted-foreground" />
                         <p className="font-semibold">Cliquez ou glissez-déposez</p>
                         <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 5MB)</p>
                       </div>
                     </label>
-                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" />
+                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" disabled={isAnalyzing} />
                   </div>
               </TabsContent>
               <TabsContent value="camera">
@@ -357,7 +367,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                       </AlertDescription>
                     </Alert>
                   )}
-                  <Button onClick={handleCapture} disabled={!hasCameraPermission} className="w-full">
+                  <Button onClick={handleCapture} disabled={!hasCameraPermission || isAnalyzing} className="w-full">
                     <Camera className="mr-2 h-4 w-4" />
                     Capturer
                   </Button>
@@ -370,7 +380,14 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           <div className="flex flex-col items-center justify-center space-y-4 py-12">
             <Loader2 className="h-16 w-16 animate-spin text-accent" />
             <p className="font-semibold text-lg">Analyse en cours...</p>
-            <p className="text-sm text-muted-foreground">{fileName}</p>
+            {fileName ? (
+                <p className="text-sm text-muted-foreground">{fileName}</p>
+            ) : (
+                <p className="text-sm text-muted-foreground italic">Chargement...</p>
+            )}
+            <Button variant="outline" onClick={() => setIsAnalyzing(false)}>
+                Annuler
+            </Button>
           </div>
         )}
 
@@ -419,7 +436,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </div>
                <div className="space-y-2">
                   <Label htmlFor="doc-consumption-period">Période de consommation (SONEDE)</Label>
-                  <Input id="doc-consumption-period" type="text" value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.target.value)} />
+                  <Input id="doc-consumption-period" type="text" value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.g.target.value)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="doc-summary">Résumé</Label>
