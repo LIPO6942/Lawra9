@@ -26,6 +26,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { useAuth } from '@/contexts/auth-context';
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -84,6 +85,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
+  const { getAuthToken } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -179,102 +181,116 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       onOpenChange(false);
     }
   };
+  
+  const processDocument = async (file: File) => {
+      setIsAnalyzing(true);
+      setFileName(file.name);
+      
+      const fileReader = new FileReader();
+      fileReader.readAsDataURL(file);
+      fileReader.onload = async () => {
+          const documentDataUri = fileReader.result as string;
+          if (!documentDataUri) {
+              toast({ variant: 'destructive', title: 'Erreur de lecture du fichier' });
+              setIsAnalyzing(false);
+              return;
+          }
 
-  const processDocument = async (documentDataUri: string, docName: string) => {
-    setIsAnalyzing(true);
-    setFileName(docName);
-    
-    try {
-        // Step 1: Run AI flows
-        const settledResults = await Promise.allSettled([
-            detectDocumentType({ documentDataUri }),
-            extractInvoiceData({ invoiceDataUri: documentDataUri })
-        ]);
+          try {
+              // Step 1: Upload file to our backend
+              const token = await getAuthToken();
+              const uploadFormData = new FormData();
+              uploadFormData.append('file', file);
+              
+              const uploadResponse = await fetch('/api/upload', {
+                  method: 'POST',
+                  headers: {
+                      'Authorization': `Bearer ${token}`
+                  },
+                  body: uploadFormData
+              });
 
-        let result: AnalysisResult = {};
-        const typeResult = settledResults[0];
-        if (typeResult.status === 'fulfilled') {
-            result = { ...result, ...typeResult.value };
-        } else {
-            console.warn("Detect document type flow failed:", typeResult.reason);
-        }
+              if (!uploadResponse.ok) {
+                  const errorData = await uploadResponse.json();
+                  throw new Error(errorData.error || 'Upload failed');
+              }
+              const { fileUrl } = await uploadResponse.json();
 
-        const invoiceResult = settledResults[1];
-        if (invoiceResult.status === 'fulfilled') {
-            result = { ...result, ...invoiceResult.value };
-        } else {
-             console.warn("Extract invoice data flow failed:", invoiceResult.reason);
-        }
-        
-        // Step 2: Add document to context with dataURI as fileUrl
-        const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
-        const category = defaultCategory || aiCategory;
-        const newDocument: Omit<Document, 'id' | 'createdAt'> = {
-            name: formatDocumentName(result, docName),
-            category: category,
-            supplier: result.supplier,
-            amount: result.amount,
-            dueDate: result.dueDate,
-            billingStartDate: result.billingStartDate,
-            billingEndDate: result.billingEndDate,
-            consumptionPeriod: result.consumptionPeriod,
-            fileUrl: documentDataUri, // Store the dataURI directly
-        };
-        
-        addDocument({
-            ...newDocument,
-            id: `doc-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-        });
+              // Step 2: Run AI flows
+              const settledResults = await Promise.allSettled([
+                  detectDocumentType({ documentDataUri }),
+                  extractInvoiceData({ invoiceDataUri: documentDataUri })
+              ]);
 
-        toast({
-            title: "Document enregistré !",
-            description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
-        });
+              let result: AnalysisResult = {};
+              if (settledResults[0].status === 'fulfilled') result = { ...result, ...settledResults[0].value };
+              if (settledResults[1].status === 'fulfilled') result = { ...result, ...settledResults[1].value };
 
-    } catch (error) {
-        console.error('Le traitement du document a échoué :', error);
-        toast({
-            variant: 'destructive',
-            title: "Le traitement a échoué",
-            description: (error as Error).message || "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
-        });
-    } finally {
-        setIsAnalyzing(false);
-        handleOpenChange(false);
-    }
+              // Step 3: Add document to context with the public URL
+              const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
+              const newDocument: Omit<Document, 'id' | 'createdAt'> = {
+                  name: formatDocumentName(result, file.name),
+                  category: defaultCategory || aiCategory,
+                  supplier: result.supplier,
+                  amount: result.amount,
+                  dueDate: result.dueDate,
+                  billingStartDate: result.billingStartDate,
+                  billingEndDate: result.billingEndDate,
+                  consumptionPeriod: result.consumptionPeriod,
+                  fileUrl: fileUrl, // Use the URL from our backend
+              };
+              
+              addDocument({
+                  ...newDocument,
+                  id: `doc-${Date.now()}`,
+                  createdAt: new Date().toISOString(),
+              });
+
+              toast({
+                  title: "Document enregistré !",
+                  description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
+              });
+
+          } catch (error) {
+              console.error('Le traitement du document a échoué :', error);
+              toast({
+                  variant: 'destructive',
+                  title: "Le traitement a échoué",
+                  description: (error as Error).message || "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
+              });
+          } finally {
+              setIsAnalyzing(false);
+              handleOpenChange(false);
+          }
+      };
   }
+
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-        const reader = new FileReader();
-        reader.readAsDataURL(selectedFile);
-        reader.onload = () => {
-          const documentDataUri = reader.result as string;
-          if (!documentDataUri) {
-            toast({ variant: "destructive", title: "Erreur", description: "Impossible de lire le fichier." });
-            return;
-          }
-          processDocument(documentDataUri, selectedFile.name);
-        };
-        event.target.value = ''; // Reset file input
+      await processDocument(selectedFile);
+      event.target.value = ''; // Reset file input
     }
   };
   
-  const handleCapture = () => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      if(context){
-        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        const dataUri = canvas.toDataURL('image/jpeg');
-        processDocument(dataUri, `Capture-${new Date().toISOString()}.jpg`);
+  const handleCapture = async () => {
+      if (videoRef.current && canvasRef.current) {
+          const canvas = canvasRef.current;
+          const video = videoRef.current;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const context = canvas.getContext('2d');
+          if (context) {
+              context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+              canvas.toBlob(async (blob) => {
+                  if (blob) {
+                      const capturedFile = new File([blob], `Capture-${new Date().toISOString()}.jpg`, { type: 'image/jpeg' });
+                      await processDocument(capturedFile);
+                  }
+              }, 'image/jpeg');
+          }
       }
-    }
   };
 
   const handleFormChange = (field: keyof Document, value: string | number | undefined) => {

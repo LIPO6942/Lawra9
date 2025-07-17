@@ -1,32 +1,40 @@
 
 import * as admin from 'firebase-admin';
 
-const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+let serviceAccount: admin.ServiceAccount;
 
-let serviceAccount: admin.ServiceAccount | undefined;
+const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
 if (serviceAccountString) {
   try {
-    serviceAccount = JSON.parse(serviceAccountString);
+    // The service account key is expected to be a base64 encoded string in the environment variable
+    const decodedString = Buffer.from(serviceAccountString, 'base64').toString('utf-8');
+    serviceAccount = JSON.parse(decodedString);
   } catch (e) {
-    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Make sure it is a valid JSON string.', e);
+    // Fallback for raw JSON string
+    try {
+        serviceAccount = JSON.parse(serviceAccountString);
+    } catch(jsonError) {
+        console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Make sure it is a valid JSON string or base64 encoded.', jsonError);
+    }
   }
 } else {
-    console.warn(
-      'Firebase Admin SDK Service Account key is not found in environment variables. Server-side Firebase features will not work.'
+    console.error(
+      'CRITICAL: Firebase Admin SDK Service Account key is not found in environment variables (FIREBASE_SERVICE_ACCOUNT_KEY). Server-side Firebase features will not work.'
     );
 }
 
 export const initializeAdminApp = () => {
   if (admin.apps.length === 0 && serviceAccount) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    });
-    console.log("Firebase Admin SDK initialized successfully.");
-  } else if (admin.apps.length > 0) {
-    // Already initialized
-  } else {
-    console.error("Could not initialize Firebase Admin SDK: Service Account is missing or invalid.");
+    try {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        });
+        console.log("Firebase Admin SDK initialized successfully.");
+    } catch (error: any) {
+        console.error("Error initializing Firebase Admin SDK:", error.message);
+        throw error;
+    }
   }
 };

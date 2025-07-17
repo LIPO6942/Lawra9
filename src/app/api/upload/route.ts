@@ -4,13 +4,21 @@ import { initializeAdminApp } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 
 // Initialize Firebase Admin SDK
-initializeAdminApp();
+try {
+  initializeAdminApp();
+} catch (error) {
+  console.error("Failed to initialize Firebase Admin SDK in API route.", error);
+}
 
 export async function POST(request: Request) {
   try {
+    if (admin.apps.length === 0) {
+        throw new Error("Firebase Admin SDK not initialized. Check server logs for details.");
+    }
+
     const authToken = request.headers.get('Authorization')?.split('Bearer ')[1];
     if (!authToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Missing auth token' }, { status: 401 });
     }
 
     const decodedToken = await admin.auth().verifyIdToken(authToken);
@@ -22,14 +30,13 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const fileName = formData.get('fileName') as string | null;
 
-    if (!file || !fileName) {
-      return NextResponse.json({ error: 'Missing file data or name' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'Missing file data' }, { status: 400 });
     }
     
     const bucket = admin.storage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-    const destination = `documents/${userId}/${Date.now()}-${fileName}`;
+    const destination = `documents/${userId}/${Date.now()}-${file.name}`;
     const fileRef = bucket.file(destination);
 
     // Convert file to buffer
@@ -44,8 +51,10 @@ export async function POST(request: Request) {
     });
 
     // Make the file public and get its URL
-    await fileRef.makePublic();
-    const fileUrl = fileRef.publicUrl();
+    const [fileUrl] = await fileRef.getSignedUrl({
+        action: 'read',
+        expires: '03-09-2491' // A very long time in the future
+    });
 
     return NextResponse.json({ fileUrl });
   } catch (error: any) {
@@ -53,9 +62,9 @@ export async function POST(request: Request) {
     if (error.code === 'auth/id-token-expired') {
         return NextResponse.json({ error: 'Authentication token has expired' }, { status: 401 });
     }
-    if (error.code === 403) {
-      return NextResponse.json({ error: 'Permission denied. Make sure the Storage Admin role is set.' }, { status: 403 });
+    if (error.code === 403 || (error.message && error.message.includes("permission"))) {
+      return NextResponse.json({ error: 'Permission denied. Make sure the Service Account has the "Storage Admin" role in IAM.' }, { status: 403 });
     }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
