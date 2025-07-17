@@ -36,8 +36,8 @@ const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const providerLinks = {
-  STEG: "https://www.steg.com.tn/fr/espace_client.html",
-  SONEDE: "https://www.sonede.com.tn/portail/index.php?act=recherche&cle=facture",
+  STEG: "https://espace.steg.com.tn/fr/espace/login.php",
+  SONEDE: "https://portail.sonede.com.tn/login",
   Orange: "https://www.orange.tn/espace-client",
   Ooredoo: "https://my.ooredoo.tn/",
   Topnet: "https://www.topnet.tn/home/espace-client",
