@@ -17,7 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History, User } from 'lucide-react';
+import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History, User, Zap, Droplets, Wifi, ExternalLink } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentProvider } from '@/contexts/document-context';
@@ -26,14 +26,25 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeProvider } from '@/contexts/theme-provider';
-import { UserPreferencesProvider } from '@/contexts/user-preferences-context';
+import { UserPreferencesProvider, useUserPreferences } from '@/contexts/user-preferences-context';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
         <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
         <polyline points="14 2 14 8 20 8" />
     </svg>
 );
+
+const providerLinks = {
+  STEG: "https://www.steg.com.tn/fr/espace_client.html",
+  SONEDE: "https://www.sonede.com.tn/portail/index.php?act=recherche&cle=facture",
+  Orange: "https://www.orange.tn/espace-client",
+  Ooredoo: "https://my.ooredoo.tn/",
+  Topnet: "https://www.topnet.tn/home/espace-client",
+  TT: "https://www.tunisietelecom.tn/particulier/espace-client-fixe-data-mobile/",
+  Hexabyte: "https://client.hexabyte.tn/",
+  default: "#",
+};
 
 function Logo() {
   return (
@@ -44,6 +55,34 @@ function Logo() {
         </h1>
     </div>
   );
+}
+
+function ProviderLinks() {
+    const { isp } = useUserPreferences();
+    const internetLink = isp ? providerLinks[isp] : providerLinks.default;
+
+    return (
+        <div className="hidden md:flex items-center space-x-2">
+            <Button asChild variant="outline" size="sm" className="border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300">
+                <Link href={providerLinks.STEG} target="_blank">
+                    <Zap className="h-4 w-4" />
+                    <span>STEG</span>
+                </Link>
+            </Button>
+             <Button asChild variant="outline" size="sm" className="border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+                <Link href={providerLinks.SONEDE} target="_blank">
+                   <Droplets className="h-4 w-4" />
+                    <span>SONEDE</span>
+                </Link>
+            </Button>
+             <Button asChild variant="outline" size="sm" className="border-purple-500/50 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300">
+                <Link href={internetLink} target="_blank">
+                     <Wifi className="h-4 w-4" />
+                    <span>{isp || 'Internet'}</span>
+                </Link>
+            </Button>
+        </div>
+    );
 }
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -149,7 +188,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
           <SidebarInset>
             <header className="flex items-center justify-between h-16 px-6 border-b">
                <SidebarTrigger className="md:hidden" />
-               <div></div>
+               <ProviderLinks />
+               <div className="flex items-center space-x-4">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -188,6 +228,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+               </div>
             </header>
             <main className="flex-1 overflow-y-auto">
                 {children}
