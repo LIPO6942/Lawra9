@@ -90,11 +90,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarFooter>
              <SidebarMenu>
                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith('/settings')}>
-                    <Link href="/dashboard">
-                        <Settings />
-                        Paramètres
-                    </Link>
+                  <SidebarMenuButton disabled>
+                    <Settings />
+                    Paramètres
                   </SidebarMenuButton>
                </SidebarMenuItem>
              </SidebarMenu>
@@ -123,11 +121,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem disabled>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profil</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem disabled>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Paramètres</span>
                   </DropdownMenuItem>
