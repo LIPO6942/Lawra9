@@ -23,11 +23,11 @@ export default function DashboardPage() {
             </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-5">
-          <div className="col-span-1 lg:col-span-3">
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
+          <div className="lg:col-span-3">
               <ExpensesChartCard data={monthlyExpenses} />
           </div>
-          <div className="col-span-1 lg:col-span-2">
+          <div className="lg:col-span-2">
             <AlertsCard alerts={alerts} />
           </div>
         </div>
