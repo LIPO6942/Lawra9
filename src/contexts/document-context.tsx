@@ -1,12 +1,12 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { Document, Alert } from '@/lib/types';
-import { mockDocuments } from '@/lib/data';
 import { parseISO, differenceInDays, format, getYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+const LOCAL_STORAGE_KEY = 'lawra9-documents';
 
 interface MonthlyExpense {
   month: string;
@@ -26,7 +26,27 @@ interface DocumentContextType {
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
 
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
+  const [documents, setDocuments] = useState<Document[]>([]);
+
+  useEffect(() => {
+    try {
+      const storedDocuments = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (storedDocuments) {
+        setDocuments(JSON.parse(storedDocuments));
+      }
+    } catch (error) {
+      console.error("Failed to load documents from local storage", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(documents));
+    } catch (error) {
+      console.error("Failed to save documents to local storage", error);
+    }
+  }, [documents]);
+
 
   const addDocument = useCallback((doc: Document) => {
     setDocuments(prevDocs => [doc, ...prevDocs]);
@@ -66,19 +86,23 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const currentYear = getYear(new Date());
 
     documents
-        .filter(doc => doc.amount && getYear(parseISO(doc.createdAt)) === currentYear)
+        .filter(doc => doc.amount && doc.createdAt && getYear(parseISO(doc.createdAt)) === currentYear)
         .forEach(doc => {
-            const month = format(parseISO(doc.createdAt), 'MMM', { locale: fr });
-            const category = doc.category;
-            const amount = parseFloat(doc.amount!.replace(',', '.'));
+            try {
+              const month = format(parseISO(doc.createdAt), 'MMM', { locale: fr });
+              const category = doc.category;
+              const amount = parseFloat(doc.amount!.replace(',', '.'));
 
-            if (!expensesByMonth[month]) {
-                expensesByMonth[month] = {};
+              if (!expensesByMonth[month]) {
+                  expensesByMonth[month] = {};
+              }
+              if (!expensesByMonth[month][category]) {
+                  expensesByMonth[month][category] = 0;
+              }
+              expensesByMonth[month][category] += amount;
+            } catch(e) {
+              // Ignore documents with invalid creation dates
             }
-            if (!expensesByMonth[month][category]) {
-                expensesByMonth[month][category] = 0;
-            }
-            expensesByMonth[month][category] += amount;
         });
 
     const monthOrder = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -86,8 +110,9 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const monthData: MonthlyExpense = { month: monthName };
         const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Autre'];
         
+        const cleanMonthName = monthName.replace('.', '');
         categories.forEach(cat => {
-            monthData[cat] = expensesByMonth[monthName.replace('.','')]?.[cat] || 0;
+            monthData[cat] = expensesByMonth[cleanMonthName]?.[cat] || 0;
         });
         
         return monthData;
