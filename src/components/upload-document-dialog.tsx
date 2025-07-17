@@ -26,8 +26,6 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { storage } from '@/lib/firebase';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/auth-context';
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
@@ -87,7 +85,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
-  const { userId } = useAuth();
+  const { getAuthToken } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -185,94 +183,85 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   };
 
   const processDocument = async (documentDataUri: string, docName: string) => {
-    console.log('[DEBUG] 1. Démarrage de processDocument pour :', docName);
     setIsAnalyzing(true);
     setFileName(docName);
 
-    let fileUrl = '';
-    let result: AnalysisResult = {};
-    let hadError = false;
-
     try {
-        if (!userId) {
-            console.error('[DEBUG] ERREUR : User ID manquant.');
-            throw new Error("Utilisateur non authentifié.");
+        const authToken = await getAuthToken();
+        if (!authToken) {
+          throw new Error('User not authenticated.');
         }
         
-        console.log('[DEBUG] 2. Upload sur Firebase Storage...');
-        const storageRef = ref(storage, `documents/${userId}/${Date.now()}-${docName}`);
-        const snapshot = await uploadString(storageRef, documentDataUri, 'data_url');
-        fileUrl = await getDownloadURL(snapshot.ref);
-        console.log('[DEBUG] 3. Upload réussi. URL du fichier :', fileUrl);
+        // Step 1: Upload file via our API route
+        const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ fileData: documentDataUri, fileName: docName }),
+        });
 
-        console.log('[DEBUG] 4. Appel des flux Genkit...');
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(errorData.error || 'Upload failed');
+        }
+
+        const { fileUrl } = await uploadResponse.json();
+
+        // Step 2: Run AI flows
         const settledResults = await Promise.allSettled([
             detectDocumentType({ documentDataUri }),
             extractInvoiceData({ invoiceDataUri: documentDataUri })
         ]);
 
+        let result: AnalysisResult = {};
         const typeResult = settledResults[0];
-        const invoiceResult = settledResults[1];
-
         if (typeResult.status === 'fulfilled') {
-            console.log('[DEBUG] 5a. Résultat de detectDocumentType :', typeResult.value);
             result = { ...result, ...typeResult.value };
-        } else {
-            console.warn("[DEBUG] 5a. ERREUR : L'API de détection de type a échoué:", typeResult.reason);
         }
 
+        const invoiceResult = settledResults[1];
         if (invoiceResult.status === 'fulfilled') {
-            console.log('[DEBUG] 5b. Résultat de extractInvoiceData :', invoiceResult.value);
             result = { ...result, ...invoiceResult.value };
-        } else {
-            console.warn("[DEBUG] 5b. ERREUR : L'API d'extraction de données a échoué:", invoiceResult.reason);
         }
-        console.log('[DEBUG] 6. Traitement des résultats de l\'IA terminé.');
+        
+        // Step 3: Add document to context
+        const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
+        const category = defaultCategory || aiCategory;
+        const newDocument: Omit<Document, 'id' | 'createdAt'> = {
+            name: formatDocumentName(result, docName),
+            category: category,
+            supplier: result.supplier,
+            amount: result.amount,
+            dueDate: result.dueDate,
+            billingStartDate: result.billingStartDate,
+            billingEndDate: result.billingEndDate,
+            consumptionPeriod: result.consumptionPeriod,
+            fileUrl: fileUrl,
+        };
+        
+        addDocument({
+            ...newDocument,
+            id: `doc-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+        });
+
+        toast({
+            title: "Document enregistré !",
+            description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
+        });
 
     } catch (error) {
-        console.error('[DEBUG] ERREUR CATCH : Le traitement du document a échoué :', error);
-        hadError = true;
+        console.error('Le traitement du document a échoué :', error);
+        toast({
+            variant: 'destructive',
+            title: "Le traitement a échoué",
+            description: (error as Error).message || "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
+        });
     } finally {
-        console.log('[DEBUG] 7. Entrée dans le bloc finally. hadError =', hadError);
         setIsAnalyzing(false); 
-
-        if (hadError || !fileUrl) {
-            toast({
-                variant: 'destructive',
-                title: "Le traitement a échoué",
-                description: "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
-            });
-            handleOpenChange(false);
-        } else {
-            console.log('[DEBUG] 8. Création du nouveau document...');
-            const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
-            const category = defaultCategory || aiCategory;
-
-            const newDocument: Omit<Document, 'id' | 'createdAt'> = {
-                name: formatDocumentName(result, docName),
-                category: category,
-                supplier: result.supplier,
-                amount: result.amount,
-                dueDate: result.dueDate,
-                billingStartDate: result.billingStartDate,
-                billingEndDate: result.billingEndDate,
-                consumptionPeriod: result.consumptionPeriod,
-                fileUrl: fileUrl,
-            };
-            
-            console.log('[DEBUG] 9. Document créé, ajout en cours :', newDocument);
-            addDocument({
-                ...newDocument,
-                id: `doc-${Date.now()}`,
-                createdAt: new Date().toISOString(),
-            });
-
-            toast({
-                title: "Document enregistré !",
-                description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
-            });
-            handleOpenChange(false);
-        }
+        handleOpenChange(false);
     }
   }
 
