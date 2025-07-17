@@ -27,6 +27,8 @@ import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { useAuth } from '@/contexts/auth-context';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -85,7 +87,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
-  const { getAuthToken } = useAuth();
+  const { user } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -183,6 +185,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   };
   
   const processDocument = async (file: File) => {
+      if (!user) {
+        toast({ variant: 'destructive', title: "Vous n'êtes pas connecté." });
+        return;
+      }
       setIsAnalyzing(true);
       setFileName(file.name);
       
@@ -197,24 +203,12 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           }
 
           try {
-              // Step 1: Upload file to our backend
-              const token = await getAuthToken();
-              const uploadFormData = new FormData();
-              uploadFormData.append('file', file);
+              // Step 1: Upload file to Firebase Storage from client
+              const destination = `documents/${user.uid}/${Date.now()}-${file.name}`;
+              const storageRef = ref(storage, destination);
               
-              const uploadResponse = await fetch('/api/upload', {
-                  method: 'POST',
-                  headers: {
-                      'Authorization': `Bearer ${token}`
-                  },
-                  body: uploadFormData
-              });
-
-              if (!uploadResponse.ok) {
-                  const errorData = await uploadResponse.json().catch(() => ({error: 'Upload failed and could not parse error response.'}));
-                  throw new Error(errorData.error || 'Upload failed');
-              }
-              const { fileUrl } = await uploadResponse.json();
+              await uploadBytes(storageRef, file, { contentType: file.type });
+              const fileUrl = await getDownloadURL(storageRef);
 
               // Step 2: Run AI flows
               const settledResults = await Promise.allSettled([
@@ -237,7 +231,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                   billingStartDate: result.billingStartDate,
                   billingEndDate: result.billingEndDate,
                   consumptionPeriod: result.consumptionPeriod,
-                  fileUrl: fileUrl, // Use the URL from our backend
+                  fileUrl: fileUrl,
               };
               
               addDocument({
@@ -251,12 +245,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                   description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
               });
 
-          } catch (error) {
+          } catch (error: any) {
               console.error('Le traitement du document a échoué :', error);
+              let errorMessage = "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer.";
+              if (error.code === 'storage/unauthorized') {
+                errorMessage = "Action non autorisée. Vérifiez les règles de sécurité de Firebase Storage."
+              }
               toast({
                   variant: 'destructive',
                   title: "Le traitement a échoué",
-                  description: (error as Error).message || "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer."
+                  description: errorMessage
               });
           } finally {
               setIsAnalyzing(false);

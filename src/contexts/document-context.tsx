@@ -54,9 +54,15 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const key = getLocalStorageKey();
     if (key) {
         try {
+          // Ne stocker que les métadonnées, pas le contenu du fichier (fileUrl)
+          const docsToStore = documents.map(({ fileUrl, ...rest }) => rest);
           localStorage.setItem(key, JSON.stringify(documents));
         } catch (error) {
-          console.error("Failed to save documents to local storage", error);
+          if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+             console.error("Quota de stockage local dépassé. Impossible de sauvegarder les documents.");
+          } else {
+             console.error("Failed to save documents to local storage", error);
+          }
         }
     }
   }, [documents, userId, getLocalStorageKey]);
