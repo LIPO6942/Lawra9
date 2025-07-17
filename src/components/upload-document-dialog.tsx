@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, UploadCloud, Loader2, Camera } from 'lucide-react';
+import { PlusCircle, UploadCloud, Loader2, Camera, FileText, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { extractInvoiceData, ExtractInvoiceDataOutput } from '@/ai/flows/extract-invoice-data';
@@ -27,8 +27,6 @@ import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { useAuth } from '@/contexts/auth-context';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -82,12 +80,14 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
 
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false); // Generic processing state
+  const [step, setStep] = useState<'selection' | 'form'>('selection');
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -98,11 +98,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     if (open !== undefined) {
       setIsOpen(open);
     }
+    if (!open) {
+        resetDialog();
+    }
   }, [open]);
   
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
       setFormData(documentToEdit);
+      setStep('form');
     }
   }, [isOpen, isEditMode, documentToEdit]);
   
@@ -174,23 +178,17 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   };
 
   const resetDialog = () => {
-    setIsAnalyzing(false);
-    setFileName(null);
+    setIsProcessing(false);
+    setFileToUpload(null);
     setFormData({});
+    setStep('selection');
     stopCameraStream();
     setHasCameraPermission(null);
-    if (onOpenChange && !isEditMode) {
-      onOpenChange(false);
-    }
   };
   
-  const processDocument = async (file: File) => {
-      if (!user) {
-        toast({ variant: 'destructive', title: "Vous n'êtes pas connecté." });
-        return;
-      }
-      setIsAnalyzing(true);
-      setFileName(file.name);
+  const processDocumentForAnalysis = async (file: File) => {
+      setIsProcessing(true);
+      setFileToUpload(file);
       
       const fileReader = new FileReader();
       fileReader.readAsDataURL(file);
@@ -198,19 +196,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           const documentDataUri = fileReader.result as string;
           if (!documentDataUri) {
               toast({ variant: 'destructive', title: 'Erreur de lecture du fichier' });
-              setIsAnalyzing(false);
+              setIsProcessing(false);
               return;
           }
 
           try {
-              // Step 1: Upload file to Firebase Storage from client
-              const destination = `documents/${user.uid}/${Date.now()}-${file.name}`;
-              const storageRef = ref(storage, destination);
-              
-              await uploadBytes(storageRef, file, { contentType: file.type });
-              const fileUrl = await getDownloadURL(storageRef);
-
-              // Step 2: Run AI flows
               const settledResults = await Promise.allSettled([
                   detectDocumentType({ documentDataUri }),
                   extractInvoiceData({ invoiceDataUri: documentDataUri })
@@ -220,9 +210,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               if (settledResults[0].status === 'fulfilled') result = { ...result, ...settledResults[0].value };
               if (settledResults[1].status === 'fulfilled') result = { ...result, ...settledResults[1].value };
 
-              // Step 3: Add document to context with the public URL
               const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
-              const newDocument: Omit<Document, 'id' | 'createdAt'> = {
+              
+              setFormData({
                   name: formatDocumentName(result, file.name),
                   category: defaultCategory || aiCategory,
                   supplier: result.supplier,
@@ -231,43 +221,22 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                   billingStartDate: result.billingStartDate,
                   billingEndDate: result.billingEndDate,
                   consumptionPeriod: result.consumptionPeriod,
-                  fileUrl: fileUrl,
-              };
-              
-              addDocument({
-                  ...newDocument,
-                  id: `doc-${Date.now()}`,
-                  createdAt: new Date().toISOString(),
               });
-
-              toast({
-                  title: "Document enregistré !",
-                  description: `Le document "${newDocument.name}" a été ajouté avec succès.`,
-              });
+              setStep('form');
 
           } catch (error: any) {
-              console.error('Le traitement du document a échoué :', error);
-              let errorMessage = "Nous n'avons pas pu sauvegarder votre document. Veuillez réessayer.";
-              if (error.code === 'storage/unauthorized') {
-                errorMessage = "Action non autorisée. Vérifiez les règles de sécurité de Firebase Storage."
-              }
-              toast({
-                  variant: 'destructive',
-                  title: "Le traitement a échoué",
-                  description: errorMessage
-              });
+              console.error('L\'analyse du document a échoué :', error);
+              toast({ variant: 'destructive', title: "L'analyse a échoué", description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."});
           } finally {
-              setIsAnalyzing(false);
-              handleOpenChange(false);
+              setIsProcessing(false);
           }
       };
   }
 
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      await processDocument(selectedFile);
+      await processDocumentForAnalysis(selectedFile);
       event.target.value = ''; // Reset file input
     }
   };
@@ -284,7 +253,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               canvas.toBlob(async (blob) => {
                   if (blob) {
                       const capturedFile = new File([blob], `Capture-${new Date().toISOString()}.jpg`, { type: 'image/jpeg' });
-                      await processDocument(capturedFile);
+                      await processDocumentForAnalysis(capturedFile);
                   }
               }, 'image/jpeg');
           }
@@ -295,23 +264,78 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setFormData(prev => ({...prev, [field]: value}));
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsProcessing(true);
     if (isEditMode && documentToEdit) {
+      // Logic for just updating metadata
       updateDocument(documentToEdit.id, formData);
-      toast({
-        title: "Document modifié !",
-        description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`,
-      });
+      toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
+      setIsProcessing(false);
+      handleOpenChange(false);
+      return;
     }
-    handleOpenChange(false);
+
+    if (!fileToUpload) {
+        toast({ variant: 'destructive', title: "Aucun fichier à téléverser." });
+        setIsProcessing(false);
+        return;
+    }
+
+    try {
+        const authToken = await getAuthToken();
+        if (!authToken) {
+            throw new Error("Utilisateur non authentifié.");
+        }
+        
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', fileToUpload);
+
+        const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` },
+            body: uploadFormData,
+        });
+
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json().catch(() => ({error: 'Upload failed and could not parse error response.'}));
+            throw new Error(errorData.error || 'Upload failed');
+        }
+        const { fileUrl } = await uploadResponse.json();
+
+        const finalDocument: Document = {
+            id: `doc-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            fileUrl: fileUrl,
+            name: formData.name || 'Nouveau document',
+            category: formData.category || 'Autre',
+            supplier: formData.supplier,
+            amount: formData.amount,
+            dueDate: formData.dueDate,
+            billingStartDate: formData.billingStartDate,
+            billingEndDate: formData.billingEndDate,
+            consumptionPeriod: formData.consumptionPeriod,
+            summary: formData.summary,
+        };
+
+        addDocument(finalDocument);
+        toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
+        handleOpenChange(false);
+    } catch (error: any) {
+        console.error("Save error:", error);
+        toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: error.message });
+    } finally {
+        setIsProcessing(false);
+    }
   };
 
   const dialogTitle = isEditMode ? "Modifier le document" : "Ajouter un nouveau document";
   const dialogDescription = isEditMode 
     ? "Modifiez les informations de votre document ci-dessous." 
-    : defaultCategory === 'Maison' 
-      ? "Uploadez un document à archiver dans votre Espace Maison."
-      : "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous.";
+    : step === 'selection' 
+      ? (defaultCategory === 'Maison' 
+          ? "Uploadez un document à archiver dans votre Espace Maison."
+          : "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous.")
+      : "Veuillez vérifier les informations extraites par l'IA avant de sauvegarder.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -330,8 +354,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             {dialogDescription}
           </DialogDescription>
         </DialogHeader>
+
+        {isProcessing && (
+             <div className="flex flex-col items-center justify-center space-y-4 py-12">
+                <Loader2 className="h-16 w-16 animate-spin text-accent" />
+                <p className="font-semibold text-lg">Traitement en cours...</p>
+                <p className="text-sm text-muted-foreground">{step === 'form' ? 'Sauvegarde du document...' : 'Analyse du document...'}</p>
+             </div>
+        )}
         
-        {!isEditMode && !isAnalyzing && (
+        {!isProcessing && step === 'selection' && !isEditMode && (
             <Tabs defaultValue="file" className="w-full" onValueChange={handleTabChange}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="file">Fichier</TabsTrigger>
@@ -339,14 +371,14 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </TabsList>
               <TabsContent value="file">
                  <div className="py-8">
-                    <label htmlFor="file-upload" className={isAnalyzing ? 'cursor-not-allowed' : 'cursor-pointer'}>
+                    <label htmlFor="file-upload" className="cursor-pointer">
                       <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
                         <UploadCloud className="h-12 w-12 text-muted-foreground" />
                         <p className="font-semibold">Cliquez ou glissez-déposez</p>
                         <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 5MB)</p>
                       </div>
                     </label>
-                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" disabled={isAnalyzing} />
+                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" />
                   </div>
               </TabsContent>
               <TabsContent value="camera">
@@ -363,7 +395,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                       </AlertDescription>
                     </Alert>
                   )}
-                  <Button onClick={handleCapture} disabled={!hasCameraPermission || isAnalyzing} className="w-full">
+                  <Button onClick={handleCapture} disabled={!hasCameraPermission} className="w-full">
                     <Camera className="mr-2 h-4 w-4" />
                     Capturer
                   </Button>
@@ -372,24 +404,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             </Tabs>
         )}
 
-        {isAnalyzing && (
-          <div className="flex flex-col items-center justify-center space-y-4 py-12">
-            <Loader2 className="h-16 w-16 animate-spin text-accent" />
-            <p className="font-semibold text-lg">Analyse en cours...</p>
-            {fileName ? (
-                <p className="text-sm text-muted-foreground">{fileName}</p>
-            ) : (
-                <p className="text-sm text-muted-foreground italic">Chargement...</p>
-            )}
-            <Button variant="outline" onClick={() => setIsAnalyzing(false)}>
-                Annuler
-            </Button>
-          </div>
-        )}
-
-        {isEditMode && (
+        {!isProcessing && step === 'form' && (
           <>
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+              {fileToUpload && !isEditMode && (
+                <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload.name}</span>
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="doc-name">Nom du document</Label>
                 <Input id="doc-name" value={formData.name || ''} onChange={e => handleFormChange('name', e.target.value)} />
@@ -440,7 +464,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg">Enregistrer les modifications</Button>
+               {!isEditMode && <Button variant="outline" onClick={resetDialog}>Retour</Button>}
+              <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg">Enregistrer</Button>
             </DialogFooter>
           </>
         )}

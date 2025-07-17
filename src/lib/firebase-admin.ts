@@ -19,8 +19,8 @@ if (serviceAccountString) {
     }
   }
 } else {
-    console.error(
-      'CRITICAL: Firebase Admin SDK Service Account key is not found in environment variables (FIREBASE_SERVICE_ACCOUNT_KEY). Server-side Firebase features will not work.'
+    console.warn(
+      'Firebase Admin SDK Service Account key is not found in environment variables (FIREBASE_SERVICE_ACCOUNT_KEY). Server-side Firebase features will not work.'
     );
 }
 
