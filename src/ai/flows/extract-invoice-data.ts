@@ -2,9 +2,9 @@
 'use server';
 
 /**
- * @fileOverview A flow to extract invoice data from images or PDFs.
+ * @fileOverview A flow to extract invoice and receipt data from images or PDFs.
  *
- * - extractInvoiceData - A function that handles the invoice data extraction process.
+ * - extractInvoiceData - A function that handles the data extraction process.
  * - ExtractInvoiceDataInput - The input type for the extractInvoiceData function.
  * - ExtractInvoiceDataOutput - The return type for the extractInvoiceData function.
  */
@@ -16,19 +16,19 @@ const ExtractInvoiceDataInputSchema = z.object({
   invoiceDataUri: z
     .string()
     .describe(
-      "A data URI of the invoice image or PDF, that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A data URI of the invoice or receipt image/PDF, that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
 const ExtractInvoiceDataOutputSchema = z.object({
-  supplier: z.string().describe('Le nom du fournisseur. Doit être "STEG" pour l\'électricité, "SONEDE" pour l\'eau, ou le nom du fournisseur comme "Orange" pour les autres.'),
-  amount: z.string().describe('Le montant total à payer sur la facture.'),
-  dueDate: z.string().describe('La date d\'échéance de la facture au format AAAA-MM-JJ.'),
-  billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Pour la SONEDE, laissez vide et utilisez consumptionPeriod.'),
-  billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Pour la SONEDE, laissez vide et utilisez consumptionPeriod.'),
+  supplier: z.string().describe('Le nom du fournisseur ou de l\'entité. Ex: "STEG", "SONEDE", "Orange", "Banque Zitouna", "Kiosque Ali".'),
+  amount: z.string().describe('Le montant total payé ou à payer.'),
+  dueDate: z.string().describe('La date de la transaction, de l\'émission ou d\'échéance au format AAAA-MM-JJ.'),
+  billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
+  billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
-  reference: z.string().describe('Le numéro de référence de la facture.'),
+  reference: z.string().describe('Le numéro de référence de la facture ou de la transaction.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
@@ -40,21 +40,22 @@ const prompt = ai.definePrompt({
   name: 'extractInvoiceDataPrompt',
   input: {schema: ExtractInvoiceDataInputSchema},
   output: {schema: ExtractInvoiceDataOutputSchema},
-  prompt: `Vous êtes un expert dans l'extraction de données à partir de factures tunisiennes.
+  prompt: `Vous êtes un expert dans l'extraction de données à partir de factures et reçus tunisiens.
 
-  Veuillez extraire les informations suivantes de l'image de la facture fournie :
-  - Nom du fournisseur : Soyez précis. Pour l'électricité, ce doit être "STEG". Pour l'eau, ce doit être "SONEDE". Pour les télécommunications ou internet, ça peut être "Orange", "Ooredoo", "Topnet", etc.
-  - Montant : Le montant total à payer.
-  - Date d'échéance : La date limite de paiement.
-  - Date de début de facturation : Le début de la période de consommation.
-  - Date de fin de facturation : La fin de la période de consommation.
-  - Numéro de référence
+  Veuillez extraire les informations suivantes de l'image du document fournie :
+  - Nom du fournisseur ou de l'entité : Soyez précis. Pour l'électricité, c'est "STEG". Pour l'eau, "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna"). Pour un ticket de caisse, le nom du magasin.
+  - Montant : Le montant total.
+  - Date : La date principale du document (date de transaction, d'échéance, etc.).
+  - Numéro de référence : Le numéro de la facture, de la transaction ou du reçu.
+  - Période de facturation (si applicable) : Dates de début et de fin.
 
-  Détail important pour les factures SONEDE : La période de consommation est un trimestre indiqué en haut à gauche sous un format comme "03-04-05-2025". Pour les factures SONEDE UNIQUEMENT, extrayez cette chaîne de caractères exacte dans le champ "consumptionPeriod" et laissez les champs "billingStartDate" et "billingEndDate" vides.
+  Détails spécifiques :
+  1. Pour les factures SONEDE : La période de consommation est un trimestre (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans le champ "consumptionPeriod" et laissez "billingStartDate" et "billingEndDate" vides.
+  2. Pour les reçus et tickets de caisse : Les périodes de facturation ne sont généralement pas applicables. Laissez ces champs vides.
 
-  Retournez toutes les autres dates au format AAAA-MM-JJ.
+  Retournez toutes les dates au format AAAA-MM-JJ.
 
-  Voici la facture :
+  Voici le document :
   {{media url=invoiceDataUri}}
   `,
 });
