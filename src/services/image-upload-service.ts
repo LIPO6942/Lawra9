@@ -45,7 +45,13 @@ export async function uploadImage(file: File, userId: string, authToken: string)
   try {
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('lawra9') 
-      .upload(filePath, file);
+      .upload(filePath, file, {
+          // This is the key change. By setting upsert to false and not providing
+          // an owner, Supabase will default the owner to null, which is required
+          // for RLS policies that only check auth.uid() without a direct user mapping.
+          // This also prevents conflicts if a file with the same name exists.
+          upsert: false,
+      });
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
