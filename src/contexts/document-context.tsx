@@ -51,7 +51,8 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         try {
           const storedDocuments = localStorage.getItem(key);
           if (storedDocuments) {
-            setDocuments(JSON.parse(storedDocuments));
+            const parsedDocs = JSON.parse(storedDocuments);
+            setDocuments(parsedDocs.sort((a: Document, b: Document) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()));
           } else {
             setDocuments([]); 
           }
@@ -68,8 +69,6 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (key) {
         try {
           const docsToStore = documents.map(({ ...doc }) => {
-            // We don't store fileUrl for non-Maison docs to save space, but Maison docs need it.
-            // Let's just store everything for simplicity for now.
             return doc;
           });
           localStorage.setItem(key, JSON.stringify(docsToStore));
@@ -105,7 +104,6 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const fileRef = ref(storage, docToDelete.filePath);
         await deleteObject(fileRef);
       } catch (error: any) {
-        // If file not found, we can ignore, but log other errors
         if (error.code !== 'storage/object-not-found') {
           console.error("Error deleting file from Firebase Storage", error);
           toast({
