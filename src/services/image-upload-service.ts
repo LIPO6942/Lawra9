@@ -46,9 +46,6 @@ export async function uploadImage(file: File, userId: string, authToken: string)
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('lawra9') 
       .upload(filePath, file, {
-          // This is the key change. By setting upsert to false, we prevent Supabase
-          // from trying to update a file's ownership, which avoids the UUID error
-          // when the owner is a Firebase UID. The RLS policy handles the auth check.
           upsert: false,
       });
 
