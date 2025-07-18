@@ -31,9 +31,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const getAuthToken = async (): Promise<string | null> => {
-    if (!auth.currentUser) return null;
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        console.warn("getAuthToken called but no user is currently signed in.");
+        return null;
+    }
     try {
-      return await auth.currentUser.getIdToken();
+      return await currentUser.getIdToken(true); // Force refresh token
     } catch (error) {
       console.error('Error getting auth token:', error);
       return null;
