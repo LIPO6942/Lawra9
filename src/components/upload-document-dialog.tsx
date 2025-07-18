@@ -26,11 +26,6 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { useAuth } from '@/contexts/auth-context';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { app } from '@/lib/firebase';
-
-const storage = getStorage(app);
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -82,16 +77,25 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     return originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
 }
 
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
-  const [isProcessing, setIsProcessing] = useState(false); // Generic processing state
+  const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'selection' | 'form'>('selection');
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  
+  const [fileInfo, setFileInfo] = useState<{name: string, dataUrl: string} | null>(null);
 
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
-  const { user } = useAuth();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,6 +114,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
       setFormData(documentToEdit);
+      if(documentToEdit.fileUrl) {
+        setFileInfo({ name: documentToEdit.name, dataUrl: documentToEdit.fileUrl });
+      }
       setStep('form');
     }
   }, [isOpen, isEditMode, documentToEdit]);
@@ -183,7 +190,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   const resetDialog = () => {
     setIsProcessing(false);
-    setFileToUpload(null);
+    setFileInfo(null);
     setFormData({});
     setStep('selection');
     stopCameraStream();
@@ -192,50 +199,42 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   
   const processDocumentForAnalysis = async (file: File) => {
       setIsProcessing(true);
-      setFileToUpload(file);
       
-      const fileReader = new FileReader();
-      fileReader.readAsDataURL(file);
-      fileReader.onload = async () => {
-          const documentDataUri = fileReader.result as string;
-          if (!documentDataUri) {
-              toast({ variant: 'destructive', title: 'Erreur de lecture du fichier' });
-              setIsProcessing(false);
-              return;
-          }
+      try {
+          const documentDataUri = await fileToDataUrl(file);
+          setFileInfo({name: file.name, dataUrl: documentDataUri});
 
-          try {
-              const settledResults = await Promise.allSettled([
-                  detectDocumentType({ documentDataUri }),
-                  extractInvoiceData({ invoiceDataUri: documentDataUri })
-              ]);
+          const settledResults = await Promise.allSettled([
+              detectDocumentType({ documentDataUri }),
+              extractInvoiceData({ invoiceDataUri: documentDataUri })
+          ]);
 
-              let result: AnalysisResult = {};
-              if (settledResults[0].status === 'fulfilled') result = { ...result, ...settledResults[0].value };
-              if (settledResults[1].status === 'fulfilled') result = { ...result, ...settledResults[1].value };
+          let result: AnalysisResult = {};
+          if (settledResults[0].status === 'fulfilled') result = { ...result, ...settledResults[0].value };
+          if (settledResults[1].status === 'fulfilled') result = { ...result, ...settledResults[1].value };
 
-              const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
-              
-              setFormData({
-                  name: formatDocumentName(result, file.name),
-                  category: defaultCategory || aiCategory,
-                  supplier: result.supplier,
-                  amount: result.amount,
-                  dueDate: result.dueDate,
-                  billingStartDate: result.billingStartDate,
-                  billingEndDate: result.billingEndDate,
-                  consumptionPeriod: result.consumptionPeriod,
-              });
-              setStep('form');
+          const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
+          
+          setFormData({
+              name: formatDocumentName(result, file.name),
+              category: defaultCategory || aiCategory,
+              supplier: result.supplier,
+              amount: result.amount,
+              dueDate: result.dueDate,
+              billingStartDate: result.billingStartDate,
+              billingEndDate: result.billingEndDate,
+              consumptionPeriod: result.consumptionPeriod,
+          });
+          setStep('form');
 
-          } catch (error: any) {
-              console.error('L\'analyse du document a échoué :', error);
-              toast({ variant: 'destructive', title: "L'analyse a échoué", description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."});
-          } finally {
-              setIsProcessing(false);
-          }
-      };
-  }
+      } catch (error: any) {
+          console.error('L\'analyse du document a échoué :', error);
+          toast({ variant: 'destructive', title: "L'analyse a échoué", description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."});
+          resetDialog();
+      } finally {
+          setIsProcessing(false);
+      }
+  };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -270,59 +269,47 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   const handleSave = async () => {
     setIsProcessing(true);
-    if (isEditMode && documentToEdit) {
-      updateDocument(documentToEdit.id, formData);
-      toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
-      setIsProcessing(false);
-      handleOpenChange(false);
-      return;
-    }
-
-    if (!fileToUpload) {
-        toast({ variant: 'destructive', title: "Aucun fichier à téléverser." });
-        setIsProcessing(false);
-        return;
-    }
-
-    if (!user) {
-        toast({ variant: 'destructive', title: "Utilisateur non authentifié." });
-        setIsProcessing(false);
-        return;
-    }
+    
+    // We introduce a small delay to ensure the UI updates to "processing" state
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
-        const destination = `documents/${user.uid}/${Date.now()}-${fileToUpload.name.replace(/\s/g, '_')}`;
-        const storageRef = ref(storage, destination);
-
-        const uploadResult = await uploadBytes(storageRef, fileToUpload);
-        const fileUrl = await getDownloadURL(uploadResult.ref);
+        if (isEditMode && documentToEdit) {
+            const finalDocument = {
+                ...documentToEdit,
+                ...formData,
+                fileUrl: fileInfo?.dataUrl || documentToEdit.fileUrl,
+            };
+            updateDocument(documentToEdit.id, finalDocument);
+            toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
+        } else {
+            if (!fileInfo) {
+                throw new Error("Aucun fichier à sauvegarder.");
+            }
+            const finalDocument: Document = {
+                id: `doc-${Date.now()}`,
+                createdAt: new Date().toISOString(),
+                fileUrl: fileInfo.dataUrl, // Save Data URL
+                name: formData.name || 'Nouveau document',
+                category: formData.category || 'Autre',
+                supplier: formData.supplier,
+                amount: formData.amount,
+                dueDate: formData.dueDate,
+                billingStartDate: formData.billingStartDate,
+                billingEndDate: formData.billingEndDate,
+                consumptionPeriod: formData.consumptionPeriod,
+                summary: formData.summary,
+            };
+            addDocument(finalDocument);
+            toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
+        }
         
-        const finalDocument: Document = {
-            id: `doc-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            fileUrl: fileUrl,
-            name: formData.name || 'Nouveau document',
-            category: formData.category || 'Autre',
-            supplier: formData.supplier,
-            amount: formData.amount,
-            dueDate: formData.dueDate,
-            billingStartDate: formData.billingStartDate,
-            billingEndDate: formData.billingEndDate,
-            consumptionPeriod: formData.consumptionPeriod,
-            summary: formData.summary,
-        };
-
-        addDocument(finalDocument);
-        toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
-        
-        // This is the important part: ensure state update completes before closing.
-        setIsProcessing(false);
         handleOpenChange(false);
-
+        // No need to set isProcessing to false here, as the component will unmount
     } catch (error: any) {
         console.error("Save error:", error);
-        toast({ variant: 'destructive', title: "Erreur de téléversement", description: `Un problème est survenu : ${error.message}` });
-        setIsProcessing(false);
+        toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: `Un problème est survenu : ${error.message}` });
+        setIsProcessing(false); // Only set to false on error
     }
   };
 
@@ -405,10 +392,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         {!isProcessing && step === 'form' && (
           <>
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
-              {fileToUpload && !isEditMode && (
+              {fileInfo && !isEditMode && (
                 <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload.name}</span>
+                    <span className="text-sm text-muted-foreground flex-1 truncate">{fileInfo.name}</span>
                     <CheckCircle className="h-5 w-5 text-green-500" />
                 </div>
               )}

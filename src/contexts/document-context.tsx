@@ -24,19 +24,6 @@ interface DocumentContextType {
 
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
 
-// Function to strip file objects for safe serialization
-const stripFileObjects = (docs: Document[]): Document[] => {
-    return docs.map(doc => {
-        const newDoc: any = { ...doc };
-        // This function will remove any `file` property if it exists,
-        // making it safe for localStorage. We are not using `file` property anymore.
-        // This is just a safeguard.
-        delete newDoc.file; 
-        return newDoc;
-    });
-};
-
-
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const { userId } = useAuth();
@@ -53,13 +40,13 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (storedDocuments) {
             setDocuments(JSON.parse(storedDocuments));
           } else {
-            setDocuments([]); // Clear documents if user changes
+            setDocuments([]); 
           }
         } catch (error) {
           console.error("Failed to load documents from local storage", error);
         }
     } else {
-        setDocuments([]); // Clear documents if no user
+        setDocuments([]);
     }
   }, [userId, getLocalStorageKey]);
 
@@ -67,11 +54,10 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const key = getLocalStorageKey();
     if (key) {
         try {
-          localStorage.setItem(key, JSON.stringify(stripFileObjects(documents)));
+          localStorage.setItem(key, JSON.stringify(documents));
         } catch (error) {
           if (error instanceof DOMException && error.name === 'QuotaExceededError') {
              console.error("Quota de stockage local dépassé. Impossible de sauvegarder les documents.");
-             // Potentially clear some old data or notify user
           } else {
              console.error("Failed to save documents to local storage", error);
           }
