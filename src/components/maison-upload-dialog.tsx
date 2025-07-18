@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
-import { uploadImage } from '@/services/image-upload-service';
+import { createClient } from '@supabase/supabase-js';
 
 interface MaisonUploadDialogProps {
   open?: boolean;
@@ -37,6 +37,49 @@ const maisonCategories = [
   "Taxe municipale",
   "Autre document maison"
 ];
+
+async function uploadFileDirectlyToSupabase(file: File, userId: string, authToken: string): Promise<string> {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase URL or Anon Key is missing in environment variables.');
+    }
+    
+    // Create a new Supabase client for each server-side operation
+    // and authenticate with the user's Firebase JWT.
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    // Set the auth token for this client instance
+    supabase.auth.setSession({
+        access_token: authToken,
+        refresh_token: '' // Not needed for this operation
+    });
+    
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExtension}`;
+    const filePath = `${userId}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from('lawra9')
+        .upload(filePath, file);
+
+    if (uploadError) {
+        console.error('Supabase upload error:', uploadError);
+        throw new Error(`Supabase Error: ${uploadError.message}`);
+    }
+
+    const { data: publicUrlData } = supabase.storage
+        .from('lawra9')
+        .getPublicUrl(filePath);
+
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+        throw new Error('Could not get public URL for the uploaded file.');
+    }
+    
+    return publicUrlData.publicUrl;
+}
+
 
 export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }: MaisonUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
@@ -123,7 +166,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
         if (!authToken) {
             throw new Error("Impossible d'obtenir le jeton d'authentification.");
         }
-        const fileUrl = await uploadImage(fileToUpload, user.uid, authToken);
+        const fileUrl = await uploadFileDirectlyToSupabase(fileToUpload, user.uid, authToken);
         finalDocumentData = { ...finalDocumentData, fileUrl };
       }
 
