@@ -28,59 +28,8 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [documents, setDocuments] = useState<Document[]>([]);
   const { userId } = useAuth();
   
-  const getLocalStorageKey = useCallback(() => {
-    return userId ? `lawra9-documents-${userId}` : null;
-  }, [userId]);
-
-  useEffect(() => {
-    const key = getLocalStorageKey();
-    if (key) {
-        try {
-          const storedDocuments = localStorage.getItem(key);
-          if (storedDocuments) {
-            setDocuments(JSON.parse(storedDocuments));
-          } else {
-            setDocuments([]); // Clear documents if user changes
-          }
-        } catch (error) {
-          console.error("Failed to load documents from local storage", error);
-        }
-    } else {
-        setDocuments([]); // Clear documents if no user
-    }
-  }, [userId, getLocalStorageKey]);
-
-  useEffect(() => {
-    const key = getLocalStorageKey();
-    if (key) {
-        try {
-          // Explicitly create a new array with only the data that can be serialized
-          const serializableDocuments = documents.map(doc => ({
-            id: doc.id,
-            name: doc.name,
-            category: doc.category,
-            createdAt: doc.createdAt,
-            summary: doc.summary,
-            fileUrl: doc.fileUrl,
-            amount: doc.amount,
-            supplier: doc.supplier,
-            dueDate: doc.dueDate,
-            billingStartDate: doc.billingStartDate,
-            billingEndDate: doc.billingEndDate,
-            consumptionPeriod: doc.consumptionPeriod,
-          }));
-          localStorage.setItem(key, JSON.stringify(serializableDocuments));
-        } catch (error) {
-          if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-             console.error("Quota de stockage local dépassé. Impossible de sauvegarder les documents.");
-             // Potentially clear some old data or notify user
-          } else {
-             console.error("Failed to save documents to local storage", error);
-          }
-        }
-    }
-  }, [documents, userId, getLocalStorageKey]);
-
+  // NOTE: Local storage persistence is removed to fix the infinite saving bug.
+  // The state will be in-memory only.
 
   const addDocument = useCallback((doc: Document) => {
     setDocuments(prevDocs => [doc, ...prevDocs]);
