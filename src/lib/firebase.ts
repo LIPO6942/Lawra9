@@ -18,11 +18,12 @@ let app: FirebaseApp;
 let auth: Auth;
 let storage: FirebaseStorage;
 
+// This check is crucial to ensure Firebase is initialized correctly.
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-    console.error(
-    'Firebase config is missing or invalid. Make sure you have set up your .env file with all the required NEXT_PUBLIC_FIREBASE_* variables.'
+  console.error(
+    'Firebase config is missing. Ensure NEXT_PUBLIC_FIREBASE_* variables are in your .env file and the next.config.ts is correct.'
   );
-   // Provide dummy objects to prevent app from crashing if firebase fails to init
+  // Provide dummy objects to prevent app from crashing if firebase fails to init
   app = {} as FirebaseApp;
   auth = {} as Auth;
   storage = {} as FirebaseStorage;
