@@ -82,6 +82,18 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     return originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
 }
 
+const frenchCategories: Record<string, Document['category']> = {
+  "STEG": "STEG",
+  "SONEDE": "SONEDE",
+  "Reçu Bancaire": "Reçu Bancaire",
+  "Maison": "Maison",
+  "Internet": "Internet",
+  "Assurance": "Assurance",
+  "Contrat": "Contrat",
+  "Autre": "Autre",
+};
+
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -302,7 +314,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     let finalDocumentData: Partial<Document> = { ...formData };
 
     try {
-      if (originalFile) {
+      if (originalFile && !isEditMode) { // Only upload if it's a new file
         setProcessingMessage('Téléversement du fichier...');
         const filePath = `documents/${user.uid}/${Date.now()}-${originalFile.name}`;
         const fileRef = ref(storage, filePath);
