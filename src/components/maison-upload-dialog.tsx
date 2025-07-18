@@ -39,33 +39,36 @@ const maisonCategories = [
   "Autre document maison"
 ];
 
-async function uploadFileDirectlyToSupabase(file: File, userId: string, authToken: string): Promise<string> {
+async function uploadFileDirectlyToSupabase(file: File, userId: string): Promise<string> {
     const fileExtension = file.name.split('.').pop();
     const fileName = `${userId}/${Date.now()}.${fileExtension}`;
+    const currentUser = auth.currentUser;
 
+    if (!currentUser) {
+        throw new Error("Utilisateur non authentifié.");
+    }
+    
     try {
-        const { error: sessionError } = await supabase.auth.setSession({
-            access_token: authToken,
-            refresh_token: authToken,
-        });
+        const authToken = await currentUser.getIdToken(true);
 
-        if (sessionError) {
-             console.error('Supabase setSession error:', sessionError);
-             throw new Error(`Supabase Auth Error: ${sessionError.message}`);
-        }
-        
         const { error: uploadError } = await supabase.storage
             .from('lawra9')
             .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: false,
+                // @ts-ignore
+                fetchOptions: {
+                    headers: {
+                      authorization: `Bearer ${authToken}`,
+                    },
+                },
             });
 
         if (uploadError) {
-            console.error('Supabase upload error:', uploadError);
-            throw new Error(`Supabase Error: ${uploadError.message}`);
+             console.error('Supabase upload error:', uploadError);
+             throw new Error(`Supabase Error: ${uploadError.message}`);
         }
-
+        
         const { data: publicUrlData } = supabase.storage
             .from('lawra9')
             .getPublicUrl(fileName);
@@ -167,11 +170,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     try {
       if (fileToUpload) {
-        const authToken = await currentUser.getIdToken(true); // Force refresh
-        if (!authToken) {
-            throw new Error('Could not retrieve a valid authentication token.');
-        }
-        const fileUrl = await uploadFileDirectlyToSupabase(fileToUpload, currentUser.uid, authToken);
+        const fileUrl = await uploadFileDirectlyToSupabase(fileToUpload, currentUser.uid);
         finalDocumentData = { ...finalDocumentData, fileUrl };
       }
 
@@ -286,3 +285,5 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
     </Dialog>
   );
 }
+
+    
