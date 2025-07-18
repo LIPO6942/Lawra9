@@ -26,10 +26,6 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useAuth } from '@/contexts/auth-context';
-
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -96,6 +92,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [step, setStep] = useState<'selection' | 'form'>('selection');
   
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [fileDataUrl, setFileDataUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
@@ -103,8 +100,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { userId } = useAuth();
-
 
   const isEditMode = !!documentToEdit;
 
@@ -120,6 +115,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
       setFormData(documentToEdit);
+      setFileDataUrl(documentToEdit.fileUrl);
       setStep('form');
     }
   }, [isOpen, isEditMode, documentToEdit]);
@@ -194,6 +190,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const resetDialog = () => {
     setIsProcessing(false);
     setFileToUpload(null);
+    setFileDataUrl(null);
     setFormData({});
     setStep('selection');
     stopCameraStream();
@@ -206,6 +203,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       
       try {
           const documentDataUri = await fileToDataUrl(file);
+          setFileDataUrl(documentDataUri);
           
           const settledResults = await Promise.allSettled([
               detectDocumentType({ documentDataUri }),
@@ -275,8 +273,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
     try {
         if (isEditMode && documentToEdit) {
-            // NOTE: File replacement is not handled in edit mode for simplicity.
-            // Only metadata can be updated.
             const finalDocument = {
                 ...documentToEdit,
                 ...formData,
@@ -284,19 +280,14 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             updateDocument(documentToEdit.id, finalDocument);
             toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
         } else {
-            if (!fileToUpload || !userId) {
-                throw new Error("Aucun fichier à sauvegarder ou utilisateur non identifié.");
+            if (!fileDataUrl) {
+                throw new Error("Aucun fichier à sauvegarder.");
             }
             
-            // Upload file to Firebase Storage
-            const storageRef = ref(storage, `documents/${userId}/${Date.now()}-${fileToUpload.name}`);
-            const snapshot = await uploadBytes(storageRef, fileToUpload);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-
             const finalDocument: Document = {
                 id: `doc-${Date.now()}`,
                 createdAt: new Date().toISOString(),
-                fileUrl: downloadURL,
+                fileUrl: fileDataUrl, // Save the Data URL
                 name: formData.name || 'Nouveau document',
                 category: formData.category || 'Autre',
                 supplier: formData.supplier,

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertTriangle, FileQuestion } from 'lucide-react';
@@ -11,44 +11,60 @@ function DocumentViewer() {
     const searchParams = useSearchParams();
     const { getDocumentById } = useDocuments();
     const docId = searchParams.get('id');
+    const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    if (!docId) {
-        return <ErrorDisplay message="ID de document manquant." />;
+    useEffect(() => {
+        if (!docId) {
+            setError("ID de document manquant.");
+            return;
+        }
+
+        const document = getDocumentById(docId);
+
+        if (!document) {
+            setError("Document non trouvé. Il a peut-être été supprimé.");
+            return;
+        }
+
+        if (!document.fileUrl) {
+            setError("Ce document n'a pas de fichier associé.");
+            return;
+        }
+        
+        setDocumentUrl(document.fileUrl);
+
+    }, [docId, getDocumentById]);
+    
+    if (error) {
+        return <ErrorDisplay message={error} />;
     }
 
-    const document = getDocumentById(docId);
-
-    if (!document) {
-        return <ErrorDisplay message="Document non trouvé. Il a peut-être été supprimé." />;
+    if (!documentUrl) {
+        return <LoadingDisplay />;
     }
-
-    const { fileUrl, name } = document;
-
-    if (!fileUrl) {
-         return <ErrorDisplay message="Ce document n'a pas de fichier associé." />;
-    }
-
+    
     const getMimeType = (url: string) => {
         const match = url.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/);
         return match ? match[1] : null;
     }
 
-    const mimeType = getMimeType(fileUrl);
+    const mimeType = getMimeType(documentUrl);
     const isPdf = mimeType === 'application/pdf';
     const isImage = mimeType?.startsWith('image/');
 
     if (isPdf || isImage) {
         return (
             <iframe
-                src={fileUrl}
+                src={documentUrl}
                 className="w-full h-full border-0"
-                title={name || 'Visionneuse de document'}
+                title={'Visionneuse de document'}
             />
         );
     }
     
     return (
-         <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg">
+         <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-full">
             <FileQuestion className="h-12 w-12 text-destructive" />
             <h2 className="mt-4 text-xl font-semibold">Format de fichier non supporté</h2>
             <p className="mt-2 text-muted-foreground">La prévisualisation n'est pas disponible pour ce type de fichier.</p>
@@ -73,7 +89,7 @@ function ErrorDisplay({ message }: { message: string }) {
 
 function LoadingDisplay() {
      return (
-        <div className="flex flex-col items-center justify-center text-center p-8">
+        <div className="flex flex-col items-center justify-center text-center p-8 h-full">
             <Loader2 className="h-12 w-12 animate-spin text-accent" />
             <p className="mt-4 text-muted-foreground">Chargement du document...</p>
         </div>
