@@ -40,8 +40,6 @@ const maisonCategories = [
 ];
 
 async function uploadFileDirectlyToSupabase(file: File, userId: string): Promise<string> {
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExtension}`;
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
@@ -50,18 +48,25 @@ async function uploadFileDirectlyToSupabase(file: File, userId: string): Promise
     
     try {
         const authToken = await currentUser.getIdToken(true);
-
+        
+        const { error: sessionError } = await supabase.auth.setSession({
+            access_token: authToken,
+            refresh_token: 'dummy' // refresh token is not used but required by type
+        });
+        
+        if (sessionError) {
+             console.error('Supabase setSession error:', sessionError);
+             throw new Error(`Supabase Auth Error: ${sessionError.message}`);
+        }
+        
+        const fileExtension = file.name.split('.').pop();
+        const fileName = `${userId}/${Date.now()}.${fileExtension}`;
+        
         const { error: uploadError } = await supabase.storage
             .from('lawra9')
             .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: false,
-                // @ts-ignore
-                fetchOptions: {
-                    headers: {
-                      authorization: `Bearer ${authToken}`,
-                    },
-                },
             });
 
         if (uploadError) {
@@ -190,10 +195,16 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
         
       handleOpenChange(false);
 
-    } catch (error: any) {
-      console.error("Save error:", error);
-      toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: `Un problème est survenu : ${error.message}` });
-    } finally {
+    } catch (error: any)
+      {
+          console.error("Save error:", error);
+          toast({
+              variant: 'destructive',
+              title: "Erreur de téléversement",
+              description: error.message || "Un problème est survenu. Veuillez réessayer."
+          });
+      }
+     finally {
       setIsProcessing(false);
     }
   };
@@ -285,5 +296,3 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
     </Dialog>
   );
 }
-
-    
