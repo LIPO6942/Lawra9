@@ -43,6 +43,8 @@ const frenchCategories: { [key: string]: Document['category'] } = {
     'Reçu Bancaire': 'Reçu Bancaire',
     'Maison': 'Maison',
     'Internet': 'Internet',
+    'Assurance': 'Assurance',
+    'Contrat': 'Contrat',
     'Autre': 'Autre',
 };
 
@@ -67,7 +69,7 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
 
     if (docType === 'Reçu Bancaire' && result.amount) {
          try {
-            const dateStr = result.dueDate || '';
+            const dateStr = result.issueDate || result.dueDate || '';
             const date = parseISO(dateStr);
             const formattedDate = isValid(date) ? ` du ${format(date, 'dd/MM/yyyy', { locale: fr })}` : '';
             return `Reçu Bancaire${formattedDate} - ${result.amount} TND`;
@@ -223,9 +225,13 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               supplier: result.supplier,
               amount: result.amount,
               dueDate: result.dueDate,
+              issueDate: result.issueDate,
+              invoiceNumber: result.invoiceNumber,
               billingStartDate: result.billingStartDate,
               billingEndDate: result.billingEndDate,
               consumptionPeriod: result.consumptionPeriod,
+              taxAmount: result.taxAmount,
+              totalExclTax: result.totalExclTax,
           });
           setStep('form');
 
@@ -290,17 +296,20 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
       } else {
         setProcessingMessage('Finalisation...');
-        const finalDocument: Omit<Document, 'id'> = {
-            createdAt: new Date().toISOString(),
+        const finalDocument: Omit<Document, 'id' | 'createdAt'> = {
             name: formData.name || 'Nouveau document',
             category: formData.category || 'Autre',
             supplier: formData.supplier,
             amount: formData.amount,
             dueDate: formData.dueDate,
+            issueDate: formData.issueDate,
+            invoiceNumber: formData.invoiceNumber,
             billingStartDate: formData.billingStartDate,
             billingEndDate: formData.billingEndDate,
             consumptionPeriod: formData.consumptionPeriod,
             summary: formData.summary,
+            taxAmount: formData.taxAmount,
+            totalExclTax: formData.totalExclTax,
         };
         await addDocument(finalDocument);
         toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
@@ -419,36 +428,48 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                            <SelectItem value="Reçu Bancaire">Reçu Bancaire</SelectItem>
                            <SelectItem value="Maison">Maison</SelectItem>
                            <SelectItem value="Internet">Internet</SelectItem>
+                           <SelectItem value="Assurance">Assurance</SelectItem>
+                           <SelectItem value="Contrat">Contrat</SelectItem>
                            <SelectItem value="Autre">Autre</SelectItem>
                       </SelectContent>
                   </Select>
               </div>
-              <div className="space-y-2">
-                  <Label htmlFor="doc-supplier">Fournisseur</Label>
-                  <Input id="doc-supplier" value={formData.supplier || ''} onChange={e => handleFormChange('supplier', e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="doc-supplier">Fournisseur</Label>
+                    <Input id="doc-supplier" value={formData.supplier || ''} onChange={e => handleFormChange('supplier', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="doc-amount">Montant (TND)</Label>
+                    <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                  <Label htmlFor="doc-issue-date">Date d'émission</Label>
+                  <Input id="doc-issue-date" type="text" placeholder="AAAA-MM-JJ" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
+                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="doc-due-date">Date d'échéance</Label>
+                    <Input id="doc-due-date" type="text" placeholder="AAAA-MM-JJ" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="doc-total-excl-tax">Montant HT</Label>
+                    <Input id="doc-total-excl-tax" type="text" value={formData.totalExclTax || ''} onChange={e => handleFormChange('totalExclTax', e.target.value)} />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="doc-tax-amount">Montant TVA</Label>
+                    <Input id="doc-tax-amount" type="text" value={formData.taxAmount || ''} onChange={e => handleFormChange('taxAmount', e.target.value)} />
+                </div>
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="doc-amount">Montant (TND)</Label>
-                  <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} />
+                  <Label htmlFor="doc-invoice-number">Numéro de Facture/Référence</Label>
+                  <Input id="doc-invoice-number" value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="doc-due-date">Date d'échéance (AAAA-MM-JJ)</Label>
-                  <Input id="doc-due-date" type="text" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
-              </div>
-               <div className="space-y-2">
-                  <Label htmlFor="doc-billing-start-date">Date de début de facturation (AAAA-MM-JJ)</Label>
-                  <Input id="doc-billing-start-date" type="text" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
-              </div>
-               <div className="space-y-2">
-                  <Label htmlFor="doc-billing-end-date">Date de fin de facturation (AAAA-MM-JJ)</Label>
-                  <Input id="doc-billing-end-date" type="text" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
-              </div>
-               <div className="space-y-2">
-                  <Label htmlFor="doc-consumption-period">Période de consommation (SONEDE)</Label>
-                  <Input id="doc-consumption-period" type="text" value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="doc-summary">Résumé</Label>
+                  <Label htmlFor="doc-summary">Résumé / Notes</Label>
                   <Textarea id="doc-summary" value={formData.summary || ''} onChange={e => handleFormChange('summary', e.target.value)} />
               </div>
             </div>

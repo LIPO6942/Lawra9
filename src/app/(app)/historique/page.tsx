@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDocuments } from '@/contexts/document-context';
-import { History, FileText, Droplets, Zap, Landmark, Wifi } from 'lucide-react';
+import { History, FileText, Droplets, Zap, Landmark, Wifi, Shield, Home } from 'lucide-react';
 import { Document } from '@/lib/types';
 import { getYear, getMonth, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -16,13 +16,14 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
     case 'SONEDE': return <Droplets className="h-5 w-5 text-blue-500" />;
     case 'Reçu Bancaire': return <Landmark className="h-5 w-5 text-indigo-500" />;
     case 'Internet': return <Wifi className="h-5 w-5 text-purple-500" />;
-    case 'Maison': return <FileText className="h-5 w-5 text-green-500" />;
+    case 'Maison': return <Home className="h-5 w-5 text-green-500" />;
+    case 'Assurance': return <Shield className="h-5 w-5 text-red-500" />;
     default: return <FileText className="h-5 w-5 text-gray-500" />;
   }
 };
 
 const getDocumentDate = (doc: Document): Date | null => {
-    const datePriority = [doc.billingEndDate, doc.dueDate, doc.createdAt];
+    const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
     for (const dateStr of datePriority) {
         if (dateStr) {
             const date = parseISO(dateStr);
@@ -65,11 +66,13 @@ export default function HistoryPage() {
         const amount = parseFloat(doc.amount.replace(',', '.'));
         if (isNaN(amount)) return acc;
         
-        if (!acc[doc.category]) {
-            acc[doc.category] = { total: 0, count: 0 };
+        const categoryKey = doc.category || 'Autre';
+
+        if (!acc[categoryKey]) {
+            acc[categoryKey] = { total: 0, count: 0 };
         }
-        acc[doc.category].total += amount;
-        acc[doc.category].count += 1;
+        acc[categoryKey].total += amount;
+        acc[categoryKey].count += 1;
         
         return acc;
     }, {} as Record<string, { total: number; count: number }>);

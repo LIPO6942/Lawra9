@@ -25,7 +25,7 @@ interface DocumentContextType {
   documents: Document[];
   alerts: Alert[];
   monthlyExpenses: MonthlyExpense[];
-  addDocument: (doc: Omit<Document, 'id'>) => Promise<void>;
+  addDocument: (doc: Omit<Document, 'id' | 'createdAt'>) => Promise<void>;
   updateDocument: (id: string, data: Partial<Document>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   markAsPaid: (id: string) => void;
@@ -80,8 +80,8 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [documents, user, getLocalStorageKey, toast]);
 
 
-  const addDocument = useCallback(async (doc: Omit<Document, 'id'>) => {
-    const newDoc = { ...doc, id: `doc-${Date.now()}` };
+  const addDocument = useCallback(async (doc: Omit<Document, 'id' | 'createdAt'>) => {
+    const newDoc = { ...doc, id: `doc-${Date.now()}`, createdAt: new Date().toISOString() };
     setDocuments(prevDocs => [newDoc, ...prevDocs]);
   }, []);
 
@@ -134,7 +134,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!doc.amount) return;
 
       let expenseDate: Date | null = null;
-      const datePriority = [doc.billingEndDate, doc.dueDate, doc.createdAt];
+      const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
       for (const dateStr of datePriority) {
           if(dateStr) {
               const date = parseISO(dateStr);
@@ -169,7 +169,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
     const result: MonthlyExpense[] = monthOrder.slice(0, new Date().getMonth() + 1).map(monthName => {
       const monthData: MonthlyExpense = { month: `${monthName}.` };
-      const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Autre'];
+      const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Maison', 'Assurance', 'Contrat', 'Autre'];
       
       categories.forEach(cat => {
         monthData[cat] = expensesByMonth[monthName]?.[cat] || 0;
