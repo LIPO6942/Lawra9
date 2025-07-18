@@ -119,7 +119,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     try {
       if (fileToUpload) {
-        const fileUrl = await uploadImage(fileToUpload);
+        const fileUrl = await uploadImage(fileToUpload, user.uid);
         finalDocumentData = { ...finalDocumentData, fileUrl };
       }
 

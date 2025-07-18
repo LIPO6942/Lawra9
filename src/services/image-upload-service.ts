@@ -1,52 +1,49 @@
 
 'use server';
 
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/auth-context";
+
 /**
- * Uploads an image to the PostImage service and returns the public URL.
- * This is a free alternative to Firebase Storage that doesn't require a credit card.
+ * Uploads an image to Supabase Storage and returns the public URL.
  * @param file The image file to upload.
+ * @param userId The ID of the user uploading the file, to store it in a user-specific folder.
  * @returns A promise that resolves to the public URL of the uploaded image.
  */
-export async function uploadImage(file: File): Promise<string> {
-  const apiUrl = 'https://api.postimages.org/1/upload';
-  const apiKey = '0e0b3c6e46594d2e8508e82a6f2b1860'; // This is a public key for guest uploads
+export async function uploadImage(file: File, userId: string): Promise<string> {
+  if (!userId) {
+      throw new Error('User is not authenticated. Cannot upload file.');
+  }
 
-  const formData = new FormData();
-  formData.append('image', file);
-  formData.append('key', apiKey);
+  const fileExtension = file.name.split('.').pop();
+  const fileName = `${Date.now()}.${fileExtension}`;
+  const filePath = `${userId}/${fileName}`;
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        // PostImage API documentation suggests this header for JSON responses.
-        'Accept': 'application/json',
-      },
-    });
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('documents') // This is the bucket name
+      .upload(filePath, file);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('PostImage API Error Response Text:', errorText);
-      throw new Error(`Image upload failed with status: ${response.status} - ${response.statusText}`);
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      throw uploadError;
     }
 
-    const result = await response.json();
+    const { data: publicUrlData } = supabase.storage
+      .from('documents')
+      .getPublicUrl(filePath);
+
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+        throw new Error('Could not get public URL for the uploaded file.');
+    }
     
-    if (result.status !== 'success' || !result.data?.url) {
-      console.error('PostImage API returned an unsuccessful status or invalid data:', result);
-      throw new Error('Image upload API returned an error or malformed data.');
-    }
-
-    // PostImage provides multiple URLs, 'url' is the direct link to the image.
-    return result.data.url;
+    return publicUrlData.publicUrl;
 
   } catch (error) {
-    console.error('Error during the fetch operation to PostImage:', error);
-    // Re-throw the original error if it's specific, otherwise throw the generic one.
-    if (error instanceof Error && error.message.startsWith('Image upload failed')) {
-        throw error;
+    console.error('Error during the upload operation to Supabase:', error);
+    if (error instanceof Error) {
+        throw new Error(`Could not upload the image: ${error.message}`);
     }
-    throw new Error('Could not upload the image. Please try again.');
+    throw new Error('An unknown error occurred during image upload.');
   }
 }
