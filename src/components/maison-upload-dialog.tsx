@@ -41,13 +41,12 @@ const maisonCategories = [
 
 async function uploadFileDirectlyToSupabase(file: File, userId: string, authToken: string): Promise<string> {
     const fileExtension = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExtension}`;
-    const filePath = `${userId}/${fileName}`;
+    const fileName = `${userId}/${Date.now()}.${fileExtension}`;
 
     try {
         const { error: sessionError } = await supabase.auth.setSession({
             access_token: authToken,
-            refresh_token: authToken, // Using the same token for simplicity as we are not managing long-lived sessions here
+            refresh_token: authToken,
         });
 
         if (sessionError) {
@@ -57,7 +56,7 @@ async function uploadFileDirectlyToSupabase(file: File, userId: string, authToke
         
         const { error: uploadError } = await supabase.storage
             .from('lawra9')
-            .upload(filePath, file, {
+            .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: false,
             });
@@ -69,7 +68,7 @@ async function uploadFileDirectlyToSupabase(file: File, userId: string, authToke
 
         const { data: publicUrlData } = supabase.storage
             .from('lawra9')
-            .getPublicUrl(filePath);
+            .getPublicUrl(fileName);
 
         if (!publicUrlData || !publicUrlData.publicUrl) {
             throw new Error('Could not get public URL for the uploaded file.');
@@ -93,7 +92,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   
   const [formData, setFormData] = useState<Partial<Document>>({});
-  const { user, getAuthToken } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
   
@@ -168,7 +167,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     try {
       if (fileToUpload) {
-        const authToken = await getAuthToken();
+        const authToken = await user.getIdToken();
         if (!authToken) {
             throw new Error('Could not retrieve authentication token.');
         }
