@@ -43,26 +43,26 @@ async function uploadFileDirectlyToSupabase(file: File, userId: string, authToke
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase URL or Anon Key is missing in environment variables.');
+        throw new Error('Supabase URL ou Anon Key est manquant dans les variables d\'environnement.');
     }
     
-    // Create a new Supabase client for each server-side operation
-    // and authenticate with the user's Firebase JWT.
+    // Create an anonymous Supabase client.
+    // The authentication is handled by passing the Firebase JWT in the Authorization header.
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Set the auth token for this client instance
-    supabase.auth.setSession({
-        access_token: authToken,
-        refresh_token: '' // Not needed for this operation
-    });
-    
     const fileExtension = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExtension}`;
     const filePath = `${userId}/${fileName}`;
 
+    // Upload the file with the authorization header.
     const { error: uploadError } = await supabase.storage
         .from('lawra9')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+            // The key change is here: passing the authorization token.
+            headers: {
+                Authorization: `Bearer ${authToken}`,
+            },
+        });
 
     if (uploadError) {
         console.error('Supabase upload error:', uploadError);
@@ -74,7 +74,7 @@ async function uploadFileDirectlyToSupabase(file: File, userId: string, authToke
         .getPublicUrl(filePath);
 
     if (!publicUrlData || !publicUrlData.publicUrl) {
-        throw new Error('Could not get public URL for the uploaded file.');
+        throw new Error('Impossible d\'obtenir l\'URL publique pour le fichier téléversé.');
     }
     
     return publicUrlData.publicUrl;
