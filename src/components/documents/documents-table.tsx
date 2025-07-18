@@ -120,14 +120,12 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
 
     const handleView = (doc: Document) => {
         try {
-            // Use session storage to pass the data URL, as it can be too long for a URL parameter.
-            // It will be cleared when the session ends.
             sessionStorage.setItem('documentToView', doc.fileUrl);
             sessionStorage.setItem('documentNameToView', doc.name);
             window.open('/view-document', '_blank');
         } catch (error) {
             if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-                alert("Le fichier est trop volumineux pour être prévisualisé. Essayez un fichier plus petit.");
+                alert("Le fichier est trop volumineux pour être prévisualisé via le stockage de session. Ce problème ne devrait pas survenir avec le stockage local.");
             } else {
                 alert("Impossible d'afficher le document.");
             }
