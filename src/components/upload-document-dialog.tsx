@@ -219,11 +219,12 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const processDocumentForAnalysis = async (file: File) => {
       setIsProcessing(true);
       setOriginalFile(file);
-      setAnalyzedFileName(file.name);
+      const fileName = file.name;
+      setAnalyzedFileName(fileName);
       
       if (storageOnly) {
           setFormData({
-              name: file.name.split('.').slice(0, -1).join('.') || file.name,
+              name: fileName.split('.').slice(0, -1).join('.') || fileName,
               category: 'Maison',
           });
           setIsProcessing(false);
@@ -248,7 +249,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
           
           setFormData({
-              name: formatDocumentName(result, file.name),
+              name: formatDocumentName(result, fileName),
               category: defaultCategory || aiCategory,
               supplier: result.supplier,
               amount: result.amount,
