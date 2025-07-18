@@ -95,7 +95,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [processingMessage, setProcessingMessage] = useState('');
   const [step, setStep] = useState<'selection' | 'form'>('selection');
   
-  const { userId } = useAuth();
+  const { user } = useAuth();
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<Partial<Document>>({});
@@ -273,55 +273,62 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   }
 
   const handleSave = async () => {
+    if (!user) {
+      toast({ variant: 'destructive', title: "Utilisateur non connecté", description: "Veuillez vous connecter pour sauvegarder des documents." });
+      return;
+    }
+    
     setIsProcessing(true);
 
     try {
-        if (isEditMode && documentToEdit) {
-            setProcessingMessage('Mise à jour du document...');
-            const finalDocument = {
-                ...documentToEdit,
-                ...formData,
-            };
-            updateDocument(documentToEdit.id, finalDocument);
-            toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
-        } else {
-            if (!fileToUpload || !userId) {
-                throw new Error("Fichier ou utilisateur manquant.");
-            }
-            setProcessingMessage('Téléversement du fichier...');
-            const filePath = `${userId}/${Date.now()}-${fileToUpload.name}`;
-            const storageRef = ref(storage, filePath);
-            await uploadBytes(storageRef, fileToUpload);
-            
-            setProcessingMessage('Finalisation...');
-            const fileUrl = await getDownloadURL(storageRef);
-            
-            const finalDocument: Document = {
-                id: `doc-${Date.now()}`,
-                createdAt: new Date().toISOString(),
-                filePath: filePath, // Keep track of the path for deletion
-                fileUrl: fileUrl,
-                name: formData.name || 'Nouveau document',
-                category: formData.category || 'Autre',
-                supplier: formData.supplier,
-                amount: formData.amount,
-                dueDate: formData.dueDate,
-                billingStartDate: formData.billingStartDate,
-                billingEndDate: formData.billingEndDate,
-                consumptionPeriod: formData.consumptionPeriod,
-                summary: formData.summary,
-            };
-            addDocument(finalDocument);
-            toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
+      if (isEditMode && documentToEdit) {
+        setProcessingMessage('Mise à jour du document...');
+        // Note: File cannot be changed in edit mode in this implementation
+        const finalDocumentData = {
+          ...documentToEdit,
+          ...formData,
+        };
+        await updateDocument(documentToEdit.id, finalDocumentData);
+        toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
+
+      } else {
+        if (!fileToUpload) {
+          throw new Error("Aucun fichier à téléverser.");
         }
+        setProcessingMessage('Téléversement du fichier...');
+        const filePath = `${user.uid}/${Date.now()}-${fileToUpload.name}`;
+        const storageRef = ref(storage, filePath);
+        await uploadBytes(storageRef, fileToUpload);
         
-        handleOpenChange(false);
+        setProcessingMessage('Finalisation...');
+        const fileUrl = await getDownloadURL(storageRef);
+        
+        const finalDocument: Omit<Document, 'id'> = {
+            createdAt: new Date().toISOString(),
+            filePath: filePath,
+            fileUrl: fileUrl,
+            name: formData.name || 'Nouveau document',
+            category: formData.category || 'Autre',
+            supplier: formData.supplier,
+            amount: formData.amount,
+            dueDate: formData.dueDate,
+            billingStartDate: formData.billingStartDate,
+            billingEndDate: formData.billingEndDate,
+            consumptionPeriod: formData.consumptionPeriod,
+            summary: formData.summary,
+        };
+        await addDocument(finalDocument);
+        toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
+      }
+        
+      handleOpenChange(false);
+
     } catch (error: any) {
-        console.error("Save error:", error);
-        toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: `Un problème est survenu : ${error.message}` });
+      console.error("Save error:", error);
+      toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: `Un problème est survenu : ${error.message}` });
     } finally {
-        setIsProcessing(false);
-        setProcessingMessage('');
+      setIsProcessing(false);
+      setProcessingMessage('');
     }
   };
 
@@ -470,5 +477,3 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     </Dialog>
   );
 }
-
-    

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import { Document, Alert } from '@/lib/types';
+import { Document } from '@/lib/types';
 import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
@@ -19,8 +19,8 @@ interface DocumentContextType {
   documents: Document[];
   alerts: Alert[];
   monthlyExpenses: MonthlyExpense[];
-  addDocument: (doc: Document) => void;
-  updateDocument: (id: string, data: Partial<Document>) => void;
+  addDocument: (doc: Omit<Document, 'id'>) => Promise<void>;
+  updateDocument: (id: string, data: Partial<Document>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   markAsPaid: (id: string) => void;
   getDocumentById: (id: string) => Document | undefined;
@@ -57,10 +57,13 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const key = getLocalStorageKey();
-    if (key) {
+    if (key && documents.length > 0) { // Only save if there are documents
         try {
-          // This now only stores metadata and URLs, not file content
-          localStorage.setItem(key, JSON.stringify(documents));
+          const docsToStore = documents.map(({ ...doc }) => {
+            // Ensure no complex objects are stored
+            return doc;
+          });
+          localStorage.setItem(key, JSON.stringify(docsToStore));
         } catch (error) {
           if (error instanceof DOMException && error.name === 'QuotaExceededError') {
              console.error("Local storage quota exceeded. Cannot save documents.");
@@ -77,11 +80,12 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [documents, userId, getLocalStorageKey, toast]);
 
 
-  const addDocument = useCallback((doc: Document) => {
-    setDocuments(prevDocs => [doc, ...prevDocs]);
+  const addDocument = useCallback(async (doc: Omit<Document, 'id'>) => {
+    const newDoc = { ...doc, id: `doc-${Date.now()}` };
+    setDocuments(prevDocs => [newDoc, ...prevDocs]);
   }, []);
 
-  const updateDocument = useCallback((id: string, data: Partial<Document>) => {
+  const updateDocument = useCallback(async (id: string, data: Partial<Document>) => {
     setDocuments(prevDocs =>
       prevDocs.map(doc => (doc.id === id ? { ...doc, ...data } : doc))
     );
@@ -91,13 +95,11 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const docToDelete = documents.find(doc => doc.id === id);
     if (!docToDelete) return;
 
-    // Delete from Firebase Storage if filePath exists
     if (docToDelete.filePath) {
       const fileRef = ref(storage, docToDelete.filePath);
       try {
         await deleteObject(fileRef);
       } catch (error: any) {
-        // If file not found, we can ignore, otherwise show error but still remove from list
         if (error.code !== 'storage/object-not-found') {
           console.error("Error deleting file from storage:", error);
           toast({
@@ -109,7 +111,6 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    // Delete from local state and localStorage
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
     toast({ title: 'Document supprimé' });
 
@@ -226,5 +227,3 @@ export const useDocuments = () => {
   }
   return context;
 };
-
-    
