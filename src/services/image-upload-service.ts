@@ -2,7 +2,6 @@
 'use server';
 
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/auth-context";
 
 /**
  * Uploads an image to Supabase Storage and returns the public URL.
