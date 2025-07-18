@@ -20,7 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+
 
 interface MaisonUploadDialogProps {
   open?: boolean;
@@ -39,45 +40,50 @@ const maisonCategories = [
 ];
 
 async function uploadFileDirectlyToSupabase(file: File, userId: string, authToken: string): Promise<string> {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase URL ou Anon Key est manquant dans les variables d\'environnement.');
-    }
-    
-    // Create an anonymous Supabase client.
-    // The authentication is handled by passing the Firebase JWT in the Authorization header.
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
     const fileExtension = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExtension}`;
     const filePath = `${userId}/${fileName}`;
 
-    // Upload the file with the authorization header.
-    const { error: uploadError } = await supabase.storage
-        .from('lawra9')
-        .upload(filePath, file, {
-            // The key change is here: passing the authorization token.
-            headers: {
-                Authorization: `Bearer ${authToken}`,
-            },
+    try {
+        const { error: sessionError } = await supabase.auth.setSession({
+            access_token: authToken,
+            refresh_token: authToken, // Using the same token for simplicity as we are not managing long-lived sessions here
         });
 
-    if (uploadError) {
-        console.error('Supabase upload error:', uploadError);
-        throw new Error(`Supabase Error: ${uploadError.message}`);
-    }
+        if (sessionError) {
+             console.error('Supabase setSession error:', sessionError);
+             throw new Error(`Supabase Auth Error: ${sessionError.message}`);
+        }
+        
+        const { error: uploadError } = await supabase.storage
+            .from('lawra9')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false,
+            });
 
-    const { data: publicUrlData } = supabase.storage
-        .from('lawra9')
-        .getPublicUrl(filePath);
+        if (uploadError) {
+            console.error('Supabase upload error:', uploadError);
+            throw new Error(`Supabase Error: ${uploadError.message}`);
+        }
 
-    if (!publicUrlData || !publicUrlData.publicUrl) {
-        throw new Error('Impossible d\'obtenir l\'URL publique pour le fichier téléversé.');
+        const { data: publicUrlData } = supabase.storage
+            .from('lawra9')
+            .getPublicUrl(filePath);
+
+        if (!publicUrlData || !publicUrlData.publicUrl) {
+            throw new Error('Could not get public URL for the uploaded file.');
+        }
+
+        return publicUrlData.publicUrl;
+
+    } catch (error) {
+        console.error('An error occurred during the upload process:', error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error('An unknown error occurred during image upload.');
     }
-    
-    return publicUrlData.publicUrl;
 }
 
 
@@ -164,7 +170,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
       if (fileToUpload) {
         const authToken = await getAuthToken();
         if (!authToken) {
-            throw new Error("Impossible d'obtenir le jeton d'authentification.");
+            throw new Error('Could not retrieve authentication token.');
         }
         const fileUrl = await uploadFileDirectlyToSupabase(fileToUpload, user.uid, authToken);
         finalDocumentData = { ...finalDocumentData, fileUrl };
@@ -261,9 +267,11 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
             
             {formData.fileUrl && (
                 <div className="space-y-2">
-                    <Label>Image actuelle</Label>
-                    <div className="rounded-md overflow-hidden border">
-                        <img src={formData.fileUrl} alt="Aperçu" className="w-full h-auto object-cover" />
+                    <Label>Fichier actuel</Label>
+                    <div className="rounded-md overflow-hidden border p-2 text-center">
+                        <a href={formData.fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent underline">
+                            Voir le fichier téléversé
+                        </a>
                     </div>
                 </div>
             )}

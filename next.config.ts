@@ -17,11 +17,9 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Add Supabase hostname here. It's usually <your-project-ref>.supabase.co
-      // As we don't know the project ref, we'll use a wildcard, but a specific one is better.
       {
         protocol: 'https',
-        hostname: '*.supabase.co',
+        hostname: 'firebasestorage.googleapis.com',
         port: '',
         pathname: '/**',
       }
