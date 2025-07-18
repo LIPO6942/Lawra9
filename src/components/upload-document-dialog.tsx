@@ -318,7 +318,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         handleOpenChange(false);
     } catch (error: any) {
         console.error("Save error:", error);
-        toast({ variant: 'destructive', title: "Erreur de téléversement", description: error.message });
+        toast({ variant: 'destructive', title: "Erreur de téléversement", description: `Un problème est survenu : ${error.message}` });
     } finally {
         setIsProcessing(false);
     }

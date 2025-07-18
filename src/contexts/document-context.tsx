@@ -54,8 +54,22 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const key = getLocalStorageKey();
     if (key) {
         try {
-          // Do not store file content, only metadata including the public fileUrl
-          localStorage.setItem(key, JSON.stringify(documents));
+          // Explicitly create a new array with only the data that can be serialized
+          const serializableDocuments = documents.map(doc => ({
+            id: doc.id,
+            name: doc.name,
+            category: doc.category,
+            createdAt: doc.createdAt,
+            summary: doc.summary,
+            fileUrl: doc.fileUrl,
+            amount: doc.amount,
+            supplier: doc.supplier,
+            dueDate: doc.dueDate,
+            billingStartDate: doc.billingStartDate,
+            billingEndDate: doc.billingEndDate,
+            consumptionPeriod: doc.consumptionPeriod,
+          }));
+          localStorage.setItem(key, JSON.stringify(serializableDocuments));
         } catch (error) {
           if (error instanceof DOMException && error.name === 'QuotaExceededError') {
              console.error("Quota de stockage local dépassé. Impossible de sauvegarder les documents.");
