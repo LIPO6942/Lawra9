@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { UploadDocumentDialog } from '../upload-document-dialog';
 import { useDocuments } from '@/contexts/document-context';
+import { MaisonUploadDialog } from '../maison-upload-dialog';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -150,6 +151,8 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
         }
     }
     
+    const EditDialogComponent = isMaison ? MaisonUploadDialog : UploadDocumentDialog;
+
     return (
         <>
             <Table>
@@ -213,7 +216,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                                   <Edit className="mr-2 h-4 w-4" />
                                   Détails / Modifier
                                 </DropdownMenuItem>
-                                {isMaison && doc.fileUrl && (
+                                {doc.fileUrl && (
                                     <DropdownMenuItem onClick={() => handleViewFile(doc.fileUrl!)}>
                                       <Eye className="mr-2 h-4 w-4" />
                                       Consulter le fichier
@@ -244,7 +247,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                     <AlertDialogHeader>
                     <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Cette action est irréversible. Les données du document "{docToDelete?.name}" {docToDelete?.fileUrl ? "et le fichier associé " : ""}seront définitivement supprimées.
+                        Cette action est irréversible. Les données du document "{docToDelete?.name}" seront définitivement supprimées.
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -258,11 +261,10 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
             </AlertDialog>
 
             {selectedDocument && (
-                <UploadDocumentDialog
+                <EditDialogComponent
                     open={isEditModalOpen}
                     onOpenChange={setIsEditModalOpen}
                     documentToEdit={selectedDocument}
-                    storageOnly={isMaison}
                 />
             )}
         </>

@@ -15,8 +15,7 @@ export type Document = {
   consumptionPeriod?: string; // For special cases like SONEDE
   taxAmount?: string;
   totalExclTax?: string;
-  fileUrl?: string; // URL from Firebase Storage
-  filePath?: string; // Path in Firebase Storage for deletion
+  fileUrl?: string; // URL from image hosting service
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
 };
 

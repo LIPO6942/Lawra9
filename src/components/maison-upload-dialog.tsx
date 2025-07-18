@@ -20,8 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadImage } from '@/services/image-upload-service';
 
 interface MaisonUploadDialogProps {
   open?: boolean;
@@ -119,12 +118,9 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
     let finalDocumentData: Partial<Document> = { ...formData };
 
     try {
-      if (fileToUpload && !isEditMode) {
-        const filePath = `documents/${user.uid}/${Date.now()}-${fileToUpload.name}`;
-        const fileRef = ref(storage, filePath);
-        await uploadBytes(fileRef, fileToUpload);
-        const fileUrl = await getDownloadURL(fileRef);
-        finalDocumentData = { ...finalDocumentData, fileUrl, filePath };
+      if (fileToUpload) {
+        const fileUrl = await uploadImage(fileToUpload);
+        finalDocumentData = { ...finalDocumentData, fileUrl };
       }
 
       if (isEditMode && documentToEdit) {
@@ -135,7 +131,6 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
             name: finalDocumentData.name || 'Nouveau document',
             category: 'Maison',
             fileUrl: finalDocumentData.fileUrl,
-            filePath: finalDocumentData.filePath,
             subCategory: finalDocumentData.subCategory,
         };
         await addDocument(docToAdd);
@@ -180,8 +175,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
              </div>
         ) : (
           <div className="space-y-4 py-4">
-            {!isEditMode && (
-              <div className="space-y-2">
+            <div className="space-y-2">
                 <Label htmlFor="file-upload">Fichier</Label>
                 {fileToUpload ? (
                     <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
@@ -200,7 +194,6 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
                 )}
                 <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} />
               </div>
-            )}
             
             <div className="space-y-2">
               <Label htmlFor="doc-name">Nom du document</Label>
@@ -218,6 +211,15 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
                 </SelectContent>
               </Select>
             </div>
+            
+            {formData.fileUrl && (
+                <div className="space-y-2">
+                    <Label>Image actuelle</Label>
+                    <div className="rounded-md overflow-hidden border">
+                        <img src={formData.fileUrl} alt="Aperçu" className="w-full h-auto object-cover" />
+                    </div>
+                </div>
+            )}
           </div>
         )}
         

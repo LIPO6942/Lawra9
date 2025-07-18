@@ -7,8 +7,6 @@ import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { storage } from '@/lib/firebase';
-import { ref, deleteObject } from 'firebase/storage';
 
 interface MonthlyExpense {
   month: string;
@@ -98,25 +96,10 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const deleteDocument = useCallback(async (id: string) => {
-    const docToDelete = documents.find(doc => doc.id === id);
-    if (docToDelete && docToDelete.filePath) {
-      try {
-        const fileRef = ref(storage, docToDelete.filePath);
-        await deleteObject(fileRef);
-      } catch (error: any) {
-        if (error.code !== 'storage/object-not-found') {
-          console.error("Error deleting file from Firebase Storage", error);
-          toast({
-            variant: 'destructive',
-            title: 'Erreur de suppression',
-            description: "Le fichier distant n'a pas pu être supprimé, mais la référence locale a été enlevée."
-          });
-        }
-      }
-    }
+    // With PostImage, we don't store a reference to delete the file, so we just remove the local reference.
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
     toast({ title: 'Document supprimé' });
-  }, [documents, toast]);
+  }, [toast]);
   
   const markAsPaid = useCallback((id: string) => {
     setDocuments(prevDocs =>
