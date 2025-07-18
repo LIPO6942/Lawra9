@@ -12,33 +12,18 @@ interface DocumentViewerModalProps {
   document: Document | null;
 }
 
-const getMimeType = (url: string) => {
-    if (!url || !url.startsWith('data:')) {
-        return 'application/octet-stream';
-    }
-    const match = url.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/);
-    return match ? match[1] : 'application/octet-stream';
-}
-
 export function DocumentViewerModal({ open, onOpenChange, document }: DocumentViewerModalProps) {
   if (!document || !document.fileUrl) {
     return null;
   }
-
-  const mimeType = getMimeType(document.fileUrl);
-  const isPdf = mimeType === 'application/pdf';
-  const isImage = mimeType.startsWith('image/');
-  const isSupported = isPdf || isImage;
   
-  const handleDownload = () => {
-    if (!document.fileUrl) return;
-    const link = document.createElement('a');
-    link.href = document.fileUrl;
-    link.download = document.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // We can infer the type from the URL for Firebase Storage links, but it's simpler to just try embedding.
+  const isPdf = document.fileUrl.includes('.pdf') || document.name.toLowerCase().endsWith('.pdf');
+  const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => document.name.toLowerCase().endsWith(ext));
+
+  // A simple way to check if we should even try to use an iframe
+  // Firebase Storage URLs will not be data URLs.
+  const isSupported = !document.fileUrl.startsWith('data:');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,7 +31,7 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="truncate">{document.name}</DialogTitle>
            <DialogDescription>
-            Prévisualisation du document.
+            Prévisualisation du document. <a href={document.fileUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Ouvrir dans un nouvel onglet</a>.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-auto px-6 pb-6">
@@ -59,10 +44,11 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
             ) : (
                 <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-full">
                     <FileQuestion className="h-12 w-12 text-destructive" />
-                    <h2 className="mt-4 text-xl font-semibold">Format de fichier non supporté</h2>
-                    <p className="mt-2 text-muted-foreground">La prévisualisation n'est pas disponible pour ce type de fichier.</p>
-                    <p className="text-xs text-muted-foreground mt-1">(Type: {mimeType})</p>
-                    <Button onClick={handleDownload} className="mt-6">Télécharger le fichier</Button>
+                    <h2 className="mt-4 text-xl font-semibold">Format de fichier non supporté pour la prévisualisation</h2>
+                    <p className="mt-2 text-muted-foreground">Veuillez télécharger le fichier pour le consulter.</p>
+                    <Button asChild className="mt-6">
+                      <a href={document.fileUrl} target="_blank" rel="noopener noreferrer">Télécharger</a>
+                    </Button>
                 </div>
             )}
         </div>
@@ -75,3 +61,5 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
     </Dialog>
   );
 }
+
+    

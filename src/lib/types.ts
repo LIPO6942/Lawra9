@@ -5,7 +5,8 @@ export type Document = {
   category: 'STEG' | 'SONEDE' | 'Reçu Bancaire' | 'Maison' | 'Internet' | 'Autre';
   createdAt: string; // ISO date string
   summary?: string;
-  fileUrl: string;
+  fileUrl: string; // URL from Firebase Storage
+  filePath: string; // Path in Firebase Storage for deletion
   amount?: string;
   supplier?: string;
   dueDate?: string; // ISO date string
@@ -21,3 +22,5 @@ export type Alert = {
   dueDate: string; // ISO date string
   type: 'Paiement' | 'Expiration' | 'Renouvellement';
 };
+
+    

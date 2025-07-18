@@ -26,6 +26,9 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useAuth } from '@/contexts/auth-context';
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -89,10 +92,11 @@ const fileToDataUrl = (file: File): Promise<string> => {
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
   const [step, setStep] = useState<'selection' | 'form'>('selection');
   
+  const { userId } = useAuth();
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-  const [fileDataUrl, setFileDataUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
@@ -115,7 +119,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
       setFormData(documentToEdit);
-      setFileDataUrl(documentToEdit.fileUrl);
       setStep('form');
     }
   }, [isOpen, isEditMode, documentToEdit]);
@@ -189,8 +192,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   const resetDialog = () => {
     setIsProcessing(false);
+    setProcessingMessage('');
     setFileToUpload(null);
-    setFileDataUrl(null);
     setFormData({});
     setStep('selection');
     stopCameraStream();
@@ -199,11 +202,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   
   const processDocumentForAnalysis = async (file: File) => {
       setIsProcessing(true);
+      setProcessingMessage('Analyse du document...');
       setFileToUpload(file);
       
       try {
           const documentDataUri = await fileToDataUrl(file);
-          setFileDataUrl(documentDataUri);
           
           const settledResults = await Promise.allSettled([
               detectDocumentType({ documentDataUri }),
@@ -234,6 +237,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           resetDialog();
       } finally {
           setIsProcessing(false);
+          setProcessingMessage('');
       }
   };
 
@@ -273,6 +277,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
     try {
         if (isEditMode && documentToEdit) {
+            setProcessingMessage('Mise à jour du document...');
             const finalDocument = {
                 ...documentToEdit,
                 ...formData,
@@ -280,14 +285,22 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             updateDocument(documentToEdit.id, finalDocument);
             toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
         } else {
-            if (!fileDataUrl) {
-                throw new Error("Aucun fichier à sauvegarder.");
+            if (!fileToUpload || !userId) {
+                throw new Error("Fichier ou utilisateur manquant.");
             }
+            setProcessingMessage('Téléversement du fichier...');
+            const filePath = `${userId}/${Date.now()}-${fileToUpload.name}`;
+            const storageRef = ref(storage, filePath);
+            await uploadBytes(storageRef, fileToUpload);
+            
+            setProcessingMessage('Finalisation...');
+            const fileUrl = await getDownloadURL(storageRef);
             
             const finalDocument: Document = {
                 id: `doc-${Date.now()}`,
                 createdAt: new Date().toISOString(),
-                fileUrl: fileDataUrl, // Save the Data URL
+                filePath: filePath, // Keep track of the path for deletion
+                fileUrl: fileUrl,
                 name: formData.name || 'Nouveau document',
                 category: formData.category || 'Autre',
                 supplier: formData.supplier,
@@ -308,6 +321,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: `Un problème est survenu : ${error.message}` });
     } finally {
         setIsProcessing(false);
+        setProcessingMessage('');
     }
   };
 
@@ -342,7 +356,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
              <div className="flex flex-col items-center justify-center space-y-4 py-12">
                 <Loader2 className="h-16 w-16 animate-spin text-accent" />
                 <p className="font-semibold text-lg">Traitement en cours...</p>
-                <p className="text-sm text-muted-foreground">{step === 'form' ? 'Sauvegarde du document...' : 'Analyse du document...'}</p>
+                <p className="text-sm text-muted-foreground">{processingMessage}</p>
              </div>
         )}
         
@@ -456,3 +470,5 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     </Dialog>
   );
 }
+
+    

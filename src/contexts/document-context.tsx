@@ -6,6 +6,9 @@ import { Document, Alert } from '@/lib/types';
 import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
+import { storage } from '@/lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
+import { useToast } from '@/hooks/use-toast';
 
 interface MonthlyExpense {
   month: string;
@@ -18,7 +21,7 @@ interface DocumentContextType {
   monthlyExpenses: MonthlyExpense[];
   addDocument: (doc: Document) => void;
   updateDocument: (id: string, data: Partial<Document>) => void;
-  deleteDocument: (id: string) => void;
+  deleteDocument: (id: string) => Promise<void>;
   markAsPaid: (id: string) => void;
   getDocumentById: (id: string) => Document | undefined;
 }
@@ -28,6 +31,7 @@ const DocumentContext = createContext<DocumentContextType | undefined>(undefined
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const { userId } = useAuth();
+  const { toast } = useToast();
   
   const getLocalStorageKey = useCallback(() => {
     return userId ? `lawra9-documents-${userId}` : null;
@@ -55,16 +59,22 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const key = getLocalStorageKey();
     if (key) {
         try {
+          // This now only stores metadata and URLs, not file content
           localStorage.setItem(key, JSON.stringify(documents));
         } catch (error) {
           if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-             console.error("Quota de stockage local dépassé. Impossible de sauvegarder les documents.");
+             console.error("Local storage quota exceeded. Cannot save documents.");
+             toast({
+                variant: 'destructive',
+                title: 'Erreur de stockage local',
+                description: 'Le quota de stockage de votre navigateur est plein. Impossible de sauvegarder de nouveaux documents.'
+             });
           } else {
              console.error("Failed to save documents to local storage", error);
           }
         }
     }
-  }, [documents, userId, getLocalStorageKey]);
+  }, [documents, userId, getLocalStorageKey, toast]);
 
 
   const addDocument = useCallback((doc: Document) => {
@@ -77,9 +87,33 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   }, []);
 
-  const deleteDocument = useCallback((id: string) => {
+  const deleteDocument = useCallback(async (id: string) => {
+    const docToDelete = documents.find(doc => doc.id === id);
+    if (!docToDelete) return;
+
+    // Delete from Firebase Storage if filePath exists
+    if (docToDelete.filePath) {
+      const fileRef = ref(storage, docToDelete.filePath);
+      try {
+        await deleteObject(fileRef);
+      } catch (error: any) {
+        // If file not found, we can ignore, otherwise show error but still remove from list
+        if (error.code !== 'storage/object-not-found') {
+          console.error("Error deleting file from storage:", error);
+          toast({
+            variant: 'destructive',
+            title: 'Erreur de suppression',
+            description: "Le fichier distant n'a pas pu être supprimé, mais la référence locale a été enlevée."
+          });
+        }
+      }
+    }
+
+    // Delete from local state and localStorage
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
-  }, []);
+    toast({ title: 'Document supprimé' });
+
+  }, [documents, toast]);
   
   const markAsPaid = useCallback((id: string) => {
     setDocuments(prevDocs =>
@@ -192,3 +226,5 @@ export const useDocuments = () => {
   }
   return context;
 };
+
+    
