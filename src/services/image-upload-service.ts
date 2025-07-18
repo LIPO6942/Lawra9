@@ -24,12 +24,18 @@ export async function uploadImage(file: File, userId: string, authToken: string)
   }
   
   // Create a new Supabase client for each server-side operation
+  // and authenticate with the user's Firebase JWT.
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
         Authorization: `Bearer ${authToken}`,
       },
     },
+     auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
   });
 
   const fileExtension = file.name.split('.').pop();
