@@ -44,7 +44,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   
   const [formData, setFormData] = useState<Partial<Document>>({});
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
   
@@ -119,7 +119,11 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     try {
       if (fileToUpload) {
-        const fileUrl = await uploadImage(fileToUpload, user.uid);
+        const authToken = await getAuthToken();
+        if (!authToken) {
+            throw new Error("Impossible d'obtenir le jeton d'authentification.");
+        }
+        const fileUrl = await uploadImage(fileToUpload, user.uid, authToken);
         finalDocumentData = { ...finalDocumentData, fileUrl };
       }
 
