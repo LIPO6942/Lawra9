@@ -84,22 +84,22 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [documents, user, getLocalStorageKey, toast]);
 
 
-  const addDocument = useCallback(async (doc: Omit<Document, 'id' | 'createdAt'>) => {
+  const addDocument = async (doc: Omit<Document, 'id' | 'createdAt'>) => {
     const newDoc = { ...doc, id: `doc-${Date.now()}`, createdAt: new Date().toISOString() };
     setDocuments(prevDocs => [newDoc, ...prevDocs].sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()));
-  }, []);
+  };
 
-  const updateDocument = useCallback(async (id: string, data: Partial<Document>) => {
+  const updateDocument = async (id: string, data: Partial<Document>) => {
     setDocuments(prevDocs =>
       prevDocs.map(doc => (doc.id === id ? { ...doc, ...data } : doc))
     );
-  }, []);
+  };
 
-  const deleteDocument = useCallback(async (id: string) => {
+  const deleteDocument = async (id: string) => {
     // With PostImage, we don't store a reference to delete the file, so we just remove the local reference.
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
     toast({ title: 'Document supprimé' });
-  }, [toast]);
+  };
   
   const markAsPaid = useCallback((id: string) => {
     setDocuments(prevDocs =>
