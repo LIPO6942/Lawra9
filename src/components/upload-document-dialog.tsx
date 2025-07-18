@@ -271,7 +271,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const handleSave = async () => {
     setIsProcessing(true);
     if (isEditMode && documentToEdit) {
-      // Logic for just updating metadata
       updateDocument(documentToEdit.id, formData);
       toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
       setIsProcessing(false);
@@ -292,7 +291,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
 
     try {
-        const destination = `documents/${user.uid}/${Date.now()}-${fileToUpload.name}`;
+        const destination = `documents/${user.uid}/${Date.now()}-${fileToUpload.name.replace(/\s/g, '_')}`;
         const storageRef = ref(storage, destination);
 
         const uploadResult = await uploadBytes(storageRef, fileToUpload);
@@ -315,11 +314,14 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
         addDocument(finalDocument);
         toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
+        
+        // This is the important part: ensure state update completes before closing.
+        setIsProcessing(false);
         handleOpenChange(false);
+
     } catch (error: any) {
         console.error("Save error:", error);
         toast({ variant: 'destructive', title: "Erreur de téléversement", description: `Un problème est survenu : ${error.message}` });
-    } finally {
         setIsProcessing(false);
     }
   };

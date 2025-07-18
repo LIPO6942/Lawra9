@@ -24,12 +24,61 @@ interface DocumentContextType {
 
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
 
+// Function to strip file objects for safe serialization
+const stripFileObjects = (docs: Document[]): Document[] => {
+    return docs.map(doc => {
+        const newDoc: any = { ...doc };
+        // This function will remove any `file` property if it exists,
+        // making it safe for localStorage. We are not using `file` property anymore.
+        // This is just a safeguard.
+        delete newDoc.file; 
+        return newDoc;
+    });
+};
+
+
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const { userId } = useAuth();
   
-  // NOTE: Local storage persistence is removed to fix the infinite saving bug.
-  // The state will be in-memory only.
+  const getLocalStorageKey = useCallback(() => {
+    return userId ? `lawra9-documents-${userId}` : null;
+  }, [userId]);
+
+  useEffect(() => {
+    const key = getLocalStorageKey();
+    if (key) {
+        try {
+          const storedDocuments = localStorage.getItem(key);
+          if (storedDocuments) {
+            setDocuments(JSON.parse(storedDocuments));
+          } else {
+            setDocuments([]); // Clear documents if user changes
+          }
+        } catch (error) {
+          console.error("Failed to load documents from local storage", error);
+        }
+    } else {
+        setDocuments([]); // Clear documents if no user
+    }
+  }, [userId, getLocalStorageKey]);
+
+  useEffect(() => {
+    const key = getLocalStorageKey();
+    if (key) {
+        try {
+          localStorage.setItem(key, JSON.stringify(stripFileObjects(documents)));
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+             console.error("Quota de stockage local dépassé. Impossible de sauvegarder les documents.");
+             // Potentially clear some old data or notify user
+          } else {
+             console.error("Failed to save documents to local storage", error);
+          }
+        }
+    }
+  }, [documents, userId, getLocalStorageKey]);
+
 
   const addDocument = useCallback((doc: Document) => {
     setDocuments(prevDocs => [doc, ...prevDocs]);
