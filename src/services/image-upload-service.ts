@@ -19,26 +19,34 @@ export async function uploadImage(file: File): Promise<string> {
     const response = await fetch(apiUrl, {
       method: 'POST',
       body: formData,
+      headers: {
+        // PostImage API documentation suggests this header for JSON responses.
+        'Accept': 'application/json',
+      },
     });
 
     if (!response.ok) {
-      const errorData = await response.text(); // Use .text() for better debugging
-      console.error('PostImage API Error Response:', errorData);
-      throw new Error(`Image upload failed with status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('PostImage API Error Response Text:', errorText);
+      throw new Error(`Image upload failed with status: ${response.status} - ${response.statusText}`);
     }
 
     const result = await response.json();
     
-    if (result.status !== 'success') {
-      console.error('PostImage API returned an error:', result);
-      throw new Error('Image upload API returned an error.');
+    if (result.status !== 'success' || !result.data?.url) {
+      console.error('PostImage API returned an unsuccessful status or invalid data:', result);
+      throw new Error('Image upload API returned an error or malformed data.');
     }
 
     // PostImage provides multiple URLs, 'url' is the direct link to the image.
     return result.data.url;
 
   } catch (error) {
-    console.error('Error uploading to PostImage:', error);
+    console.error('Error during the fetch operation to PostImage:', error);
+    // Re-throw the original error if it's specific, otherwise throw the generic one.
+    if (error instanceof Error && error.message.startsWith('Image upload failed')) {
+        throw error;
+    }
     throw new Error('Could not upload the image. Please try again.');
   }
 }
