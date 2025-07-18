@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { UploadDocumentDialog } from '@/components/upload-document-dialog';
+import { MaisonUploadDialog } from '@/components/maison-upload-dialog';
 import { DocumentsTable } from '@/components/documents/documents-table';
 import { Home } from 'lucide-react';
 import { useDocuments } from '@/contexts/document-context';
@@ -22,7 +22,7 @@ export default function MaisonPage() {
                </div>
           </div>
           <div className="flex items-center space-x-2 w-full md:w-auto">
-              <UploadDocumentDialog storageOnly={true} defaultCategory="Maison" />
+              <MaisonUploadDialog />
           </div>
       </div>
 
