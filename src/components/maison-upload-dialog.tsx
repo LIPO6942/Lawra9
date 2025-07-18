@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
-import { useAuth } from '@/contexts/auth-context';
+import { auth } from '@/lib/firebase';
 import { supabase } from '@/lib/supabase';
 
 
@@ -92,7 +92,6 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   
   const [formData, setFormData] = useState<Partial<Document>>({});
-  const { user } = useAuth();
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
   
@@ -148,8 +147,9 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
   };
 
   const handleSave = async () => {
-    if (!user) {
-      toast({ variant: 'destructive', title: "Utilisateur non connecté", description: "Veuillez vous connecter." });
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      toast({ variant: 'destructive', title: "Utilisateur non connecté", description: "Veuillez vous reconnecter." });
       return;
     }
     if (!isEditMode && !fileToUpload) {
@@ -167,11 +167,11 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     try {
       if (fileToUpload) {
-        const authToken = await user.getIdToken();
+        const authToken = await currentUser.getIdToken(true); // Force refresh
         if (!authToken) {
-            throw new Error('Could not retrieve authentication token.');
+            throw new Error('Could not retrieve a valid authentication token.');
         }
-        const fileUrl = await uploadFileDirectlyToSupabase(fileToUpload, user.uid, authToken);
+        const fileUrl = await uploadFileDirectlyToSupabase(fileToUpload, currentUser.uid, authToken);
         finalDocumentData = { ...finalDocumentData, fileUrl };
       }
 

@@ -10,7 +10,6 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   userId: string | null;
-  getAuthToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,21 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  const getAuthToken = async (): Promise<string | null> => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-        console.warn("getAuthToken called but no user is currently signed in.");
-        return null;
-    }
-    try {
-      return await currentUser.getIdToken(true); // Force refresh token
-    } catch (error) {
-      console.error('Error getting auth token:', error);
-      return null;
-    }
-  };
-
-  const value = { user, loading, userId, getAuthToken };
+  const value = { user, loading, userId };
 
   if (loading) {
     return (
