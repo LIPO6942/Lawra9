@@ -13,7 +13,10 @@ interface DocumentViewerModalProps {
 }
 
 const getMimeType = (url: string) => {
-    const match = url.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/);
+    if (!url || !url.startsWith('data:')) {
+        return 'application/octet-stream';
+    }
+    const match = url.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/);
     return match ? match[1] : 'application/octet-stream';
 }
 
@@ -28,6 +31,7 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
   const isSupported = isPdf || isImage;
   
   const handleDownload = () => {
+    if (!document.fileUrl) return;
     const link = document.createElement('a');
     link.href = document.fileUrl;
     link.download = document.name;
@@ -45,11 +49,11 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
             Prévisualisation du document.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-auto px-6">
+        <div className="flex-1 overflow-auto px-6 pb-6">
             {isSupported ? (
                  <iframe
                     src={document.fileUrl}
-                    className="w-full h-full border-0"
+                    className="w-full h-full border rounded-md"
                     title={'Visionneuse de document'}
                 />
             ) : (
@@ -62,9 +66,9 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
                 </div>
             )}
         </div>
-        <div className="p-6 pt-0 mt-auto">
+        <div className="p-6 pt-0 mt-auto border-t">
             <DialogClose asChild>
-                <Button variant="outline" className="w-full">Fermer</Button>
+                <Button variant="outline" className="w-full mt-4">Fermer</Button>
             </DialogClose>
         </div>
       </DialogContent>
