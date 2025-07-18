@@ -1,12 +1,13 @@
 
 'use server';
 
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * Uploads an image to Supabase Storage and returns the public URL.
+ * This is a server-side function.
  * @param file The image file to upload.
- * @param userId The ID of the user uploading the file, to store it in a user-specific folder.
+ * @param userId The ID of the user uploading the file.
  * @param authToken The Firebase JWT of the authenticated user.
  * @returns A promise that resolves to the public URL of the uploaded image.
  */
@@ -15,7 +16,21 @@ export async function uploadImage(file: File, userId: string, authToken: string)
       throw new Error('User is not properly authenticated. Cannot upload file.');
   }
 
-  const supabase = getSupabaseClient(authToken);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase URL or Anon Key is missing in environment variables.');
+  }
+  
+  // Create a new Supabase client for each server-side operation
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    },
+  });
 
   const fileExtension = file.name.split('.').pop();
   const fileName = `${Date.now()}.${fileExtension}`;
