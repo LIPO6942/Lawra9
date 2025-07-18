@@ -22,13 +22,15 @@ export async function uploadImage(file: File): Promise<string> {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Image upload failed: ${errorData.error.message}`);
+      const errorData = await response.text(); // Use .text() for better debugging
+      console.error('PostImage API Error Response:', errorData);
+      throw new Error(`Image upload failed with status: ${response.status}`);
     }
 
     const result = await response.json();
     
     if (result.status !== 'success') {
+      console.error('PostImage API returned an error:', result);
       throw new Error('Image upload API returned an error.');
     }
 
