@@ -6,13 +6,13 @@ import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi } from 'lucide-react';
-import { format, parseISO, differenceInDays, isValid, getMonth, getYear } from 'date-fns';
+import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { UploadDocumentDialog } from '../upload-document-dialog';
-import { useRouter } from 'next/navigation';
+import { DocumentViewerModal } from '../document-viewer-modal';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -51,7 +51,6 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
 
 
 const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
-    // Priority for SONEDE special format
     if (doc.category === 'SONEDE' && doc.consumptionPeriod) {
         return (
             <div className="flex items-center gap-2">
@@ -61,7 +60,6 @@ const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
         );
     }
     
-    // Fallback for regular billing periods
     if (doc.billingStartDate && doc.billingEndDate) {
         try {
             const start = parseISO(doc.billingStartDate);
@@ -82,7 +80,6 @@ const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
         }
     }
   
-    // Fallback for single date documents like receipts
     if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre') {
       try {
         const createdAtDate = parseISO(doc.createdAt);
@@ -110,8 +107,8 @@ interface DocumentsTableProps {
 
 export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTableProps) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-    const router = useRouter();
 
     const handleEdit = (doc: Document) => {
         setSelectedDocument(doc);
@@ -119,8 +116,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
     }
 
     const handleView = (doc: Document) => {
-       const url = `/view-document?id=${doc.id}`;
-       window.open(url, '_blank');
+       setSelectedDocument(doc);
+       setIsViewModalOpen(true);
     };
 
     const formatDate = (dateString: string | undefined) => {
@@ -227,6 +224,13 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                     open={isEditModalOpen}
                     onOpenChange={setIsEditModalOpen}
                     documentToEdit={selectedDocument}
+                />
+            )}
+            {selectedDocument && (
+                 <DocumentViewerModal
+                    open={isViewModalOpen}
+                    onOpenChange={setIsViewModalOpen}
+                    document={selectedDocument}
                 />
             )}
         </>

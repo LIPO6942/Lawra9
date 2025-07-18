@@ -123,12 +123,6 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isViewDocumentPage = pathname.startsWith('/view-document');
-
-  if (isViewDocumentPage) {
-    return <main className="flex-1 overflow-y-auto">{children}</main>;
-  }
-
   return (
     <SidebarProvider>
         <Sidebar>
@@ -257,21 +251,17 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   React.useEffect(() => {
-    if (!loading && !user && !pathname.startsWith('/view-document')) {
+    if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || (!user && !pathname.startsWith('/view-document'))) {
+  if (loading || !user) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
             <p>Chargement...</p>
         </div>
     );
-  }
-  
-  if (pathname.startsWith('/view-document')) {
-    return <main className="flex-1 overflow-y-auto">{children}</main>;
   }
   
   return <AppLayout>{children}</AppLayout>
