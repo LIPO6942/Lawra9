@@ -5,15 +5,14 @@ import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { UploadDocumentDialog } from '../upload-document-dialog';
-import { DocumentViewerModal } from '../document-viewer-modal';
-import { useDocuments } from '@/contexts/document-context'; // Import useDocuments
+import { useDocuments } from '@/contexts/document-context';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -106,9 +105,8 @@ interface DocumentsTableProps {
     onDelete: (id: string) => void;
 }
 
-export function DocumentsTable({ documents, onUpdate }: DocumentsTableProps) {
+export function DocumentsTable({ documents }: DocumentsTableProps) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -120,11 +118,6 @@ export function DocumentsTable({ documents, onUpdate }: DocumentsTableProps) {
         setSelectedDocument(doc);
         setIsEditModalOpen(true);
     }
-
-    const handleView = (doc: Document) => {
-       setSelectedDocument(doc);
-       setIsViewModalOpen(true);
-    };
 
     const confirmDelete = (doc: Document) => {
         setDocToDelete(doc);
@@ -200,11 +193,7 @@ export function DocumentsTable({ documents, onUpdate }: DocumentsTableProps) {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleView(doc)}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Consulter
-                                </DropdownMenuItem>
-                                 <DropdownMenuItem onClick={() => handleEdit(doc)}>
+                                <DropdownMenuItem onClick={() => handleEdit(doc)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Modifier
                                 </DropdownMenuItem>
@@ -233,7 +222,7 @@ export function DocumentsTable({ documents, onUpdate }: DocumentsTableProps) {
                     <AlertDialogHeader>
                     <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Cette action est irréversible. Le document "{docToDelete?.name}" et le fichier associé seront définitivement supprimés.
+                        Cette action est irréversible. Les données du document "{docToDelete?.name}" seront définitivement supprimées.
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -253,15 +242,6 @@ export function DocumentsTable({ documents, onUpdate }: DocumentsTableProps) {
                     documentToEdit={selectedDocument}
                 />
             )}
-            {selectedDocument && (
-                 <DocumentViewerModal
-                    open={isViewModalOpen}
-                    onOpenChange={setIsViewModalOpen}
-                    document={selectedDocument}
-                />
-            )}
         </>
     );
 }
-
-    

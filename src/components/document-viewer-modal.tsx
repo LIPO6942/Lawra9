@@ -13,17 +13,12 @@ interface DocumentViewerModalProps {
 }
 
 export function DocumentViewerModal({ open, onOpenChange, document }: DocumentViewerModalProps) {
-  if (!document || !document.fileUrl) {
+  if (!document) {
     return null;
   }
   
-  // We can infer the type from the URL for Firebase Storage links, but it's simpler to just try embedding.
-  const isPdf = document.fileUrl.includes('.pdf') || document.name.toLowerCase().endsWith('.pdf');
-  const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => document.name.toLowerCase().endsWith(ext));
-
-  // A simple way to check if we should even try to use an iframe
-  // Firebase Storage URLs will not be data URLs.
-  const isSupported = !document.fileUrl.startsWith('data:');
+  // This component is no longer used for viewing files, but kept in case it's needed for other purposes.
+  // The functionality to view a file has been removed as we are no longer storing the file itself.
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -31,26 +26,15 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="truncate">{document.name}</DialogTitle>
            <DialogDescription>
-            Prévisualisation du document. <a href={document.fileUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Ouvrir dans un nouvel onglet</a>.
+            Détails du document.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-auto px-6 pb-6">
-            {isSupported ? (
-                 <iframe
-                    src={document.fileUrl}
-                    className="w-full h-full border rounded-md"
-                    title={'Visionneuse de document'}
-                />
-            ) : (
-                <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-full">
-                    <FileQuestion className="h-12 w-12 text-destructive" />
-                    <h2 className="mt-4 text-xl font-semibold">Format de fichier non supporté pour la prévisualisation</h2>
-                    <p className="mt-2 text-muted-foreground">Veuillez télécharger le fichier pour le consulter.</p>
-                    <Button asChild className="mt-6">
-                      <a href={document.fileUrl} target="_blank" rel="noopener noreferrer">Télécharger</a>
-                    </Button>
-                </div>
-            )}
+            <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-full">
+                <FileQuestion className="h-12 w-12 text-muted-foreground" />
+                <h2 className="mt-4 text-xl font-semibold">Pas de prévisualisation disponible</h2>
+                <p className="mt-2 text-muted-foreground">La sauvegarde des images de document n'est pas activée.</p>
+            </div>
         </div>
         <div className="p-6 pt-0 mt-auto border-t">
             <DialogClose asChild>
@@ -61,5 +45,3 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
     </Dialog>
   );
 }
-
-    

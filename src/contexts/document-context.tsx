@@ -6,13 +6,19 @@ import { Document } from '@/lib/types';
 import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
-import { storage } from '@/lib/firebase';
-import { ref, deleteObject } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 
 interface MonthlyExpense {
   month: string;
   [key: string]: number | string;
+}
+
+interface Alert {
+  id: string;
+  documentId: string;
+  documentName: string;
+  dueDate: string;
+  type: 'Paiement' | 'Renouvellement';
 }
 
 interface DocumentContextType {
@@ -30,12 +36,12 @@ const DocumentContext = createContext<DocumentContextType | undefined>(undefined
 
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
-  const { userId } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const getLocalStorageKey = useCallback(() => {
-    return userId ? `lawra9-documents-${userId}` : null;
-  }, [userId]);
+    return user ? `lawra9-documents-${user.uid}` : null;
+  }, [user]);
 
   useEffect(() => {
     const key = getLocalStorageKey();
@@ -53,31 +59,25 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } else {
         setDocuments([]);
     }
-  }, [userId, getLocalStorageKey]);
+  }, [user, getLocalStorageKey]);
 
   useEffect(() => {
     const key = getLocalStorageKey();
-    if (key && documents.length > 0) { // Only save if there are documents
+    if (key) {
         try {
-          const docsToStore = documents.map(({ ...doc }) => {
-            // Ensure no complex objects are stored
-            return doc;
-          });
-          localStorage.setItem(key, JSON.stringify(docsToStore));
+          localStorage.setItem(key, JSON.stringify(documents));
         } catch (error) {
-          if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-             console.error("Local storage quota exceeded. Cannot save documents.");
+           console.error("Failed to save documents to local storage", error);
+           if (error instanceof DOMException && error.name === 'QuotaExceededError') {
              toast({
                 variant: 'destructive',
                 title: 'Erreur de stockage local',
                 description: 'Le quota de stockage de votre navigateur est plein. Impossible de sauvegarder de nouveaux documents.'
              });
-          } else {
-             console.error("Failed to save documents to local storage", error);
           }
         }
     }
-  }, [documents, userId, getLocalStorageKey, toast]);
+  }, [documents, user, getLocalStorageKey, toast]);
 
 
   const addDocument = useCallback(async (doc: Omit<Document, 'id'>) => {
@@ -92,29 +92,9 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const deleteDocument = useCallback(async (id: string) => {
-    const docToDelete = documents.find(doc => doc.id === id);
-    if (!docToDelete) return;
-
-    if (docToDelete.filePath) {
-      const fileRef = ref(storage, docToDelete.filePath);
-      try {
-        await deleteObject(fileRef);
-      } catch (error: any) {
-        if (error.code !== 'storage/object-not-found') {
-          console.error("Error deleting file from storage:", error);
-          toast({
-            variant: 'destructive',
-            title: 'Erreur de suppression',
-            description: "Le fichier distant n'a pas pu être supprimé, mais la référence locale a été enlevée."
-          });
-        }
-      }
-    }
-
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
     toast({ title: 'Document supprimé' });
-
-  }, [documents, toast]);
+  }, [toast]);
   
   const markAsPaid = useCallback((id: string) => {
     setDocuments(prevDocs =>
