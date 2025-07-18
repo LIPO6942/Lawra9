@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -21,6 +21,7 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
     case 'Reçu Bancaire': return <Landmark className="h-5 w-5 text-indigo-500" />;
     case 'Maison': return <Home className="h-5 w-5 text-green-500" />;
     case 'Internet': return <Wifi className="h-5 w-5 text-purple-500" />;
+    case 'Assurance': return <Shield className="h-5 w-5 text-red-500" />;
     default: return <FileText className="h-5 w-5 text-gray-500" />;
   }
 };
@@ -114,7 +115,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     const { deleteDocument } = useDocuments();
 
 
-    const handleEdit = (doc: Document) => {
+    const handleViewOrEdit = (doc: Document) => {
         setSelectedDocument(doc);
         setIsEditModalOpen(true);
     }
@@ -159,7 +160,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                 </TableHeader>
                 <TableBody>
                   {documents.map((doc) => (
-                    <TableRow key={doc.id}>
+                    <TableRow key={doc.id} onClick={() => handleViewOrEdit(doc)} className="cursor-pointer">
                       <TableCell>
                         <div className="flex items-center gap-3">
                            <CategoryIcon category={doc.category} />
@@ -181,7 +182,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                       <TableCell className="text-center">
                           <StatusBadge dueDate={doc.dueDate} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {isDeleting === doc.id ? (
                             <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         ) : (
@@ -193,9 +194,9 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEdit(doc)}>
+                                <DropdownMenuItem onClick={() => handleViewOrEdit(doc)}>
                                   <Edit className="mr-2 h-4 w-4" />
-                                  Modifier
+                                  Détails / Modifier
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
