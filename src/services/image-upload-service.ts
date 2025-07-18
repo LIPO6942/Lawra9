@@ -20,16 +20,17 @@ export async function uploadImage(file: File, userId: string): Promise<string> {
 
   try {
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('lawra9') // This is the bucket name, changed to match user's bucket
+      .from('lawra9') // Bucket name updated to match user's bucket
       .upload(filePath, file);
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
-      throw uploadError;
+      // Throw the specific error from Supabase for better debugging
+      throw new Error(`Supabase Error: ${uploadError.message}`);
     }
 
     const { data: publicUrlData } = supabase.storage
-      .from('lawra9') // This is the bucket name, changed to match user's bucket
+      .from('lawra9') // Bucket name updated to match user's bucket
       .getPublicUrl(filePath);
 
     if (!publicUrlData || !publicUrlData.publicUrl) {
@@ -39,9 +40,12 @@ export async function uploadImage(file: File, userId: string): Promise<string> {
     return publicUrlData.publicUrl;
 
   } catch (error) {
+    // Log the error and re-throw it to be caught by the UI component.
+    // This allows the UI to display a more specific error message.
     console.error('Error during the upload operation to Supabase:', error);
     if (error instanceof Error) {
-        throw new Error(`Could not upload the image: ${error.message}`);
+        // Re-throw the original error message to be more informative
+        throw new Error(error.message);
     }
     throw new Error('An unknown error occurred during image upload.');
   }
