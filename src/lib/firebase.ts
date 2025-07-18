@@ -1,9 +1,9 @@
 
 'use client';
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,18 +14,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Check if all required environment variables are set
-if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+let app: FirebaseApp;
+let auth: Auth;
+let storage: FirebaseStorage;
+
+try {
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  auth = getAuth(app);
+  storage = getStorage(app);
+} catch (error) {
   console.error(
-    'Firebase config is missing. Make sure you have set up your .env file with all the required NEXT_PUBLIC_FIREBASE_* variables.'
+    'Firebase config is missing or invalid. Make sure you have set up your .env file with all the required NEXT_PUBLIC_FIREBASE_* variables.',
+    error
   );
-  // You might want to throw an error or handle this case appropriately
-  // For now, we will log an error to the console.
+  // Provide dummy objects to prevent app from crashing if firebase fails to init
+  app = {} as FirebaseApp;
+  auth = {} as Auth;
+  storage = {} as FirebaseStorage;
 }
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const storage = getStorage(app);
 
 export { app, auth, storage };

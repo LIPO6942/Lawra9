@@ -55,6 +55,8 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const key = getLocalStorageKey();
     if (key) {
         try {
+          // IMPORTANT: Only store metadata, not file content.
+          // The fileUrl points to Firebase Storage.
           localStorage.setItem(key, JSON.stringify(documents));
         } catch (error) {
           if (error instanceof DOMException && error.name === 'QuotaExceededError') {

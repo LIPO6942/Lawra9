@@ -26,6 +26,10 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useAuth } from '@/contexts/auth-context';
+
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -91,7 +95,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'selection' | 'form'>('selection');
   
-  const [fileInfo, setFileInfo] = useState<{name: string, dataUrl: string} | null>(null);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
@@ -99,6 +103,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { userId } = useAuth();
+
 
   const isEditMode = !!documentToEdit;
 
@@ -114,9 +120,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
       setFormData(documentToEdit);
-      if(documentToEdit.fileUrl) {
-        setFileInfo({ name: documentToEdit.name, dataUrl: documentToEdit.fileUrl });
-      }
       setStep('form');
     }
   }, [isOpen, isEditMode, documentToEdit]);
@@ -190,7 +193,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   const resetDialog = () => {
     setIsProcessing(false);
-    setFileInfo(null);
+    setFileToUpload(null);
     setFormData({});
     setStep('selection');
     stopCameraStream();
@@ -199,11 +202,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   
   const processDocumentForAnalysis = async (file: File) => {
       setIsProcessing(true);
+      setFileToUpload(file);
       
       try {
           const documentDataUri = await fileToDataUrl(file);
-          setFileInfo({name: file.name, dataUrl: documentDataUri});
-
+          
           const settledResults = await Promise.allSettled([
               detectDocumentType({ documentDataUri }),
               extractInvoiceData({ invoiceDataUri: documentDataUri })
@@ -240,7 +243,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       await processDocumentForAnalysis(selectedFile);
-      event.target.value = ''; // Reset file input
+      event.target.value = '';
     }
   };
   
@@ -269,27 +272,31 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   const handleSave = async () => {
     setIsProcessing(true);
-    
-    // We introduce a small delay to ensure the UI updates to "processing" state
-    await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
         if (isEditMode && documentToEdit) {
+            // NOTE: File replacement is not handled in edit mode for simplicity.
+            // Only metadata can be updated.
             const finalDocument = {
                 ...documentToEdit,
                 ...formData,
-                fileUrl: fileInfo?.dataUrl || documentToEdit.fileUrl,
             };
             updateDocument(documentToEdit.id, finalDocument);
             toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
         } else {
-            if (!fileInfo) {
-                throw new Error("Aucun fichier à sauvegarder.");
+            if (!fileToUpload || !userId) {
+                throw new Error("Aucun fichier à sauvegarder ou utilisateur non identifié.");
             }
+            
+            // Upload file to Firebase Storage
+            const storageRef = ref(storage, `documents/${userId}/${Date.now()}-${fileToUpload.name}`);
+            const snapshot = await uploadBytes(storageRef, fileToUpload);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
             const finalDocument: Document = {
                 id: `doc-${Date.now()}`,
                 createdAt: new Date().toISOString(),
-                fileUrl: fileInfo.dataUrl, // Save Data URL
+                fileUrl: downloadURL,
                 name: formData.name || 'Nouveau document',
                 category: formData.category || 'Autre',
                 supplier: formData.supplier,
@@ -305,11 +312,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         }
         
         handleOpenChange(false);
-        // No need to set isProcessing to false here, as the component will unmount
     } catch (error: any) {
         console.error("Save error:", error);
         toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: `Un problème est survenu : ${error.message}` });
-        setIsProcessing(false); // Only set to false on error
+    } finally {
+        setIsProcessing(false);
     }
   };
 
@@ -360,7 +367,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                       <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
                         <UploadCloud className="h-12 w-12 text-muted-foreground" />
                         <p className="font-semibold">Cliquez ou glissez-déposez</p>
-                        <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 5MB)</p>
+                        <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 10MB)</p>
                       </div>
                     </label>
                     <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" />
@@ -392,10 +399,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         {!isProcessing && step === 'form' && (
           <>
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
-              {fileInfo && !isEditMode && (
+              {fileToUpload && !isEditMode && (
                 <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground flex-1 truncate">{fileInfo.name}</span>
+                    <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload.name}</span>
                     <CheckCircle className="h-5 w-5 text-green-500" />
                 </div>
               )}
