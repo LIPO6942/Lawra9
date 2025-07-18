@@ -254,19 +254,24 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   React.useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !pathname.startsWith('/view-document')) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || (!user && !pathname.startsWith('/view-document'))) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
             <p>Chargement...</p>
         </div>
     );
+  }
+  
+  if (pathname.startsWith('/view-document')) {
+    return <main className="flex-1 overflow-y-auto">{children}</main>;
   }
   
   return <AppLayout>{children}</AppLayout>

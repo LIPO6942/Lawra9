@@ -119,18 +119,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
     }
 
     const handleView = (doc: Document) => {
-        try {
-            sessionStorage.setItem('documentToView', doc.fileUrl);
-            sessionStorage.setItem('documentNameToView', doc.name);
-            window.open('/view-document', '_blank');
-        } catch (error) {
-            if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-                alert("Le fichier est trop volumineux pour être prévisualisé via le stockage de session. Ce problème ne devrait pas survenir avec le stockage local.");
-            } else {
-                alert("Impossible d'afficher le document.");
-            }
-            console.error("Error viewing document:", error);
-        }
+       const url = `/view-document?id=${doc.id}`;
+       window.open(url, '_blank');
     };
 
     const formatDate = (dateString: string | undefined) => {

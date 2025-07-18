@@ -20,6 +20,7 @@ interface DocumentContextType {
   updateDocument: (id: string, data: Partial<Document>) => void;
   deleteDocument: (id: string) => void;
   markAsPaid: (id: string) => void;
+  getDocumentById: (id: string) => Document | undefined;
 }
 
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
@@ -85,6 +86,10 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       prevDocs.map(doc => (doc.id === id ? { ...doc, dueDate: undefined } : doc))
     );
   }, []);
+  
+  const getDocumentById = useCallback((id: string) => {
+    return documents.find(doc => doc.id === id);
+  }, [documents]);
 
   const alerts = useMemo(() => {
     return documents
@@ -170,6 +175,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateDocument,
     deleteDocument,
     markAsPaid,
+    getDocumentById,
   };
 
   return (
