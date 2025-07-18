@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { UploadDocumentDialog } from '../upload-document-dialog';
+import { useRouter } from 'next/navigation';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -110,11 +111,29 @@ interface DocumentsTableProps {
 export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTableProps) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+    const router = useRouter();
 
     const handleEdit = (doc: Document) => {
         setSelectedDocument(doc);
         setIsEditModalOpen(true);
     }
+
+    const handleView = (doc: Document) => {
+        try {
+            // Use session storage to pass the data URL, as it can be too long for a URL parameter.
+            // It will be cleared when the session ends.
+            sessionStorage.setItem('documentToView', doc.fileUrl);
+            sessionStorage.setItem('documentNameToView', doc.name);
+            window.open('/view-document', '_blank');
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+                alert("Le fichier est trop volumineux pour être prévisualisé. Essayez un fichier plus petit.");
+            } else {
+                alert("Impossible d'afficher le document.");
+            }
+            console.error("Error viewing document:", error);
+        }
+    };
 
     const formatDate = (dateString: string | undefined) => {
         if (!dateString) return '-';
@@ -173,7 +192,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete }: DocumentsTable
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => window.open(doc.fileUrl, '_blank')}>
+                            <DropdownMenuItem onClick={() => handleView(doc)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Consulter
                             </DropdownMenuItem>
