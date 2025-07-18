@@ -7,6 +7,8 @@ import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { storage } from '@/lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
 
 interface MonthlyExpense {
   month: string;
@@ -65,7 +67,12 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const key = getLocalStorageKey();
     if (key) {
         try {
-          localStorage.setItem(key, JSON.stringify(documents));
+          const docsToStore = documents.map(({ ...doc }) => {
+            // We don't store fileUrl for non-Maison docs to save space, but Maison docs need it.
+            // Let's just store everything for simplicity for now.
+            return doc;
+          });
+          localStorage.setItem(key, JSON.stringify(docsToStore));
         } catch (error) {
            console.error("Failed to save documents to local storage", error);
            if (error instanceof DOMException && error.name === 'QuotaExceededError') {
@@ -82,7 +89,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addDocument = useCallback(async (doc: Omit<Document, 'id' | 'createdAt'>) => {
     const newDoc = { ...doc, id: `doc-${Date.now()}`, createdAt: new Date().toISOString() };
-    setDocuments(prevDocs => [newDoc, ...prevDocs]);
+    setDocuments(prevDocs => [newDoc, ...prevDocs].sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()));
   }, []);
 
   const updateDocument = useCallback(async (id: string, data: Partial<Document>) => {
@@ -92,9 +99,26 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const deleteDocument = useCallback(async (id: string) => {
+    const docToDelete = documents.find(doc => doc.id === id);
+    if (docToDelete && docToDelete.filePath) {
+      try {
+        const fileRef = ref(storage, docToDelete.filePath);
+        await deleteObject(fileRef);
+      } catch (error: any) {
+        // If file not found, we can ignore, but log other errors
+        if (error.code !== 'storage/object-not-found') {
+          console.error("Error deleting file from Firebase Storage", error);
+          toast({
+            variant: 'destructive',
+            title: 'Erreur de suppression',
+            description: "Le fichier distant n'a pas pu être supprimé, mais la référence locale a été enlevée."
+          });
+        }
+      }
+    }
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
     toast({ title: 'Document supprimé' });
-  }, [toast]);
+  }, [documents, toast]);
   
   const markAsPaid = useCallback((id: string) => {
     setDocuments(prevDocs =>
@@ -131,7 +155,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const currentYear = getYear(new Date());
 
     documents.forEach(doc => {
-      if (!doc.amount) return;
+      if (!doc.amount || doc.category === 'Maison') return;
 
       let expenseDate: Date | null = null;
       const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];

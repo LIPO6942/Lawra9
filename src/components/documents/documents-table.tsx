@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -81,7 +81,7 @@ const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
         }
     }
   
-    if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre') {
+    if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre' || doc.category === 'Maison') {
       try {
         const createdAtDate = parseISO(doc.createdAt);
         if(!isValid(createdAtDate)) return <span>Date invalide</span>
@@ -104,9 +104,10 @@ interface DocumentsTableProps {
     documents: Document[];
     onUpdate: (id: string, data: Partial<Document>) => void;
     onDelete: (id: string) => void;
+    isMaison?: boolean;
 }
 
-export function DocumentsTable({ documents }: DocumentsTableProps) {
+export function DocumentsTable({ documents, isMaison = false }: DocumentsTableProps) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -124,6 +125,10 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
         setDocToDelete(doc);
         setIsDeleteAlertOpen(true);
     };
+    
+    const handleViewFile = (fileUrl: string) => {
+        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    }
 
     const executeDelete = async () => {
         if (!docToDelete) return;
@@ -150,11 +155,11 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
             <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Fournisseur / Nom</TableHead>
-                    <TableHead className="hidden sm:table-cell">Période / Date</TableHead>
-                    <TableHead className="hidden md:table-cell text-right">Montant</TableHead>
-                    <TableHead className="hidden lg:table-cell text-center">Échéance</TableHead>
-                    <TableHead className="text-center">Statut</TableHead>
+                    <TableHead>{isMaison ? 'Nom du document' : 'Fournisseur / Nom'}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{isMaison ? 'Catégorie' : 'Période / Date'}</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">{isMaison ? 'Date Ajout' : 'Montant'}</TableHead>
+                    <TableHead className="hidden lg:table-cell text-center">{isMaison ? 'Fichier' : 'Échéance'}</TableHead>
+                    <TableHead className="text-center">{isMaison ? '' : 'Statut'}</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -165,22 +170,32 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                         <div className="flex items-center gap-3">
                            <CategoryIcon category={doc.category} />
                            <div className="flex flex-col">
-                             <span className="font-medium">{doc.supplier || doc.category}</span>
-                             <span className="text-xs text-muted-foreground max-w-[150px] sm:max-w-xs truncate">{doc.name}</span>
+                             <span className="font-medium">{isMaison ? doc.name : (doc.supplier || doc.category)}</span>
+                             <span className="text-xs text-muted-foreground max-w-[150px] sm:max-w-xs truncate">{isMaison ? (doc.subCategory || 'Document') : doc.name}</span>
                            </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                         <ConsumptionPeriod doc={doc} />
+                         {isMaison ? doc.subCategory : <ConsumptionPeriod doc={doc} />}
                       </TableCell>
                        <TableCell className="hidden md:table-cell text-right font-mono">
-                        {doc.amount ? `${doc.amount} TND` : '-'}
+                        {isMaison ? formatDate(doc.createdAt) : (doc.amount ? `${doc.amount} TND` : '-')}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-center text-muted-foreground">
-                         {formatDate(doc.dueDate)}
+                      <TableCell className="hidden lg:table-cell text-center">
+                         {isMaison ? (
+                            doc.fileUrl ? (
+                                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewFile(doc.fileUrl!); }}>
+                                    <Eye className="mr-2 h-4 w-4"/> Consulter
+                                </Button>
+                            ) : (
+                                <span className="text-muted-foreground text-xs">Aucun</span>
+                            )
+                         ) : (
+                            <span className="text-muted-foreground">{formatDate(doc.dueDate)}</span>
+                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                          <StatusBadge dueDate={doc.dueDate} />
+                          {!isMaison && <StatusBadge dueDate={doc.dueDate} />}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {isDeleting === doc.id ? (
@@ -198,6 +213,12 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                                   <Edit className="mr-2 h-4 w-4" />
                                   Détails / Modifier
                                 </DropdownMenuItem>
+                                {isMaison && doc.fileUrl && (
+                                    <DropdownMenuItem onClick={() => handleViewFile(doc.fileUrl!)}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Consulter le fichier
+                                    </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
                                   <Trash2 className="mr-2 h-4 w-4" />
@@ -223,7 +244,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                     <AlertDialogHeader>
                     <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Cette action est irréversible. Les données du document "{docToDelete?.name}" seront définitivement supprimées.
+                        Cette action est irréversible. Les données du document "{docToDelete?.name}" {docToDelete?.fileUrl ? "et le fichier associé " : ""}seront définitivement supprimées.
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -241,6 +262,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                     open={isEditModalOpen}
                     onOpenChange={setIsEditModalOpen}
                     documentToEdit={selectedDocument}
+                    storageOnly={isMaison}
                 />
             )}
         </>

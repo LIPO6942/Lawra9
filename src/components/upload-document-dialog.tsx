@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, UploadCloud, Loader2, Camera, FileText, CheckCircle } from 'lucide-react';
+import { PlusCircle, UploadCloud, Loader2, Camera, FileText, CheckCircle, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { extractInvoiceData, ExtractInvoiceDataOutput } from '@/ai/flows/extract-invoice-data';
@@ -27,6 +27,8 @@ import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { useAuth } from '@/contexts/auth-context';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -35,18 +37,18 @@ interface UploadDocumentDialogProps {
   onOpenChange?: (open: boolean) => void;
   documentToEdit?: Document | null;
   defaultCategory?: Document['category'];
+  storageOnly?: boolean; // New prop for Maison section
 }
 
-const frenchCategories: { [key: string]: Document['category'] } = {
-    'STEG': 'STEG',
-    'SONEDE': 'SONEDE',
-    'Reçu Bancaire': 'Reçu Bancaire',
-    'Maison': 'Maison',
-    'Internet': 'Internet',
-    'Assurance': 'Assurance',
-    'Contrat': 'Contrat',
-    'Autre': 'Autre',
-};
+const maisonCategories = [
+  "Contrat d'acquisition",
+  "Tableau d'amortissement",
+  "Contrat de mariage",
+  "Plan de la maison",
+  "Assurance habitation",
+  "Taxe municipale",
+  "Autre document maison"
+];
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
     const docType = result.documentType as Document['category'];
@@ -89,13 +91,14 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
-export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory }: UploadDocumentDialogProps) {
+export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, defaultCategory, storageOnly = false }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
   const [step, setStep] = useState<'selection' | 'form'>('selection');
   
   const { user } = useAuth();
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [analyzedFileName, setAnalyzedFileName] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<Document>>({});
@@ -194,6 +197,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setIsProcessing(false);
     setProcessingMessage('');
     setAnalyzedFileName(null);
+    setOriginalFile(null);
     setFormData({});
     setStep('selection');
     stopCameraStream();
@@ -202,8 +206,20 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   
   const processDocumentForAnalysis = async (file: File) => {
       setIsProcessing(true);
-      setProcessingMessage('Analyse du document...');
+      setOriginalFile(file);
       setAnalyzedFileName(file.name);
+      
+      if (storageOnly) {
+          setFormData({
+              name: file.name.split('.').slice(0, -1).join('.') || file.name,
+              category: 'Maison',
+          });
+          setIsProcessing(false);
+          setStep('form');
+          return;
+      }
+
+      setProcessingMessage('Analyse du document...');
       
       try {
           const documentDataUri = await fileToDataUrl(file);
@@ -283,36 +299,45 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
     
     setIsProcessing(true);
+    let finalDocumentData: Partial<Document> = { ...formData };
 
     try {
+      if (originalFile) {
+        setProcessingMessage('Téléversement du fichier...');
+        const filePath = `documents/${user.uid}/${Date.now()}-${originalFile.name}`;
+        const fileRef = ref(storage, filePath);
+        await uploadBytes(fileRef, originalFile);
+        const fileUrl = await getDownloadURL(fileRef);
+        finalDocumentData = { ...finalDocumentData, fileUrl, filePath };
+      }
+
       if (isEditMode && documentToEdit) {
         setProcessingMessage('Mise à jour du document...');
-        const finalDocumentData = {
-          ...documentToEdit,
-          ...formData,
-        };
         await updateDocument(documentToEdit.id, finalDocumentData);
-        toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
+        toast({ title: "Document modifié !", description: `Le document "${finalDocumentData.name || 'sélectionné'}" a été mis à jour.`});
 
       } else {
         setProcessingMessage('Finalisation...');
-        const finalDocument: Omit<Document, 'id' | 'createdAt'> = {
-            name: formData.name || 'Nouveau document',
-            category: formData.category || 'Autre',
-            supplier: formData.supplier,
-            amount: formData.amount,
-            dueDate: formData.dueDate,
-            issueDate: formData.issueDate,
-            invoiceNumber: formData.invoiceNumber,
-            billingStartDate: formData.billingStartDate,
-            billingEndDate: formData.billingEndDate,
-            consumptionPeriod: formData.consumptionPeriod,
-            summary: formData.summary,
-            taxAmount: formData.taxAmount,
-            totalExclTax: formData.totalExclTax,
+        const docToAdd: Omit<Document, 'id' | 'createdAt'> = {
+            name: finalDocumentData.name || 'Nouveau document',
+            category: finalDocumentData.category || 'Autre',
+            supplier: finalDocumentData.supplier,
+            amount: finalDocumentData.amount,
+            dueDate: finalDocumentData.dueDate,
+            issueDate: finalDocumentData.issueDate,
+            invoiceNumber: finalDocumentData.invoiceNumber,
+            billingStartDate: finalDocumentData.billingStartDate,
+            billingEndDate: finalDocumentData.billingEndDate,
+            consumptionPeriod: finalDocumentData.consumptionPeriod,
+            summary: finalDocumentData.summary,
+            taxAmount: finalDocumentData.taxAmount,
+            totalExclTax: finalDocumentData.totalExclTax,
+            fileUrl: finalDocumentData.fileUrl,
+            filePath: finalDocumentData.filePath,
+            subCategory: finalDocumentData.subCategory,
         };
-        await addDocument(finalDocument);
-        toast({ title: "Document enregistré !", description: `"${finalDocument.name}" a été ajouté.` });
+        await addDocument(docToAdd);
+        toast({ title: "Document enregistré !", description: `"${docToAdd.name}" a été ajouté.` });
       }
         
       handleOpenChange(false);
@@ -326,14 +351,19 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     }
   };
 
-  const dialogTitle = isEditMode ? "Modifier le document" : "Ajouter un nouveau document";
+  const dialogTitle = isEditMode 
+    ? "Modifier le document" 
+    : storageOnly
+      ? "Archiver un document"
+      : "Ajouter un nouveau document";
+
   const dialogDescription = isEditMode 
     ? "Modifiez les informations de votre document ci-dessous." 
-    : step === 'selection' 
-      ? (defaultCategory === 'Maison' 
-          ? "Uploadez un document à archiver dans votre Espace Maison."
-          : "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous.")
-      : "Veuillez vérifier les informations extraites par l'IA avant de sauvegarder.";
+    : storageOnly
+      ? "Choisissez un fichier, donnez-lui un nom et classez-le."
+      : step === 'selection' 
+        ? "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous."
+        : "Veuillez vérifier les informations extraites par l'IA avant de sauvegarder.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -341,7 +371,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           <DialogTrigger asChild>
             <Button className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg">
               <PlusCircle className="mr-2 h-4 w-4" />
-              Ajouter un document
+              {storageOnly ? "Archiver un document" : "Ajouter un document"}
             </Button>
           </DialogTrigger>
       )}
@@ -362,44 +392,57 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         )}
         
         {!isProcessing && step === 'selection' && !isEditMode && (
-            <Tabs defaultValue="file" className="w-full" onValueChange={handleTabChange}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="file">Fichier</TabsTrigger>
-                <TabsTrigger value="camera">Appareil photo</TabsTrigger>
-              </TabsList>
-              <TabsContent value="file">
-                 <div className="py-8">
+             storageOnly ? (
+                  <div className="py-8">
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
-                        <UploadCloud className="h-12 w-12 text-muted-foreground" />
-                        <p className="font-semibold">Cliquez ou glissez-déposez</p>
-                        <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 10MB)</p>
+                        <Upload className="h-12 w-12 text-muted-foreground" />
+                        <p className="font-semibold">Choisissez un fichier à archiver</p>
+                        <p className="text-xs text-muted-foreground">PDF, PNG, JPG, etc.</p>
                       </div>
                     </label>
-                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" />
+                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} />
                   </div>
-              </TabsContent>
-              <TabsContent value="camera">
-                <div className="py-4 space-y-4">
-                  <div className="relative aspect-video w-full bg-muted rounded-lg overflow-hidden">
-                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                    <canvas ref={canvasRef} className="hidden" />
-                  </div>
-                  {hasCameraPermission === false && (
-                    <Alert variant="destructive">
-                      <AlertTitle>Accès Caméra Requis</AlertTitle>
-                      <AlertDescription>
-                        Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  <Button onClick={handleCapture} disabled={!hasCameraPermission} className="w-full">
-                    <Camera className="mr-2 h-4 w-4" />
-                    Capturer
-                  </Button>
-                </div>
-              </TabsContent>
-            </Tabs>
+             ) : (
+                <Tabs defaultValue="file" className="w-full" onValueChange={handleTabChange}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="file">Fichier</TabsTrigger>
+                    <TabsTrigger value="camera">Appareil photo</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="file">
+                     <div className="py-8">
+                        <label htmlFor="file-upload" className="cursor-pointer">
+                          <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
+                            <UploadCloud className="h-12 w-12 text-muted-foreground" />
+                            <p className="font-semibold">Cliquez ou glissez-déposez</p>
+                            <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 10MB)</p>
+                          </div>
+                        </label>
+                        <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.png,.jpg,.jpeg" />
+                      </div>
+                  </TabsContent>
+                  <TabsContent value="camera">
+                    <div className="py-4 space-y-4">
+                      <div className="relative aspect-video w-full bg-muted rounded-lg overflow-hidden">
+                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                        <canvas ref={canvasRef} className="hidden" />
+                      </div>
+                      {hasCameraPermission === false && (
+                        <Alert variant="destructive">
+                          <AlertTitle>Accès Caméra Requis</AlertTitle>
+                          <AlertDescription>
+                            Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      <Button onClick={handleCapture} disabled={!hasCameraPermission} className="w-full">
+                        <Camera className="mr-2 h-4 w-4" />
+                        Capturer
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+            )
         )}
 
         {!isProcessing && step === 'form' && (
@@ -416,58 +459,78 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 <Label htmlFor="doc-name">Nom du document</Label>
                 <Input id="doc-name" value={formData.name || ''} onChange={e => handleFormChange('name', e.target.value)} />
               </div>
-              <div className="space-y-2">
-                  <Label htmlFor="doc-category">Catégorie</Label>
-                  <Select value={formData.category || ''} onValueChange={(value) => handleFormChange('category', value as Document['category'])}>
-                      <SelectTrigger id="doc-category" className="w-full">
+              
+              {storageOnly ? (
+                 <div className="space-y-2">
+                    <Label htmlFor="doc-maison-category">Catégorie du document</Label>
+                    <Select value={formData.subCategory || ''} onValueChange={(value) => handleFormChange('subCategory', value)}>
+                      <SelectTrigger id="doc-maison-category" className="w-full">
                           <SelectValue placeholder="Sélectionnez une catégorie" />
                       </SelectTrigger>
                       <SelectContent>
-                           <SelectItem value="STEG">STEG</SelectItem>
-                           <SelectItem value="SONEDE">SONEDE</SelectItem>
-                           <SelectItem value="Reçu Bancaire">Reçu Bancaire</SelectItem>
-                           <SelectItem value="Maison">Maison</SelectItem>
-                           <SelectItem value="Internet">Internet</SelectItem>
-                           <SelectItem value="Assurance">Assurance</SelectItem>
-                           <SelectItem value="Contrat">Contrat</SelectItem>
-                           <SelectItem value="Autre">Autre</SelectItem>
+                           {maisonCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                       </SelectContent>
                   </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="doc-supplier">Fournisseur</Label>
-                    <Input id="doc-supplier" value={formData.supplier || ''} onChange={e => handleFormChange('supplier', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="doc-amount">Montant (TND)</Label>
-                    <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                  <Label htmlFor="doc-issue-date">Date d'émission</Label>
-                  <Input id="doc-issue-date" type="text" placeholder="AAAA-MM-JJ" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
                  </div>
+              ) : (
                  <div className="space-y-2">
-                    <Label htmlFor="doc-due-date">Date d'échéance</Label>
-                    <Input id="doc-due-date" type="text" placeholder="AAAA-MM-JJ" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
+                    <Label htmlFor="doc-category">Catégorie</Label>
+                    <Select value={formData.category || ''} onValueChange={(value) => handleFormChange('category', value as Document['category'])}>
+                        <SelectTrigger id="doc-category" className="w-full">
+                            <SelectValue placeholder="Sélectionnez une catégorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                             <SelectItem value="STEG">STEG</SelectItem>
+                             <SelectItem value="SONEDE">SONEDE</SelectItem>
+                             <SelectItem value="Reçu Bancaire">Reçu Bancaire</SelectItem>
+                             <SelectItem value="Maison">Maison</SelectItem>
+                             <SelectItem value="Internet">Internet</SelectItem>
+                             <SelectItem value="Assurance">Assurance</SelectItem>
+                             <SelectItem value="Contrat">Contrat</SelectItem>
+                             <SelectItem value="Autre">Autre</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                    <Label htmlFor="doc-total-excl-tax">Montant HT</Label>
-                    <Input id="doc-total-excl-tax" type="text" value={formData.totalExclTax || ''} onChange={e => handleFormChange('totalExclTax', e.target.value)} />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="doc-tax-amount">Montant TVA</Label>
-                    <Input id="doc-tax-amount" type="text" value={formData.taxAmount || ''} onChange={e => handleFormChange('taxAmount', e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="doc-invoice-number">Numéro de Facture/Référence</Label>
-                  <Input id="doc-invoice-number" value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
-              </div>
+              )}
+
+              {!storageOnly && (
+                <>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="doc-supplier">Fournisseur</Label>
+                            <Input id="doc-supplier" value={formData.supplier || ''} onChange={e => handleFormChange('supplier', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="doc-amount">Montant (TND)</Label>
+                            <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-2">
+                        <Label htmlFor="doc-issue-date">Date d'émission</Label>
+                        <Input id="doc-issue-date" type="text" placeholder="AAAA-MM-JJ" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
+                       </div>
+                       <div className="space-y-2">
+                          <Label htmlFor="doc-due-date">Date d'échéance</Label>
+                          <Input id="doc-due-date" type="text" placeholder="AAAA-MM-JJ" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-2">
+                          <Label htmlFor="doc-total-excl-tax">Montant HT</Label>
+                          <Input id="doc-total-excl-tax" type="text" value={formData.totalExclTax || ''} onChange={e => handleFormChange('totalExclTax', e.target.value)} />
+                      </div>
+                       <div className="space-y-2">
+                          <Label htmlFor="doc-tax-amount">Montant TVA</Label>
+                          <Input id="doc-tax-amount" type="text" value={formData.taxAmount || ''} onChange={e => handleFormChange('taxAmount', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="doc-invoice-number">Numéro de Facture/Référence</Label>
+                        <Input id="doc-invoice-number" value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
+                    </div>
+                </>
+              )}
               <div className="space-y-2">
                   <Label htmlFor="doc-summary">Résumé / Notes</Label>
                   <Textarea id="doc-summary" value={formData.summary || ''} onChange={e => handleFormChange('summary', e.target.value)} />
