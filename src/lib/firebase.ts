@@ -18,19 +18,26 @@ let app: FirebaseApp;
 let auth: Auth;
 let storage: FirebaseStorage;
 
-try {
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  auth = getAuth(app);
-  storage = getStorage(app);
-} catch (error) {
-  console.error(
-    'Firebase config is missing or invalid. Make sure you have set up your .env file with all the required NEXT_PUBLIC_FIREBASE_* variables.',
-    error
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    console.error(
+    'Firebase config is missing or invalid. Make sure you have set up your .env file with all the required NEXT_PUBLIC_FIREBASE_* variables.'
   );
-  // Provide dummy objects to prevent app from crashing if firebase fails to init
+   // Provide dummy objects to prevent app from crashing if firebase fails to init
   app = {} as FirebaseApp;
   auth = {} as Auth;
   storage = {} as FirebaseStorage;
+} else {
+   try {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+    storage = getStorage(app);
+  } catch (error) {
+    console.error('Firebase initialization error:', error);
+    // Provide dummy objects to prevent app from crashing if firebase fails to init
+    app = {} as FirebaseApp;
+    auth = {} as Auth;
+    storage = {} as FirebaseStorage;
+  }
 }
 
 
