@@ -20,7 +20,7 @@ export async function uploadImage(file: File, userId: string): Promise<string> {
 
   try {
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('documents') // This is the bucket name
+      .from('lawra9') // This is the bucket name, changed to match user's bucket
       .upload(filePath, file);
 
     if (uploadError) {
@@ -29,7 +29,7 @@ export async function uploadImage(file: File, userId: string): Promise<string> {
     }
 
     const { data: publicUrlData } = supabase.storage
-      .from('documents')
+      .from('lawra9') // This is the bucket name, changed to match user's bucket
       .getPublicUrl(filePath);
 
     if (!publicUrlData || !publicUrlData.publicUrl) {
