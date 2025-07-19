@@ -17,7 +17,13 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
     return null;
   }
 
-  const isImage = document.fileUrl && /\.(jpg|jpeg|png|gif)$/i.test(document.fileUrl);
+  const isImage = document.fileUrl && /\.(jpg|jpeg|png|gif|webp)$/i.test(document.name) || document.fileUrl.startsWith('data:image');
+
+  const handleOpenFile = () => {
+    if (document.fileUrl) {
+        window.open(document.fileUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -33,7 +39,12 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
              isImage ? (
                 <img src={document.fileUrl} alt={`Prévisualisation de ${document.name}`} className="max-w-full h-auto mx-auto rounded-md" />
              ) : (
-                 <iframe src={document.fileUrl} className="w-full h-full border-0" title={`Prévisualisation de ${document.name}`}></iframe>
+                 <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-full">
+                    <FileQuestion className="h-12 w-12 text-muted-foreground" />
+                    <h2 className="mt-4 text-xl font-semibold">Aperçu non disponible</h2>
+                    <p className="mt-2 text-muted-foreground">L'aperçu pour ce type de fichier n'est pas supporté.</p>
+                    <Button onClick={handleOpenFile} className="mt-4">Ouvrir dans un nouvel onglet</Button>
+                </div>
              )
           ) : (
             <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-full">

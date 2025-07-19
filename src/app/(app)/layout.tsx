@@ -25,9 +25,12 @@ const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-const navItems = [
+const mainNavItems = [
     { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/documents', label: 'Documents', icon: Files },
+];
+
+const secondaryNavItems = [
     { href: '/historique', label: 'Historique', icon: History },
     { href: '/maison', label: 'Espace Maison', icon: Home },
 ];
@@ -79,7 +82,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                     <PaperworkIcon className="h-4 w-4 transition-all group-hover:scale-110" />
                     <span className="sr-only">Lawra9</span>
                 </Link>
-                {navItems.map(item => (
+                {mainNavItems.map(item => (
                     <Tooltip key={item.href}>
                         <TooltipTrigger asChild>
                             <Link href={item.href} className={cn(
@@ -95,6 +98,21 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 ))}
              </nav>
              <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+                 {secondaryNavItems.map(item => (
+                    <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                            <Link href={item.href} className={cn(
+                                "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                                pathname.startsWith(item.href) && "bg-accent text-accent-foreground"
+                            )}>
+                                <item.icon className="h-5 w-5" />
+                                <span className="sr-only">{item.label}</span>
+                            </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">{item.label}</TooltipContent>
+                    </Tooltip>
+                 ))}
+                 <Separator className="w-4/5 my-2"/>
                  <Tooltip>
                     <TooltipTrigger asChild>
                          <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 md:h-8 md:w-8" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
@@ -119,9 +137,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
           
           <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14 flex-1">
               <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-                 {/* This space is for breadcrumbs or page titles if needed in the future */}
                  <div className="flex-1">
-                    {/* Could add a dynamic title here */}
                  </div>
 
                  <div className="flex items-center gap-2">
@@ -162,7 +178,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               
               {/* Mobile Bottom Bar */}
               <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around">
-                {navItems.map(item => (
+                {[...mainNavItems, ...secondaryNavItems].map(item => (
                      <Link key={`mobile-${item.href}`} href={item.href} className={cn(
                         "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
                         pathname.startsWith(item.href) && "text-primary"

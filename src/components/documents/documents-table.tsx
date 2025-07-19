@@ -140,7 +140,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                             <div className="hidden sm:block">
                                <CategoryIcon category={doc.category} />
                             </div>
-                            <div className="flex-1 min-w-0" onClick={() => doc.fileUrl && openViewModal(doc)} >
+                            <div className="flex-1 min-w-0" onClick={() => openEditModal(doc)} >
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1 cursor-pointer">
                                         <p className="font-semibold truncate pr-2">{doc.name}</p>
