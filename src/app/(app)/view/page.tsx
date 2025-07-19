@@ -3,13 +3,13 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useDocuments } from '@/contexts/document-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Document } from '@/lib/types';
 import { Loader2, FileQuestion, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-export default function DocumentViewPage() {
+function DocumentView() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const { getDocumentById } = useDocuments();
@@ -77,4 +77,17 @@ export default function DocumentViewPage() {
       </main>
     </div>
   );
+}
+
+export default function DocumentViewPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen w-full flex-col items-center justify-center bg-muted">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="mt-4 text-muted-foreground">Chargement...</p>
+            </div>
+        }>
+            <DocumentView />
+        </Suspense>
+    )
 }
