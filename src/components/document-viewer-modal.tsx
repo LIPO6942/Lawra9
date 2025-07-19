@@ -16,9 +16,8 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
   if (!document) {
     return null;
   }
-  
-  // This component is no longer used for viewing files, but kept in case it's needed for other purposes.
-  // The functionality to view a file has been removed as we are no longer storing the file itself.
+
+  const isImage = document.fileUrl && /\.(jpg|jpeg|png|gif)$/i.test(document.fileUrl);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -26,15 +25,23 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="truncate">{document.name}</DialogTitle>
            <DialogDescription>
-            Détails du document.
+            Catégorie: {document.category}
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-auto px-6 pb-6">
+          {document.fileUrl ? (
+             isImage ? (
+                <img src={document.fileUrl} alt={`Prévisualisation de ${document.name}`} className="max-w-full h-auto mx-auto rounded-md" />
+             ) : (
+                 <iframe src={document.fileUrl} className="w-full h-full border-0" title={`Prévisualisation de ${document.name}`}></iframe>
+             )
+          ) : (
             <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-lg h-full">
                 <FileQuestion className="h-12 w-12 text-muted-foreground" />
-                <h2 className="mt-4 text-xl font-semibold">Pas de prévisualisation disponible</h2>
-                <p className="mt-2 text-muted-foreground">La sauvegarde des images de document n'est pas activée.</p>
+                <h2 className="mt-4 text-xl font-semibold">Pas de fichier associé</h2>
+                <p className="mt-2 text-muted-foreground">Aucun fichier n'a été sauvegardé pour ce document.</p>
             </div>
+          )}
         </div>
         <div className="p-6 pt-0 mt-auto border-t">
             <DialogClose asChild>

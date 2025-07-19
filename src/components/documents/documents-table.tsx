@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { UploadDocumentDialog } from '../upload-document-dialog';
 import { useDocuments } from '@/contexts/document-context';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
+import { DocumentViewerModal } from '../document-viewer-modal';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -110,6 +111,7 @@ interface DocumentsTableProps {
 
 export function DocumentsTable({ documents, isMaison = false }: DocumentsTableProps) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -117,9 +119,14 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
     const { deleteDocument } = useDocuments();
 
 
-    const handleViewOrEdit = (doc: Document) => {
+    const openEditModal = (doc: Document) => {
         setSelectedDocument(doc);
         setIsEditModalOpen(true);
+    }
+    
+    const openViewModal = (doc: Document) => {
+        setSelectedDocument(doc);
+        setIsViewModalOpen(true);
     }
 
     const confirmDelete = (doc: Document) => {
@@ -127,7 +134,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
         setIsDeleteAlertOpen(true);
     };
     
-    const handleViewFile = (fileUrl: string) => {
+    const handleViewFileInNewTab = (fileUrl: string) => {
         window.open(fileUrl, '_blank', 'noopener,noreferrer');
     }
 
@@ -168,7 +175,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                 </TableHeader>
                 <TableBody>
                   {documents.map((doc) => (
-                    <TableRow key={doc.id} onClick={() => handleViewOrEdit(doc)} className="cursor-pointer">
+                    <TableRow key={doc.id} onClick={() => openViewModal(doc)} className="cursor-pointer">
                       <TableCell>
                         <div className="flex items-center gap-3">
                            <CategoryIcon category={doc.category} />
@@ -187,7 +194,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                       <TableCell className="hidden lg:table-cell text-center">
                          {isMaison ? (
                             doc.fileUrl ? (
-                                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewFile(doc.fileUrl!); }}>
+                                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewFileInNewTab(doc.fileUrl!); }}>
                                     <Eye className="mr-2 h-4 w-4"/> Consulter
                                 </Button>
                             ) : (
@@ -212,12 +219,12 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleViewOrEdit(doc)}>
+                                <DropdownMenuItem onClick={() => openEditModal(doc)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Détails / Modifier
                                 </DropdownMenuItem>
                                 {doc.fileUrl && (
-                                    <DropdownMenuItem onClick={() => handleViewFile(doc.fileUrl!)}>
+                                    <DropdownMenuItem onClick={() => handleViewFileInNewTab(doc.fileUrl!)}>
                                       <Eye className="mr-2 h-4 w-4" />
                                       Consulter le fichier
                                     </DropdownMenuItem>
@@ -259,6 +266,12 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <DocumentViewerModal 
+                open={isViewModalOpen}
+                onOpenChange={setIsViewModalOpen}
+                document={selectedDocument}
+            />
 
             {selectedDocument && (
                 <EditDialogComponent

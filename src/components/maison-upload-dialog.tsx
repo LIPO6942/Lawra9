@@ -37,6 +37,52 @@ const maisonCategories = [
   "Autre document maison"
 ];
 
+async function uploadFileWithSignedUrl(file: File): Promise<{ publicUrl: string }> {
+    const authToken = await auth.currentUser?.getIdToken();
+    if (!authToken) {
+      throw new Error('User not authenticated');
+    }
+
+    // 1. Get signed URL from our API
+    const response = await fetch('/api/upload-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ fileName: file.name, fileType: file.type }),
+    });
+
+    if (!response.ok) {
+        let errorText = `HTTP error! status: ${response.status}`;
+        try {
+            const errorBody = await response.json();
+            errorText = `HTTP error! status: ${response.status} - ${errorBody.error || response.statusText}`;
+        } catch (e) {
+             errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
+        }
+        throw new Error(errorText);
+    }
+
+    const { signedUrl, publicUrl } = await response.json();
+
+    // 2. Upload file to Supabase using the signed URL
+    const uploadResponse = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Supabase file upload failed: ${uploadResponse.statusText}`);
+    }
+
+    return { publicUrl };
+}
+
+
 export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }: MaisonUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -85,7 +131,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      setFileToUpload(selectedFile); // We keep the file for potential future use, but don't upload it.
+      setFileToUpload(selectedFile);
       setFormData(prev => ({
         ...prev,
         name: selectedFile.name.split('.').slice(0, -1).join('.') || selectedFile.name,
@@ -111,10 +157,15 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     setIsProcessing(true);
     
-    // No upload logic, just prepare data for local storage
-    let finalDocumentData: Partial<Document> = { ...formData };
+    let fileUrl = documentToEdit?.fileUrl; // Keep existing URL if not changing file in edit mode
 
     try {
+      if (fileToUpload) {
+        fileUrl = (await uploadFileWithSignedUrl(fileToUpload)).publicUrl;
+      }
+
+      const finalDocumentData: Partial<Document> = { ...formData, fileUrl };
+
       if (isEditMode && documentToEdit) {
         await updateDocument(documentToEdit.id, finalDocumentData);
         toast({ title: "Document modifié !", description: `Le document "${finalDocumentData.name}" a été mis à jour.`});
@@ -123,7 +174,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
             name: finalDocumentData.name || 'Nouveau document',
             category: 'Maison',
             subCategory: finalDocumentData.subCategory,
-            // fileUrl is removed as we are not uploading.
+            fileUrl: finalDocumentData.fileUrl,
         };
         await addDocument(docToAdd);
         toast({ title: "Document archivé !", description: `"${docToAdd.name}" a été ajouté à votre espace Maison.` });
@@ -174,11 +225,11 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
         ) : (
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-                <Label htmlFor="file-upload">Fichier (Optionnel)</Label>
-                {fileToUpload ? (
+                <Label htmlFor="file-upload">Fichier</Label>
+                {fileToUpload || formData.fileUrl ? (
                     <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
                       <FileText className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload.name}</span>
+                      <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload?.name || formData.name}</span>
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     </div>
                 ) : (

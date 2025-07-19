@@ -26,6 +26,8 @@ import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { auth } from '@/lib/firebase';
+
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -88,6 +90,52 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
+async function uploadFileWithSignedUrl(file: File): Promise<{ publicUrl: string }> {
+    const authToken = await auth.currentUser?.getIdToken();
+    if (!authToken) {
+      throw new Error('User not authenticated');
+    }
+
+    // 1. Get signed URL from our API
+    const response = await fetch('/api/upload-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ fileName: file.name, fileType: file.type }),
+    });
+
+    if (!response.ok) {
+        let errorText = `HTTP error! status: ${response.status}`;
+        try {
+            const errorBody = await response.json();
+            errorText = `HTTP error! status: ${response.status} - ${errorBody.error || response.statusText}`;
+        } catch (e) {
+             errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
+        }
+        throw new Error(errorText);
+    }
+
+    const { signedUrl, publicUrl } = await response.json();
+
+    // 2. Upload file to Supabase using the signed URL
+    const uploadResponse = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Supabase file upload failed: ${uploadResponse.statusText}`);
+    }
+
+    return { publicUrl };
+}
+
+
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -95,6 +143,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [step, setStep] = useState<'selection' | 'form'>('selection');
   
   const [originalFileName, setOriginalFileName] = useState<string | null>(null);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
@@ -192,6 +241,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setIsProcessing(false);
     setProcessingMessage('');
     setOriginalFileName(null);
+    setFileToUpload(null);
     setFormData({});
     setStep('selection');
     stopCameraStream();
@@ -202,6 +252,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       setIsProcessing(true);
       const fileName = file.name;
       setOriginalFileName(fileName);
+      setFileToUpload(file);
 
       setProcessingMessage('Analyse du document...');
       
@@ -278,10 +329,19 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   const handleSave = async () => {
     setIsProcessing(true);
+    let fileUrl = documentToEdit?.fileUrl;
+
     try {
+      if (fileToUpload) {
+          setProcessingMessage('Téléversement du fichier...');
+          fileUrl = (await uploadFileWithSignedUrl(fileToUpload)).publicUrl;
+      }
+
+      const finalDocumentData: Partial<Document> = { ...formData, fileUrl };
+
       if (isEditMode && documentToEdit) {
         setProcessingMessage('Mise à jour du document...');
-        await updateDocument(documentToEdit.id, formData);
+        await updateDocument(documentToEdit.id, finalDocumentData);
         toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
 
       } else {
@@ -300,6 +360,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             summary: formData.summary,
             taxAmount: formData.taxAmount,
             totalExclTax: formData.totalExclTax,
+            fileUrl: fileUrl,
         };
         await addDocument(docToAdd);
         toast({ title: "Document enregistré !", description: `"${docToAdd.name}" a été ajouté.` });
@@ -396,10 +457,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         {!isProcessing && step === 'form' && (
           <>
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
-              {originalFileName && !isEditMode && (
+              {(fileToUpload || formData.fileUrl) && !isEditMode && (
                 <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground flex-1 truncate">{originalFileName}</span>
+                    <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload?.name || originalFileName}</span>
                     <CheckCircle className="h-5 w-5 text-green-500" />
                 </div>
               )}

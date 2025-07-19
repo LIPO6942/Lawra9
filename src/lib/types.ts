@@ -15,7 +15,7 @@ export type Document = {
   consumptionPeriod?: string; // For special cases like SONEDE
   taxAmount?: string;
   totalExclTax?: string;
-  fileUrl?: string; // Kept for potential future use, but not actively used for upload.
+  fileUrl?: string;
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
 };
 

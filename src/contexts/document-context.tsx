@@ -66,10 +66,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const key = getLocalStorageKey();
     if (key) {
         try {
-          const docsToStore = documents.map(({ ...doc }) => {
-            return doc;
-          });
-          localStorage.setItem(key, JSON.stringify(docsToStore));
+          localStorage.setItem(key, JSON.stringify(documents));
         } catch (error) {
            console.error("Failed to save documents to local storage", error);
            if (error instanceof DOMException && error.name === 'QuotaExceededError') {

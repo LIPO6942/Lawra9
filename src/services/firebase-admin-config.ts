@@ -1,21 +1,24 @@
 
-// src/services/firebase-admin-config.ts
+import * as admin from 'firebase-admin';
 
-if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-  throw new Error("The FIREBASE_SERVICE_ACCOUNT_JSON environment variable is not set. This is required for server-side authentication.");
+export function initAdminApp() {
+    if (admin.apps.length > 0) {
+        return;
+    }
+
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+        throw new Error("The FIREBASE_SERVICE_ACCOUNT_JSON environment variable is not set. This is required for server-side authentication.");
+    }
+    
+    try {
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+        });
+
+    } catch (error: any) {
+        console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:", error);
+        throw new Error("Could not initialize Firebase Admin SDK. Service account JSON is malformed.");
+    }
 }
-
-interface ServiceAccount {
-  type: string;
-  project_id: string;
-  private_key_id: string;
-  private_key: string;
-  client_email: string;
-  client_id: string;
-  auth_uri: string;
-  token_uri: string;
-  auth_provider_x509_cert_url: string;
-  client_x509_cert_url: string;
-}
-
-export const serviceAccount: ServiceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
