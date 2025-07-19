@@ -13,6 +13,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   SidebarFooter,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -89,6 +90,13 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { toast } = useToast();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
   
   const handleSignOut = async () => {
     try {
@@ -124,7 +132,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider>
+    
         <Sidebar>
         <SidebarHeader className="p-4">
             <Link href="/dashboard" className="group-data-[collapsible=icon]:hidden">
@@ -136,7 +144,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
             <SidebarMenu>
-            <SidebarMenuItem>
+            <SidebarMenuItem onClick={handleLinkClick}>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')}>
                 <Link href="/dashboard">
                     <LayoutDashboard />
@@ -144,7 +152,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            <SidebarMenuItem onClick={handleLinkClick}>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/documents')}>
                     <Link href="/documents">
                     <Files />
@@ -152,7 +160,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-                <SidebarMenuItem>
+                <SidebarMenuItem onClick={handleLinkClick}>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/historique')}>
                     <Link href="/historique">
                     <History />
@@ -160,7 +168,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            <SidebarMenuItem onClick={handleLinkClick}>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/maison')}>
                 <Link href="/maison">
                     <Home />
@@ -168,7 +176,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-                <SidebarMenuItem>
+                <SidebarMenuItem onClick={handleLinkClick}>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')}>
                 <Link href="/dashboard">
                     <Bell />
@@ -180,7 +188,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
-                <SidebarMenuItem>
+                <SidebarMenuItem onClick={handleLinkClick}>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/settings')}>
                     <Link href="/settings">
                     <Settings />
@@ -240,7 +248,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
         </main>
         </SidebarInset>
-    </SidebarProvider>
+    
   );
 }
 
@@ -264,7 +272,11 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  return <AppLayout>{children}</AppLayout>
+  return (
+      <SidebarProvider>
+        <AppLayout>{children}</AppLayout>
+      </SidebarProvider>
+  )
 }
 
 export default function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
