@@ -10,18 +10,6 @@ if (!getApps().length) {
   });
 }
 
-// IMPORTANT: Use the standard client with the service key for server-side operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    }
-  }
-);
-
 export async function POST(request: Request) {
   try {
     const authorization = request.headers.get('Authorization');
@@ -37,6 +25,24 @@ export async function POST(request: Request) {
         return new Response(JSON.stringify({ error: 'Unauthorized: Invalid Token' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
 
+    // Create a new Supabase client for each request, authenticated with the user's token.
+    const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!,
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+          // Pass the user's auth token to Supabase
+          global: {
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          },
+        }
+    );
+    
     const { fileName, fileType } = await request.json();
     if (!fileName || !fileType) {
         return new Response(JSON.stringify({ error: 'fileName and fileType are required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
