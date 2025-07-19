@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,6 +35,7 @@ interface UploadDocumentDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   documentToEdit?: Document | null;
+  children?: ReactNode;
 }
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
@@ -136,7 +137,7 @@ async function uploadFileWithSignedUrl(file: File): Promise<{ publicUrl: string 
 }
 
 
-export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null }: UploadDocumentDialogProps) {
+export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, children }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
@@ -389,15 +390,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      {!isEditMode && (
-          <DialogTrigger asChild>
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Ajouter un document
-            </Button>
-          </DialogTrigger>
-      )}
-      <DialogContent className="sm:max-w-[480px] rounded-lg">
+      <DialogTrigger asChild>
+        {children || (
+          <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Ajouter un document
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="font-headline">{dialogTitle}</DialogTitle>
           <DialogDescription>
@@ -529,9 +530,9 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                   <Textarea id="doc-summary" value={formData.summary || ''} onChange={e => handleFormChange('summary', e.target.value)} />
               </div>
             </div>
-            <DialogFooter>
-                {!isEditMode && <Button variant="outline" onClick={resetDialog}>Retour</Button>}
-              <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg">Enregistrer</Button>
+            <DialogFooter className="pt-4">
+                {!isEditMode && <Button variant="ghost" onClick={resetDialog}>Retour</Button>}
+              <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90">Enregistrer</Button>
             </DialogFooter>
           </>
         )}

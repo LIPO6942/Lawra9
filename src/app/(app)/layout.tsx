@@ -1,32 +1,22 @@
 
 'use client';
 
-import * as React from 'react';
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarInset,
-  SidebarTrigger,
-  SidebarFooter,
-  useSidebar,
-} from '@/components/ui/sidebar';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History, User, Zap, Droplets, Wifi } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import React from 'react';
 import Link from 'next/link';
-import { DocumentProvider } from '@/contexts/document-context';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { UserPreferencesProvider } from '@/contexts/user-preferences-context';
+import { DocumentProvider } from '@/contexts/document-context';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { LayoutDashboard, Files, History, Home, Settings, LogOut, User as UserIcon, LifeBuoy, Moon, Sun } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { UserPreferencesProvider, useUserPreferences } from '@/contexts/user-preferences-context';
+import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -35,69 +25,20 @@ const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-const providerLinks = {
-  STEG: "https://espace.steg.com.tn/fr/espace/login.php",
-  SONEDE: "https://portail.sonede.com.tn/login",
-  Orange: "https://www.orange.tn/espace-client",
-  Ooredoo: "https://my.ooredoo.tn/",
-  Topnet: "https://www.topnet.tn/home/espace-client",
-  TT: "https://www.tunisietelecom.tn/particulier/espace-client-fixe-data-mobile/",
-  Hexabyte: "https://client.hexabyte.tn/",
-  default: "#",
-};
-
-function Logo() {
-  return (
-    <div className="flex items-center gap-2">
-        <PaperworkIcon className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold font-headline text-primary-foreground tracking-tighter">
-            Lawra9
-        </h1>
-    </div>
-  );
-}
-
-function ProviderLinks() {
-    const { isp } = useUserPreferences();
-    const internetLink = isp ? providerLinks[isp] : providerLinks.default;
-
-    return (
-        <div className="hidden md:flex items-center space-x-2">
-            <Button asChild variant="outline" size="sm" className="border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300">
-                <Link href={providerLinks.STEG} target="_blank">
-                    <Zap className="h-4 w-4" />
-                    <span>STEG</span>
-                </Link>
-            </Button>
-             <Button asChild variant="outline" size="sm" className="border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
-                <Link href={providerLinks.SONEDE} target="_blank">
-                   <Droplets className="h-4 w-4" />
-                    <span>SONEDE</span>
-                </Link>
-            </Button>
-             <Button asChild variant="outline" size="sm" className="border-purple-500/50 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300">
-                <Link href={internetLink} target="_blank">
-                     <Wifi className="h-4 w-4" />
-                    <span>{isp || 'Internet'}</span>
-                </Link>
-            </Button>
-        </div>
-    );
-}
+const navItems = [
+    { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { href: '/documents', label: 'Documents', icon: Files },
+    { href: '/historique', label: 'Historique', icon: History },
+    { href: '/maison', label: 'Espace Maison', icon: Home },
+];
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
   const { toast } = useToast();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { theme, setTheme } = useTheme();
 
-  const handleLinkClick = () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
-  
   const handleSignOut = async () => {
     try {
         await signOut(auth);
@@ -112,146 +53,138 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     if (name) {
       const names = name.split(' ');
       const initials = names.map(n => n[0]).join('');
-      if (initials.length > 2) {
-          return initials.substring(0, 2).toUpperCase();
-      }
-      return initials.toUpperCase();
+      return (initials.length > 2 ? initials.substring(0, 2) : initials).toUpperCase();
     }
-    if (email) {
-      return email[0].toUpperCase();
-    }
-    return 'U';
+    return email ? email[0].toUpperCase() : 'U';
   }
 
   if (loading || !user) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
-            <p>Chargement...</p>
+            <div className="flex flex-col items-center gap-4">
+                <PaperworkIcon className="h-10 w-10 text-primary animate-pulse"/>
+                <p className="text-muted-foreground">Chargement de votre espace...</p>
+            </div>
         </div>
     );
   }
 
   return (
-    
-        <Sidebar>
-        <SidebarHeader className="p-4">
-            <Link href="/dashboard" className="group-data-[collapsible=icon]:hidden">
-            <Logo />
-            </Link>
-            <Link href="/dashboard" className="hidden group-data-[collapsible=icon]:block mx-auto">
-                <PaperworkIcon className="h-6 w-6 text-primary" />
-            </Link>
-        </SidebarHeader>
-        <SidebarContent>
-            <SidebarMenu>
-            <SidebarMenuItem onClick={handleLinkClick}>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')}>
-                <Link href="/dashboard">
-                    <LayoutDashboard />
-                    Tableau de bord
+    <TooltipProvider>
+      <div className="min-h-screen w-full bg-background text-foreground flex">
+          {/* Sidebar Navigation */}
+          <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
+             <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+                <Link href="/dashboard" className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base">
+                    <PaperworkIcon className="h-4 w-4 transition-all group-hover:scale-110" />
+                    <span className="sr-only">Lawra9</span>
                 </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem onClick={handleLinkClick}>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/documents')}>
-                    <Link href="/documents">
-                    <Files />
-                    Documents
+                {navItems.map(item => (
+                    <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                            <Link href={item.href} className={cn(
+                                "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                                pathname.startsWith(item.href) && "bg-accent text-accent-foreground"
+                            )}>
+                                <item.icon className="h-5 w-5" />
+                                <span className="sr-only">{item.label}</span>
+                            </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">{item.label}</TooltipContent>
+                    </Tooltip>
+                ))}
+             </nav>
+             <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 md:h-8 md:w-8" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                            <span className="sr-only">Changer de thème</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Thème</TooltipContent>
+                 </Tooltip>
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                       <Link href="/settings" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8">
+                           <Settings className="h-5 w-5" />
+                           <span className="sr-only">Paramètres</span>
+                       </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Paramètres</TooltipContent>
+                 </Tooltip>
+             </nav>
+          </aside>
+          
+          <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14 flex-1">
+              <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                 {/* This space is for breadcrumbs or page titles if needed in the future */}
+                 <div className="flex-1">
+                    {/* Could add a dynamic title here */}
+                 </div>
+
+                 <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="overflow-hidden rounded-full h-9 w-9">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || "User"} />
+                                    <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+                                </Avatar>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel className="font-normal">
+                                <div className="flex flex-col space-y-1">
+                                    <p className="text-sm font-medium leading-none">{user.displayName || 'Utilisateur'}</p>
+                                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                                </div>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                                <Link href="/settings"><UserIcon className="mr-2 h-4 w-4" /><span>Profil</span></Link>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href="#"><LifeBuoy className="mr-2 h-4 w-4" /><span>Support</span></Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={handleSignOut}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                <span>Se déconnecter</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                 </div>
+              </header>
+
+              <main className="flex-1 items-start p-4 sm:px-6 sm:py-0">{children}</main>
+              
+              {/* Mobile Bottom Bar */}
+              <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around">
+                {navItems.map(item => (
+                     <Link key={`mobile-${item.href}`} href={item.href} className={cn(
+                        "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
+                        pathname.startsWith(item.href) && "text-primary"
+                    )}>
+                        <item.icon className="h-5 w-5" />
+                        <span className="text-xs font-medium">{item.label}</span>
                     </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-                <SidebarMenuItem onClick={handleLinkClick}>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/historique')}>
-                    <Link href="/historique">
-                    <History />
-                    Historique
-                    </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem onClick={handleLinkClick}>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/maison')}>
-                <Link href="/maison">
-                    <Home />
-                    Maison
+                ))}
+                <Link href="/settings" className={cn(
+                    "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
+                     pathname.startsWith('/settings') && "text-primary"
+                )}>
+                    <Settings className="h-5 w-5" />
+                    <span className="text-xs font-medium">Paramètres</span>
                 </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem onClick={handleLinkClick}>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')}>
-                <Link href="/dashboard">
-                    <Bell />
-                    Alertes
-                </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-            <SidebarMenu>
-                <SidebarMenuItem onClick={handleLinkClick}>
-                <SidebarMenuButton asChild isActive={pathname.startsWith('/settings')}>
-                    <Link href="/settings">
-                    <Settings />
-                    Paramètres
-                    </Link>
-                </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarFooter>
-        </Sidebar>
-        <SidebarInset>
-        <header className="flex items-center justify-between h-16 px-6 border-b">
-            <SidebarTrigger className="md:hidden" />
-            <ProviderLinks />
-            <div className="flex items-center space-x-4">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.photoURL || undefined} alt="User" />
-                    <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
-                    </Avatar>
-                </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName || 'Utilisateur'}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                        {user.email}
-                    </p>
-                    </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                    <Link href="/settings">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profil</span>
-                    </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                    <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Paramètres</span>
-                    </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Se déconnecter</span>
-                </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-            </div>
-        </header>
-        <main className="flex-1 overflow-y-auto">
-            {children}
-        </main>
-        </SidebarInset>
-    
+              </nav>
+              <div className="sm:hidden h-16" /> {/* Spacer for bottom nav */}
+          </div>
+      </div>
+    </TooltipProvider>
   );
 }
-
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -267,16 +200,15 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   if (loading || !user) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
-            <p>Chargement...</p>
+             <div className="flex flex-col items-center gap-4">
+                <PaperworkIcon className="h-10 w-10 text-primary animate-pulse"/>
+                <p className="text-muted-foreground">Chargement de la session...</p>
+            </div>
         </div>
     );
   }
   
-  return (
-      <SidebarProvider>
-        <AppLayout>{children}</AppLayout>
-      </SidebarProvider>
-  )
+  return <AppLayout>{children}</AppLayout>;
 }
 
 export default function AppLayoutWrapper({ children }: { children: React.ReactNode }) {

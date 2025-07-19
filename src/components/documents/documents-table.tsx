@@ -3,9 +3,8 @@
 
 import { useState } from 'react';
 import { Document } from '@/lib/types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, GripVertical } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -15,6 +14,7 @@ import { UploadDocumentDialog } from '../upload-document-dialog';
 import { useDocuments } from '@/contexts/document-context';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
 import { DocumentViewerModal } from '../document-viewer-modal';
+import { Card } from '../ui/card';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -30,77 +30,47 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
 
 const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
   if (!dueDate) {
-    return <Badge variant="secondary" className="rounded-md">Payée</Badge>;
+    return <Badge variant="outline" className="border-green-500/50 text-green-600 bg-green-500/10 font-normal">Payée</Badge>;
   }
   
   const date = parseISO(dueDate);
-  if (!isValid(date)) {
-    return <Badge variant="secondary" className="rounded-md">Date invalide</Badge>;
-  }
+  if (!isValid(date)) return null;
   
   const daysDiff = differenceInDays(date, new Date());
 
   if (daysDiff < 0) {
-    return <Badge variant="destructive" className="rounded-md">En retard</Badge>;
+    return <Badge variant="destructive" className="font-normal">En retard</Badge>;
   }
   if (daysDiff <= 7) {
-    return <Badge className="bg-destructive/80 text-destructive-foreground rounded-md">Urgent</Badge>;
+    return <Badge className="bg-red-500 hover:bg-red-500/80 font-normal">Urgent</Badge>;
   }
   if (daysDiff <= 30) {
-    return <Badge className="bg-orange-400 text-black rounded-md">À venir</Badge>;
+    return <Badge className="bg-orange-400 hover:bg-orange-400/80 text-black font-normal">À venir</Badge>;
   }
-  return <Badge variant="outline" className="rounded-md">Normal</Badge>;
+  return <Badge variant="secondary" className="font-normal">Normal</Badge>;
 };
 
 
 const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
-    if (doc.category === 'SONEDE' && doc.consumptionPeriod) {
-        return (
-            <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                <span>{doc.consumptionPeriod}</span>
-            </div>
-        );
+    let dateToDisplay: Date | null = null;
+    let label = '';
+
+    if (doc.issueDate) {
+        const date = parseISO(doc.issueDate);
+        if (isValid(date)) dateToDisplay = date;
+        label = 'Émis le';
+    } else if (doc.createdAt) {
+        const date = parseISO(doc.createdAt);
+        if (isValid(date)) dateToDisplay = date;
+        label = 'Ajouté le';
+    }
+
+    if(dateToDisplay) {
+       return <span className="text-muted-foreground">{label} {format(dateToDisplay, 'd MMM yyyy', { locale: fr })}</span>;
     }
     
-    if (doc.billingStartDate && doc.billingEndDate) {
-        try {
-            const start = parseISO(doc.billingStartDate);
-            const end = parseISO(doc.billingEndDate);
-
-            if (!isValid(start) || !isValid(end)) {
-                return <span>Période invalide</span>;
-            }
-            
-            return (
-                <div className="flex items-center gap-2">
-                   <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                   <span>{format(start, 'd MMM yy', { locale: fr })} - {format(end, 'd MMM yy', { locale: fr })}</span>
-                </div>
-            );
-        } catch (e) {
-            return <span>Période invalide</span>;
-        }
-    }
-  
-    if (doc.category === 'Reçu Bancaire' || doc.category === 'Autre' || doc.category === 'Maison') {
-      try {
-        const createdAtDate = parseISO(doc.createdAt);
-        if(!isValid(createdAtDate)) return <span>Date invalide</span>
-        return (
-            <div className="flex items-center gap-2">
-               <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-               <span>{format(createdAtDate, 'd MMMM yyyy', { locale: fr })}</span>
-            </div>
-        );
-      } catch(e) {
-          return <span>Date invalide</span>;
-      }
-    }
-
-    return <span>N/A</span>;
+    return null;
 }
-
 
 interface DocumentsTableProps {
     documents: Document[];
@@ -134,8 +104,10 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
         setIsDeleteAlertOpen(true);
     };
     
-    const handleViewFileInNewTab = (fileUrl: string) => {
-        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    const handleViewFileInNewTab = (fileUrl?: string) => {
+        if (fileUrl) {
+            window.open(fileUrl, '_blank', 'noopener,noreferrer');
+        }
     }
 
     const executeDelete = async () => {
@@ -146,108 +118,87 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
         setIsDeleteAlertOpen(false);
         setDocToDelete(null);
     };
-
-    const formatDate = (dateString: string | undefined) => {
-        if (!dateString) return '-';
-        try {
-            const date = parseISO(dateString);
-            if (!isValid(date)) return 'Date invalide';
-            return format(date, 'd MMMM yyyy', { locale: fr });
-        } catch(e) {
-            return 'Date invalide';
-        }
-    }
     
     const EditDialogComponent = isMaison ? MaisonUploadDialog : UploadDocumentDialog;
 
+    if (documents.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center text-center py-16 rounded-lg bg-muted/50">
+                <Info className="h-10 w-10 text-muted-foreground mb-4" />
+                <p className="font-semibold text-muted-foreground">Aucun document trouvé.</p>
+                <p className="text-sm text-muted-foreground/80 mt-1">Ajoutez un nouveau document pour commencer.</p>
+            </div>
+        );
+    }
+
     return (
         <>
-            <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{isMaison ? 'Nom du document' : 'Fournisseur / Nom'}</TableHead>
-                    <TableHead className="hidden sm:table-cell">{isMaison ? 'Catégorie' : 'Période / Date'}</TableHead>
-                    <TableHead className="hidden md:table-cell text-right">{isMaison ? 'Date Ajout' : 'Montant'}</TableHead>
-                    <TableHead className="hidden lg:table-cell text-center">{isMaison ? 'Fichier' : 'Échéance'}</TableHead>
-                    <TableHead className="text-center">{isMaison ? '' : 'Statut'}</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {documents.map((doc) => (
-                    <TableRow key={doc.id} onClick={() => openViewModal(doc)} className="cursor-pointer">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                           <CategoryIcon category={doc.category} />
-                           <div className="flex flex-col">
-                             <span className="font-medium">{isMaison ? doc.name : (doc.supplier || doc.category)}</span>
-                             <span className="text-xs text-muted-foreground max-w-[150px] sm:max-w-xs truncate">{isMaison ? (doc.subCategory || 'Document') : doc.name}</span>
-                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                         {isMaison ? doc.subCategory : <ConsumptionPeriod doc={doc} />}
-                      </TableCell>
-                       <TableCell className="hidden md:table-cell text-right font-mono">
-                        {isMaison ? formatDate(doc.createdAt) : (doc.amount ? `${doc.amount} TND` : '-')}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-center">
-                         {isMaison ? (
-                            doc.fileUrl ? (
-                                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewFileInNewTab(doc.fileUrl!); }}>
-                                    <Eye className="mr-2 h-4 w-4"/> Consulter
-                                </Button>
-                            ) : (
-                                <span className="text-muted-foreground text-xs">Aucun</span>
-                            )
-                         ) : (
-                            <span className="text-muted-foreground">{formatDate(doc.dueDate)}</span>
-                         )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                          {!isMaison && <StatusBadge dueDate={doc.dueDate} />}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {isDeleting === doc.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                        ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Ouvrir le menu</span>
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openEditModal(doc)}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Détails / Modifier
-                                </DropdownMenuItem>
-                                {doc.fileUrl && (
-                                    <DropdownMenuItem onClick={() => handleViewFileInNewTab(doc.fileUrl!)}>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      Consulter le fichier
-                                    </DropdownMenuItem>
+            <div className="grid grid-cols-1 gap-4">
+                {documents.map(doc => (
+                    <Card key={doc.id} className="p-4 transition-all hover:shadow-md">
+                        <div className="flex items-center gap-4">
+                            <div className="hidden sm:block">
+                               <CategoryIcon category={doc.category} />
+                            </div>
+                            <div className="flex-1 min-w-0" onClick={() => doc.fileUrl && openViewModal(doc)} >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1 cursor-pointer">
+                                        <p className="font-semibold truncate pr-2">{doc.name}</p>
+                                        <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
+                                    </div>
+                                    {!isMaison && (
+                                        <div className="flex-shrink-0 ml-4">
+                                            <StatusBadge dueDate={doc.dueDate} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2">
+                                    {doc.amount && !isMaison && (
+                                        <span className="font-mono">{doc.amount} TND</span>
+                                    )}
+                                    <div className="flex items-center gap-1 text-muted-foreground">
+                                        <CalendarDays className="h-4 w-4" />
+                                        <span>
+                                            { isMaison ? (format(parseISO(doc.createdAt), 'd MMM yyyy')) : (doc.issueDate ? format(parseISO(doc.issueDate), 'd MMM yyyy') : 'N/A') }
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex-shrink-0">
+                                 {isDeleting === doc.id ? (
+                                    <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                                ) : (
+                                    <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Ouvrir le menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => openEditModal(doc)}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Détails / Modifier
+                                        </DropdownMenuItem>
+                                        {doc.fileUrl && (
+                                            <DropdownMenuItem onClick={() => handleViewFileInNewTab(doc.fileUrl!)}>
+                                                <Eye className="mr-2 h-4 w-4" />
+                                                Consulter le fichier
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Supprimer
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                    </DropdownMenu>
                                 )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Supprimer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-            </Table>
-            {documents.length === 0 && (
-                <div className="text-center py-16">
-                    <p className="text-muted-foreground">Aucun document trouvé.</p>
-                    <p className="text-sm text-muted-foreground/80">Ajoutez un nouveau document pour commencer.</p>
-                </div>
-            )}
+                            </div>
+                        </div>
+                    </Card>
+                ))}
+            </div>
             
             <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
                 <AlertDialogContent>

@@ -12,13 +12,13 @@ import { fr } from 'date-fns/locale';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
-    case 'STEG': return <Zap className="h-5 w-5 text-yellow-500" />;
-    case 'SONEDE': return <Droplets className="h-5 w-5 text-blue-500" />;
-    case 'Reçu Bancaire': return <Landmark className="h-5 w-5 text-indigo-500" />;
-    case 'Internet': return <Wifi className="h-5 w-5 text-purple-500" />;
-    case 'Maison': return <Home className="h-5 w-5 text-green-500" />;
-    case 'Assurance': return <Shield className="h-5 w-5 text-red-500" />;
-    default: return <FileText className="h-5 w-5 text-gray-500" />;
+    case 'STEG': return <Zap className="h-6 w-6 text-yellow-400" />;
+    case 'SONEDE': return <Droplets className="h-6 w-6 text-blue-400" />;
+    case 'Reçu Bancaire': return <Landmark className="h-6 w-6 text-indigo-400" />;
+    case 'Internet': return <Wifi className="h-6 w-6 text-purple-400" />;
+    case 'Maison': return <Home className="h-6 w-6 text-green-400" />;
+    case 'Assurance': return <Shield className="h-6 w-6 text-red-400" />;
+    default: return <FileText className="h-6 w-6 text-gray-400" />;
   }
 };
 
@@ -88,12 +88,12 @@ export default function HistoryPage() {
   }, [documents, selectedYear, selectedMonth]);
 
   return (
-    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
+    <div className="flex flex-col gap-6">
         <div className="flex flex-col md:flex-row items-start justify-between space-y-4 md:space-y-0 md:items-center">
             <div className="flex items-center space-x-3">
-                <History className="h-8 w-8 text-accent"/>
+                <History className="h-8 w-8 text-primary"/>
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight font-headline">Historique des dépenses</h2>
+                    <h1 className="text-3xl font-bold tracking-tight font-headline">Historique des dépenses</h1>
                     <p className="text-muted-foreground">Analysez vos dépenses passées par catégorie.</p>
                 </div>
             </div>
@@ -118,42 +118,41 @@ export default function HistoryPage() {
             </div>
         </div>
         
-        <Card className="rounded-2xl shadow-sm">
+        <Card className="rounded-xl shadow-sm">
             <CardHeader>
-                <CardTitle className="font-headline">
+                <CardTitle className="font-headline text-xl">
                     Résumé pour : {selectedMonth === 'all' ? `l'année ${selectedYear}` : `${months.find(m => m.value === selectedMonth)?.label} ${selectedYear}`}
                 </CardTitle>
-                <CardDescription>
-                    Total des dépenses pour la période sélectionnée.
-                </CardDescription>
             </CardHeader>
             <CardContent>
                 {Object.keys(filteredExpenses).length > 0 ? (
-                    <div className="space-y-4">
-                        {Object.entries(filteredExpenses).map(([category, data]) => (
-                            <div key={category} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg hover:bg-secondary/50 space-y-2 sm:space-y-0">
+                    <div className="space-y-2">
+                        {Object.entries(filteredExpenses).sort(([, a], [, b]) => b.total - a.total).map(([category, data]) => (
+                            <div key={category} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50">
                                 <div className="flex items-center gap-4">
-                                    <CategoryIcon category={category as Document['category']} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                                        <CategoryIcon category={category as Document['category']} />
+                                    </div>
                                     <div>
                                         <p className="font-semibold">{category}</p>
                                         <p className="text-sm text-muted-foreground">{data.count} document{data.count > 1 ? 's' : ''}</p>
                                     </div>
                                 </div>
-                                <p className="font-mono text-lg font-medium self-end sm:self-center">{data.total.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND</p>
+                                <p className="font-mono text-lg font-medium">{data.total.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND</p>
                             </div>
                         ))}
                     </div>
                 ) : (
-                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <p className="text-muted-foreground">Aucune dépense trouvée pour cette période.</p>
-                        <p className="text-xs text-muted-foreground/80">Essayez de sélectionner une autre année ou un autre mois.</p>
+                     <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <p className="text-muted-foreground font-semibold">Aucune dépense trouvée pour cette période.</p>
+                        <p className="text-sm text-muted-foreground/80 mt-1">Essayez de sélectionner une autre année ou un autre mois.</p>
                     </div>
                 )}
             </CardContent>
             {Object.keys(filteredExpenses).length > 0 && (
                 <CardFooter className="flex justify-end pt-6 border-t">
                     <div className="text-right">
-                        <p className="text-muted-foreground">Total général</p>
+                        <p className="text-sm text-muted-foreground">Total Général</p>
                         <p className="text-2xl font-bold font-headline">{totalAmount.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND</p>
                     </div>
                 </CardFooter>

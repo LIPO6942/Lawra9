@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -27,6 +28,11 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { setTheme } = useTheme();
+
+  useState(() => {
+    setTheme('dark');
+  });
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,10 +46,7 @@ export default function SignupPage() {
     }
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // You can update the user profile here if needed, e.g., with a display name
-      // await updateProfile(userCredential.user, { displayName: '...' });
-
+      await createUserWithEmailAndPassword(auth, email, password);
       toast({
         title: 'Inscription réussie',
         description: 'Votre compte a été créé. Vous allez être redirigé.',
@@ -68,38 +71,38 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-sm mx-auto shadow-2xl rounded-2xl bg-card">
-        <CardHeader className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-                <PaperworkIcon className="h-8 w-8 text-primary-foreground" />
-                <h1 className="text-4xl font-bold font-headline text-primary-foreground tracking-tighter">Lawra9</h1>
+     <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      <Card className="w-full max-w-sm mx-auto shadow-2xl rounded-2xl border-border/50">
+        <CardHeader className="text-center space-y-2">
+             <div className="flex items-center justify-center gap-2 mb-2">
+                <PaperworkIcon className="h-8 w-8 text-primary" />
+                <h1 className="text-3xl font-bold font-headline text-foreground tracking-tight">Lawra9</h1>
             </div>
-          <CardTitle>Créer un compte</CardTitle>
+          <CardTitle className="text-2xl font-headline">Créer votre compte</CardTitle>
           <CardDescription>Rejoignez-nous pour simplifier votre paperasse.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="email@exemple.com" required className="rounded-lg" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input id="email" type="email" placeholder="email@exemple.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Mot de passe</Label>
-              <Input id="password" type="password" required className="rounded-lg" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
-              <Input id="confirm-password" type="password" required className="rounded-lg" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              <Input id="confirm-password" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full font-bold rounded-lg bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading}>
+            <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               S'inscrire
             </Button>
           </form>
         </CardContent>
         <CardFooter className="justify-center text-sm">
-          <p>Déjà un compte? <Link href="/login" className="font-semibold text-accent hover:underline">Se connecter</Link></p>
+           <p className="text-muted-foreground">Déjà un compte ? <Link href="/login" className="font-semibold text-primary hover:underline">Se connecter</Link></p>
         </CardFooter>
       </Card>
     </div>

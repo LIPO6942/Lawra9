@@ -1,38 +1,105 @@
 
 'use client';
 
-import Link from 'next/link';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { UploadDocumentDialog } from '@/components/upload-document-dialog';
-import { AlertsCard } from '@/components/dashboard/alerts-card';
-import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDocuments } from '@/contexts/document-context';
+import { useAuth } from '@/contexts/auth-context';
+import { FilePlus2, FileText, Bell, LineChart } from 'lucide-react';
+import { UploadDocumentDialog } from '@/components/upload-document-dialog';
+import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
+import { AlertsCard } from '@/components/dashboard/alerts-card';
+
 
 export default function DashboardPage() {
-  const { alerts, monthlyExpenses } = useDocuments();
+  const { documents, alerts, monthlyExpenses } = useDocuments();
+  const { user } = useAuth();
+  
+  const getFirstName = () => {
+    if (user?.displayName) {
+        return user.displayName.split(' ')[0];
+    }
+    return 'Utilisateur';
+  }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
-        <div className="flex flex-col md:flex-row items-start justify-between space-y-4 md:space-y-0 md:items-center">
-            <div>
-                 <h2 className="text-3xl font-bold tracking-tight font-headline">Tableau de bord</h2>
-                 <p className="text-muted-foreground">Bienvenue ! Voici un aperçu de vos activités récentes.</p>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold font-headline">
+              Bonjour, {getFirstName()}!
+            </h1>
+            <p className="text-muted-foreground">
+              Voici un résumé de votre espace Lawra9.
+            </p>
+          </div>
+          <UploadDocumentDialog>
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <FilePlus2 className="mr-2 h-4 w-4" />
+              Ajouter un document
+            </Button>
+          </UploadDocumentDialog>
+      </div>
+      
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Documents Totaux</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{documents.length}</div>
+            <p className="text-xs text-muted-foreground">
+              fichiers et factures archivés
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Alertes Actives</CardTitle>
+            <Bell className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{alerts.length}</div>
+            <p className="text-xs text-muted-foreground">
+                {alerts.filter(a => a.type === 'Paiement').length} paiements à venir
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Dépenses ce mois-ci</CardTitle>
+            <LineChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+                {monthlyExpenses.length > 0 ? Object.values(monthlyExpenses[monthlyExpenses.length-1]).reduce((acc: number, val) => typeof val === 'number' ? acc + val : acc, 0).toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '0,000'}
+                <span className="text-sm font-normal"> TND</span>
             </div>
-            <div className="flex items-center space-x-2 w-full md:w-auto">
-                <UploadDocumentDialog />
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Total des factures enregistrées
+            </p>
+          </CardContent>
+        </Card>
+         <Card className="flex items-center justify-center bg-card/50 border-border border-dashed hover:bg-muted transition-colors">
+            <UploadDocumentDialog>
+                <div className="flex flex-col items-center justify-center text-center p-6 space-y-2 text-muted-foreground cursor-pointer">
+                    <FilePlus2 className="h-8 w-8 text-primary" />
+                    <p className="font-semibold">Ajouter un document</p>
+                    <p className="text-xs">via fichier ou photo</p>
+                </div>
+            </UploadDocumentDialog>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
+        <div className="lg:col-span-4">
+            <ExpensesChartCard data={monthlyExpenses} />
         </div>
-        
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
-          <div className="lg:col-span-3">
-              <ExpensesChartCard data={monthlyExpenses} />
-          </div>
-          <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
             <AlertsCard alerts={alerts} />
-          </div>
         </div>
       </div>
-    </ScrollArea>
+    </div>
   );
 }

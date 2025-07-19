@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,6 +25,7 @@ interface MaisonUploadDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   documentToEdit?: Document | null;
+  children?: ReactNode;
 }
 
 const maisonCategories = [
@@ -83,7 +84,7 @@ async function uploadFileWithSignedUrl(file: File): Promise<{ publicUrl: string 
 }
 
 
-export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }: MaisonUploadDialogProps) {
+export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, children }: MaisonUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -201,15 +202,15 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      {!isEditMode && (
-          <DialogTrigger asChild>
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Archiver un document
-            </Button>
-          </DialogTrigger>
-      )}
-      <DialogContent className="sm:max-w-[480px] rounded-lg">
+      <DialogTrigger asChild>
+        {children || (
+          <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Archiver un document
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="font-headline">{dialogTitle}</DialogTitle>
           <DialogDescription>
@@ -265,7 +266,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
         
         {!isProcessing && (
           <DialogFooter>
-            <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg">Enregistrer</Button>
+            <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90">Enregistrer</Button>
           </DialogFooter>
         )}
       </DialogContent>
