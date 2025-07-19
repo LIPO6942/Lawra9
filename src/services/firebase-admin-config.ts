@@ -1,5 +1,4 @@
 
-
 import * as admin from 'firebase-admin';
 
 export function initAdminApp() {
@@ -7,23 +6,28 @@ export function initAdminApp() {
         return;
     }
 
-    const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+    // On s'attend maintenant à des variables individuelles, ce qui est plus robuste pour Vercel.
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    // La clé privée doit être formatée correctement. Le .replace() est crucial.
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-    if (!serviceAccountBase64) {
-        throw new Error("The FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set. This is required for server-side authentication and must be a Base64 encoded service account JSON.");
+    if (!projectId || !clientEmail || !privateKey) {
+        throw new Error("Les variables d'environnement Firebase (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) ne sont pas toutes définies.");
     }
     
     try {
-        const decodedServiceAccount = Buffer.from(serviceAccountBase64, 'base64').toString('utf-8');
-        const serviceAccount = JSON.parse(decodedServiceAccount);
-
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
+            credential: admin.credential.cert({
+                projectId,
+                clientEmail,
+                privateKey,
+            }),
         });
+        console.log("Firebase Admin SDK initialisé avec succès.");
 
     } catch (error: any) {
-        console.error("Failed to decode or parse FIREBASE_SERVICE_ACCOUNT_BASE64:", error);
-        throw new Error("Could not initialize Firebase Admin SDK. The service account might be malformed or not correctly Base64 encoded.");
+        console.error("Erreur d'initialisation du SDK Firebase Admin:", error);
+        throw new Error("Impossible d'initialiser le SDK Firebase Admin. Vérifiez les variables d'environnement sur Vercel.");
     }
 }
-
