@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Bell, Files, Home as HomeIcon, LayoutDashboard, LogOut, Settings, History, User, Zap, Droplets, Wifi, ExternalLink, Home } from 'lucide-react';
+import { Bell, Files, Home, LayoutDashboard, LogOut, Settings, History, User, Zap, Droplets, Wifi } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentProvider } from '@/contexts/document-context';
