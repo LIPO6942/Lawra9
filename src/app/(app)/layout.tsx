@@ -5,13 +5,13 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { UserPreferencesProvider } from '@/contexts/user-preferences-context';
+import { UserPreferencesProvider, useUserPreferences, ISP } from '@/contexts/user-preferences-context';
 import { DocumentProvider } from '@/contexts/document-context';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { LayoutDashboard, Files, History, Home, Settings, LogOut, User as UserIcon, LifeBuoy, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, Files, History, Home, Settings, LogOut, User as UserIcon, LifeBuoy, Moon, Sun, Zap, Droplets, Wifi, ExternalLink } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +35,57 @@ const secondaryNavItems = [
     { href: '/historique', label: 'Historique', icon: History },
     { href: '/maison', label: 'Espace Maison', icon: Home },
 ];
+
+const providerDetails: Record<ISP, { name: string; link: string; className: string; icon: React.ElementType }> = {
+    'Orange': { name: 'Orange', link: 'https://www.orange.tn/espace-client', className: 'border-orange-500/50 bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400', icon: Wifi },
+    'Ooredoo': { name: 'Ooredoo', link: 'https://my.ooredoo.tn/', className: 'border-red-500/50 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400', icon: Wifi },
+    'Topnet': { name: 'Topnet', link: 'https://www.topnet.tn/mon-compte', className: 'border-blue-600/50 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 dark:text-blue-400', icon: Wifi },
+    'TT': { name: 'Tunisie Telecom', link: 'https://www.tunisietelecom.tn/particulier/espace-client-fixe-jedidi/', className: 'border-gray-500/50 bg-gray-500/10 hover:bg-gray-500/20 text-gray-600 dark:text-gray-400', icon: Wifi },
+    'Hexabyte': { name: 'Hexabyte', link: 'https://client.hexabyte.tn/', className: 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400', icon: Wifi },
+};
+
+function ProviderQuickLinks() {
+    const { isp, stegRef, sonedeRef } = useUserPreferences();
+    
+    const stegLink = stegRef ? `https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html?contrat=${stegRef}` : 'https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html';
+    const sonedeLink = sonedeRef ? `http://www.sonede.com.tn/onl/facture/saisie_ident.php?id=${sonedeRef}` : 'http://www.sonede.com.tn/onl/facture/saisie_ident.php';
+    const ispProvider = isp ? providerDetails[isp] : null;
+
+    return (
+        <div className="flex items-center gap-2">
+            {stegRef && (
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button asChild variant="outline" size="icon" className="h-9 w-9 border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 dark:text-yellow-400">
+                           <Link href={stegLink} target="_blank"><Zap className="h-5 w-5"/></Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Payer facture STEG</p></TooltipContent>
+                 </Tooltip>
+            )}
+             {sonedeRef && (
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button asChild variant="outline" size="icon" className="h-9 w-9 border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 dark:text-blue-400">
+                           <Link href={sonedeLink} target="_blank"><Droplets className="h-5 w-5"/></Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Payer facture SONEDE</p></TooltipContent>
+                 </Tooltip>
+            )}
+            {ispProvider && (
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button asChild variant="outline" size="icon" className={cn("h-9 w-9", ispProvider.className)}>
+                           <Link href={ispProvider.link} target="_blank"><ispProvider.icon className="h-5 w-5"/></Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Espace client {ispProvider.name}</p></TooltipContent>
+                 </Tooltip>
+            )}
+        </div>
+    );
+}
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -145,7 +196,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                  <div className="flex-1">
                  </div>
 
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-4">
+                    <ProviderQuickLinks />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="icon" className="overflow-hidden rounded-full h-9 w-9">

@@ -9,7 +9,6 @@ import { FilePlus2, FileText, Bell, LineChart } from 'lucide-react';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
 import { AlertsCard } from '@/components/dashboard/alerts-card';
-import { ProviderLinksCard } from '@/components/dashboard/provider-links-card';
 
 
 export default function DashboardPage() {
@@ -83,8 +82,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-       <ProviderLinksCard />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
         <div className="lg:col-span-4">
