@@ -1,4 +1,5 @@
 
+
 import * as admin from 'firebase-admin';
 
 export function initAdminApp() {
@@ -25,3 +26,4 @@ export function initAdminApp() {
         throw new Error("Could not initialize Firebase Admin SDK. The service account might be malformed or not correctly Base64 encoded.");
     }
 }
+
