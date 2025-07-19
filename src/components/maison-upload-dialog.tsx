@@ -38,50 +38,14 @@ const maisonCategories = [
   "Autre document maison"
 ];
 
-async function uploadFileWithSignedUrl(file: File): Promise<{ publicUrl: string }> {
-    const authToken = await auth.currentUser?.getIdToken();
-    if (!authToken) {
-      throw new Error('User not authenticated');
-    }
-
-    // 1. Get signed URL from our API
-    const response = await fetch('/api/upload-url', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ fileName: file.name, fileType: file.type }),
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
     });
-
-    if (!response.ok) {
-        let errorText = `HTTP error! status: ${response.status}`;
-        try {
-            const errorBody = await response.json();
-            errorText = `HTTP error! status: ${response.status} - ${errorBody.error || response.statusText}`;
-        } catch (e) {
-             errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
-        }
-        throw new Error(errorText);
-    }
-
-    const { signedUrl, publicUrl } = await response.json();
-
-    // 2. Upload file to Supabase using the signed URL
-    const uploadResponse = await fetch(signedUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type,
-      },
-      body: file,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Supabase file upload failed: ${uploadResponse.statusText}`);
-    }
-
-    return { publicUrl };
-}
+};
 
 
 export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, children }: MaisonUploadDialogProps) {
@@ -158,11 +122,11 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
 
     setIsProcessing(true);
     
-    let fileUrl = documentToEdit?.fileUrl; // Keep existing URL if not changing file in edit mode
+    let fileUrl = documentToEdit?.fileUrl;
 
     try {
       if (fileToUpload) {
-        fileUrl = (await uploadFileWithSignedUrl(fileToUpload)).publicUrl;
+        fileUrl = await fileToDataUrl(fileToUpload);
       }
 
       const finalDocumentData: Partial<Document> = { ...formData, fileUrl };

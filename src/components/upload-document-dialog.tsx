@@ -91,52 +91,6 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
-async function uploadFileWithSignedUrl(file: File): Promise<{ publicUrl: string }> {
-    const authToken = await auth.currentUser?.getIdToken();
-    if (!authToken) {
-      throw new Error('User not authenticated');
-    }
-
-    // 1. Get signed URL from our API
-    const response = await fetch('/api/upload-url', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ fileName: file.name, fileType: file.type }),
-    });
-
-    if (!response.ok) {
-        let errorText = `HTTP error! status: ${response.status}`;
-        try {
-            const errorBody = await response.json();
-            errorText = `HTTP error! status: ${response.status} - ${errorBody.error || response.statusText}`;
-        } catch (e) {
-             errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
-        }
-        throw new Error(errorText);
-    }
-
-    const { signedUrl, publicUrl } = await response.json();
-
-    // 2. Upload file to Supabase using the signed URL
-    const uploadResponse = await fetch(signedUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type,
-      },
-      body: file,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Supabase file upload failed: ${uploadResponse.statusText}`);
-    }
-
-    return { publicUrl };
-}
-
-
 export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, children }: UploadDocumentDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -334,8 +288,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
     try {
       if (fileToUpload) {
-          setProcessingMessage('Téléversement du fichier...');
-          fileUrl = (await uploadFileWithSignedUrl(fileToUpload)).publicUrl;
+          setProcessingMessage('Conversion du fichier...');
+          fileUrl = await fileToDataUrl(fileToUpload);
       }
 
       const finalDocumentData: Partial<Document> = { ...formData, fileUrl };
