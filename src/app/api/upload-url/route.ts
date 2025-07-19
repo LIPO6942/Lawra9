@@ -6,7 +6,8 @@ import { NextResponse } from 'next/server';
 import { auth as adminAuth } from 'firebase-admin';
 import { initAdminApp } from '@/services/firebase-admin-config';
 
-initAdminApp();
+// L'initialisation est déplacée à l'intérieur de la fonction POST.
+// initAdminApp();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -18,6 +19,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: Request) {
+  // Initialisation au moment de la requête pour garantir que les variables d'environnement sont chargées.
+  initAdminApp();
+
   const authToken = request.headers.get('authorization')?.split('Bearer ')[1];
   if (!authToken) {
     return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
