@@ -1,4 +1,4 @@
-
+// src/components/maison-upload-dialog.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,7 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { auth } from '@/lib/firebase';
-import { supabase } from '@/lib/supabase';
 
 
 interface MaisonUploadDialogProps {
@@ -39,9 +38,8 @@ const maisonCategories = [
   "Autre document maison"
 ];
 
-async function uploadFileDirectlyToSupabase(file: File, userId: string): Promise<string> {
+async function uploadFileWithSignedUrl(file: File): Promise<string> {
     const currentUser = auth.currentUser;
-
     if (!currentUser) {
         throw new Error("Utilisateur non authentifié.");
     }
@@ -49,40 +47,39 @@ async function uploadFileDirectlyToSupabase(file: File, userId: string): Promise
     try {
         const authToken = await currentUser.getIdToken(true);
         
-        const { error: sessionError } = await supabase.auth.setSession({
-            access_token: authToken,
-            refresh_token: 'dummy' // refresh token is not used but required by type
+        // 1. Get the signed URL from our new API route
+        const response = await fetch('/api/upload-url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({ fileName: file.name, fileType: file.type }),
         });
-        
-        if (sessionError) {
-             console.error('Supabase setSession error:', sessionError);
-             throw new Error(`Supabase Auth Error: ${sessionError.message}`);
-        }
-        
-        const fileExtension = file.name.split('.').pop();
-        const fileName = `${userId}/${Date.now()}.${fileExtension}`;
-        
-        const { error: uploadError } = await supabase.storage
-            .from('lawra9')
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false,
-            });
 
-        if (uploadError) {
-             console.error('Supabase upload error:', uploadError);
-             throw new Error(`Supabase Error: ${uploadError.message}`);
-        }
-        
-        const { data: publicUrlData } = supabase.storage
-            .from('lawra9')
-            .getPublicUrl(fileName);
-
-        if (!publicUrlData || !publicUrlData.publicUrl) {
-            throw new Error('Could not get public URL for the uploaded file.');
+        if (!response.ok) {
+            const errorBody = await response.json();
+            throw new Error(errorBody.error || 'Failed to get signed URL.');
         }
 
-        return publicUrlData.publicUrl;
+        const { signedUrl, publicUrl } = await response.json();
+
+        // 2. Upload the file directly to Supabase using the signed URL
+        const uploadResponse = await fetch(signedUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': file.type,
+            },
+            body: file,
+        });
+
+        if (!uploadResponse.ok) {
+            const errorBody = await uploadResponse.text();
+            console.error("Direct upload failed:", errorBody);
+            throw new Error('Failed to upload file to storage.');
+        }
+
+        return publicUrl;
 
     } catch (error) {
         console.error('An error occurred during the upload process:', error);
@@ -175,7 +172,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     try {
       if (fileToUpload) {
-        const fileUrl = await uploadFileDirectlyToSupabase(fileToUpload, currentUser.uid);
+        const fileUrl = await uploadFileWithSignedUrl(fileToUpload);
         finalDocumentData = { ...finalDocumentData, fileUrl };
       }
 
