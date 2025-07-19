@@ -10,7 +10,7 @@ if (!getApps().length) {
   });
 }
 
-// IMPORTANT: Use the Supabase Admin client for server-side operations
+// IMPORTANT: Use the standard client with the service key for server-side operations
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY!,
@@ -42,7 +42,6 @@ export async function POST(request: Request) {
         return new Response(JSON.stringify({ error: 'fileName and fileType are required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     
-    // The path includes the user's UID to enforce RLS policies
     const filePath = `${uid}/${Date.now()}-${fileName}`;
 
     const { data, error } = await supabaseAdmin.storage
@@ -54,13 +53,13 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
     
+    // Construct the public URL correctly
     const { data: { publicUrl } } = supabaseAdmin.storage.from('lawra9').getPublicUrl(filePath);
 
-    return new Response(JSON.stringify({ signedUrl: data.signedUrl, publicUrl }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ signedUrl: data.signedUrl, publicUrl: publicUrl }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     
   } catch (e: any) {
     console.error('API Route Error:', e);
-    // Distinguish between Firebase auth errors and other errors
     if (e.code === 'auth/id-token-expired' || e.code === 'auth/argument-error') {
         return new Response(JSON.stringify({ error: `Firebase Auth Error: ${e.message}` }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }

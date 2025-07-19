@@ -47,7 +47,6 @@ async function uploadFileWithSignedUrl(file: File): Promise<string> {
     try {
         const authToken = await currentUser.getIdToken(true);
         
-        // 1. Get the signed URL from our new API route
         const response = await fetch('/api/upload-url', {
             method: 'POST',
             headers: {
@@ -58,19 +57,19 @@ async function uploadFileWithSignedUrl(file: File): Promise<string> {
         });
 
         if (!response.ok) {
-            let errorText = 'Failed to get signed URL.';
+            let errorText = `HTTP error! status: ${response.status}`;
             try {
                 const errorBody = await response.json();
-                errorText = errorBody.error || `HTTP error! status: ${response.status}`;
+                errorText = errorBody.error || `HTTP error! status: ${response.status} - ${response.statusText}`;
             } catch (e) {
-                errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
+                 // The response is not JSON, use the status text.
+                 errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
             }
             throw new Error(errorText);
         }
 
         const { signedUrl, publicUrl } = await response.json();
 
-        // 2. Upload the file directly to Supabase storage using the signed URL
         const uploadResponse = await fetch(signedUrl, {
             method: 'PUT',
             headers: {
