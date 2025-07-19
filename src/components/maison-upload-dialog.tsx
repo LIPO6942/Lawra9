@@ -1,4 +1,4 @@
-// src/components/maison-upload-dialog.tsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -58,13 +58,19 @@ async function uploadFileWithSignedUrl(file: File): Promise<string> {
         });
 
         if (!response.ok) {
-            const errorBody = await response.json();
-            throw new Error(errorBody.error || 'Failed to get signed URL.');
+            let errorText = 'Failed to get signed URL.';
+            try {
+                const errorBody = await response.json();
+                errorText = errorBody.error || `HTTP error! status: ${response.status}`;
+            } catch (e) {
+                errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
+            }
+            throw new Error(errorText);
         }
 
         const { signedUrl, publicUrl } = await response.json();
 
-        // 2. Upload the file directly to Supabase using the signed URL
+        // 2. Upload the file directly to Supabase storage using the signed URL
         const uploadResponse = await fetch(signedUrl, {
             method: 'PUT',
             headers: {
