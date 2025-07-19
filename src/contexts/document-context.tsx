@@ -96,7 +96,6 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteDocument = async (id: string) => {
-    // With PostImage, we don't store a reference to delete the file, so we just remove the local reference.
     setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
     toast({ title: 'Document supprimé' });
   };

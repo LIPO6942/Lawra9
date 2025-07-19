@@ -21,7 +21,6 @@ import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { auth } from '@/lib/firebase';
 
-
 interface MaisonUploadDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -37,64 +36,6 @@ const maisonCategories = [
   "Taxe municipale",
   "Autre document maison"
 ];
-
-async function uploadFileWithSignedUrl(file: File): Promise<string> {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-        throw new Error("Utilisateur non authentifié.");
-    }
-    
-    try {
-        const authToken = await currentUser.getIdToken(true);
-        
-        const response = await fetch('/api/upload-url', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`,
-            },
-            body: JSON.stringify({ fileName: file.name, fileType: file.type }),
-        });
-
-        if (!response.ok) {
-            let errorText = `HTTP error! status: ${response.status}`;
-            try {
-                const errorBody = await response.json();
-                errorText = errorBody.error || `HTTP error! status: ${response.status} - ${response.statusText}`;
-            } catch (e) {
-                 // The response is not JSON, use the status text.
-                 errorText = `HTTP error! status: ${response.status} - ${response.statusText}`;
-            }
-            throw new Error(errorText);
-        }
-
-        const { signedUrl, publicUrl } = await response.json();
-
-        const uploadResponse = await fetch(signedUrl, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': file.type,
-            },
-            body: file,
-        });
-
-        if (!uploadResponse.ok) {
-            const errorBody = await uploadResponse.text();
-            console.error("Direct upload failed:", errorBody);
-            throw new Error('Failed to upload file to storage.');
-        }
-
-        return publicUrl;
-
-    } catch (error) {
-        console.error('An error occurred during the upload process:', error);
-        if (error instanceof Error) {
-            throw error;
-        }
-        throw new Error('An unknown error occurred during image upload.');
-    }
-}
-
 
 export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }: MaisonUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
@@ -144,7 +85,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      setFileToUpload(selectedFile);
+      setFileToUpload(selectedFile); // We keep the file for potential future use, but don't upload it.
       setFormData(prev => ({
         ...prev,
         name: selectedFile.name.split('.').slice(0, -1).join('.') || selectedFile.name,
@@ -162,10 +103,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
       toast({ variant: 'destructive', title: "Utilisateur non connecté", description: "Veuillez vous reconnecter." });
       return;
     }
-    if (!isEditMode && !fileToUpload) {
-      toast({ variant: 'destructive', title: "Aucun fichier sélectionné" });
-      return;
-    }
+
     if (!formData.name) {
       toast({ variant: 'destructive', title: "Le nom du document est requis" });
       return;
@@ -173,14 +111,10 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
 
     setIsProcessing(true);
     
+    // No upload logic, just prepare data for local storage
     let finalDocumentData: Partial<Document> = { ...formData };
 
     try {
-      if (fileToUpload) {
-        const fileUrl = await uploadFileWithSignedUrl(fileToUpload);
-        finalDocumentData = { ...finalDocumentData, fileUrl };
-      }
-
       if (isEditMode && documentToEdit) {
         await updateDocument(documentToEdit.id, finalDocumentData);
         toast({ title: "Document modifié !", description: `Le document "${finalDocumentData.name}" a été mis à jour.`});
@@ -188,8 +122,8 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
         const docToAdd: Omit<Document, 'id' | 'createdAt'> = {
             name: finalDocumentData.name || 'Nouveau document',
             category: 'Maison',
-            fileUrl: finalDocumentData.fileUrl,
             subCategory: finalDocumentData.subCategory,
+            // fileUrl is removed as we are not uploading.
         };
         await addDocument(docToAdd);
         toast({ title: "Document archivé !", description: `"${docToAdd.name}" a été ajouté à votre espace Maison.` });
@@ -202,7 +136,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
           console.error("Save error:", error);
           toast({
               variant: 'destructive',
-              title: "Erreur de téléversement",
+              title: "Erreur de sauvegarde",
               description: error.message || "Un problème est survenu. Veuillez réessayer."
           });
       }
@@ -212,7 +146,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
   };
 
   const dialogTitle = isEditMode ? "Modifier le document" : "Archiver un document";
-  const dialogDescription = isEditMode ? "Modifiez les informations de votre document." : "Choisissez un fichier, donnez-lui un nom et classez-le.";
+  const dialogDescription = isEditMode ? "Modifiez les informations de votre document." : "Donnez un nom et une catégorie à votre document.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -240,7 +174,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
         ) : (
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-                <Label htmlFor="file-upload">Fichier</Label>
+                <Label htmlFor="file-upload">Fichier (Optionnel)</Label>
                 {fileToUpload ? (
                     <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
                       <FileText className="h-5 w-5 text-muted-foreground" />
@@ -251,8 +185,8 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-8 text-center transition hover:border-accent">
                       <Upload className="h-10 w-10 text-muted-foreground" />
-                      <p className="font-semibold">Choisissez un fichier à archiver</p>
-                      <p className="text-xs text-muted-foreground">PDF, PNG, JPG, etc.</p>
+                      <p className="font-semibold">Choisissez un fichier</p>
+                      <p className="text-xs text-muted-foreground">Nommera le document automatiquement</p>
                     </div>
                   </label>
                 )}
@@ -275,17 +209,6 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null }
                 </SelectContent>
               </Select>
             </div>
-            
-            {formData.fileUrl && (
-                <div className="space-y-2">
-                    <Label>Fichier actuel</Label>
-                    <div className="rounded-md overflow-hidden border p-2 text-center">
-                        <a href={formData.fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent underline">
-                            Voir le fichier téléversé
-                        </a>
-                    </div>
-                </div>
-            )}
           </div>
         )}
         
