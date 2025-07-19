@@ -288,5 +288,3 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
         </UserPreferencesProvider>
     )
 }
-
-    
