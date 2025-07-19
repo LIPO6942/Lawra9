@@ -176,7 +176,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-                <SidebarMenuItem onClick={handleLinkClick}>
+            <SidebarMenuItem onClick={handleLinkClick}>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')}>
                 <Link href="/dashboard">
                     <Bell />
