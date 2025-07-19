@@ -9,6 +9,7 @@ import { FilePlus2, FileText, Bell, LineChart } from 'lucide-react';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
 import { AlertsCard } from '@/components/dashboard/alerts-card';
+import { ProviderLinksCard } from '@/components/dashboard/provider-links-card';
 
 
 export default function DashboardPage() {
@@ -41,7 +42,7 @@ export default function DashboardPage() {
           </UploadDocumentDialog>
       </div>
       
-       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Documents Totaux</CardTitle>
@@ -81,16 +82,9 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-         <Card className="flex items-center justify-center bg-card/50 border-border border-dashed hover:bg-muted transition-colors">
-            <UploadDocumentDialog>
-                <div className="flex flex-col items-center justify-center text-center p-6 space-y-2 text-muted-foreground cursor-pointer">
-                    <FilePlus2 className="h-8 w-8 text-primary" />
-                    <p className="font-semibold">Ajouter un document</p>
-                    <p className="text-xs">via fichier ou photo</p>
-                </div>
-            </UploadDocumentDialog>
-        </Card>
       </div>
+
+       <ProviderLinksCard />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
         <div className="lg:col-span-4">
