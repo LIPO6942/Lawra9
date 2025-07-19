@@ -72,6 +72,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
     );
   }
+  
+  if (pathname === '/view') {
+    return <>{children}</>;
+  }
 
   return (
     <TooltipProvider>

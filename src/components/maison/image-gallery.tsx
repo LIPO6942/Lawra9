@@ -12,6 +12,7 @@ import { MoreHorizontal, Edit, Trash2, Expand, Info, Loader2 } from 'lucide-reac
 import { MaisonUploadDialog } from '../maison-upload-dialog';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
 
 interface MaisonImageGalleryProps {
     images: Document[];
@@ -20,15 +21,16 @@ interface MaisonImageGalleryProps {
 }
 
 export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGalleryProps) {
+    const router = useRouter();
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<Document | null>(null);
     const [imageToDelete, setImageToDelete] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-    const openViewer = (imageUrl?: string) => {
-        if (imageUrl) {
-            window.open(imageUrl, '_blank', 'noopener,noreferrer');
+    const openViewer = (docId?: string) => {
+        if (docId) {
+            router.push(`/view?id=${docId}`);
         }
     };
 
@@ -69,7 +71,7 @@ export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGa
                 {images.map(image => (
                     <Card key={image.id} className="group relative overflow-hidden rounded-lg shadow-sm hover:shadow-xl transition-shadow duration-300">
                         <CardContent className="p-0">
-                           <button onClick={() => openViewer(image.fileUrl)} className="w-full aspect-square relative block">
+                           <button onClick={() => openViewer(image.id)} className="w-full aspect-square relative block">
                                 <Image
                                     src={image.fileUrl!}
                                     alt={image.name}
@@ -91,7 +93,7 @@ export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGa
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openViewer(image.fileUrl)}>
+                                        <DropdownMenuItem onClick={() => openViewer(image.id)}>
                                             <Expand className="mr-2 h-4 w-4" />
                                             Agrandir
                                         </DropdownMenuItem>

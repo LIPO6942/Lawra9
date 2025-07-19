@@ -14,6 +14,7 @@ import { UploadDocumentDialog } from '../upload-document-dialog';
 import { useDocuments } from '@/contexts/document-context';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
 import { Card } from '../ui/card';
+import { useRouter } from 'next/navigation';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -58,6 +59,7 @@ interface DocumentsTableProps {
 }
 
 export function DocumentsTable({ documents, isMaison = false }: DocumentsTableProps) {
+    const router = useRouter();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -71,9 +73,9 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
         setIsEditModalOpen(true);
     }
     
-    const handleViewFile = (fileUrl?: string) => {
+    const handleViewFile = (docId: string, fileUrl?: string) => {
         if (fileUrl) {
-            window.open(fileUrl, '_blank', 'noopener,noreferrer');
+            router.push(`/view?id=${docId}`);
         }
     }
 
@@ -112,7 +114,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                             <div className="hidden sm:block">
                                <CategoryIcon category={doc.category} />
                             </div>
-                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.fileUrl)}>
+                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id, doc.fileUrl)}>
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                         <p className="font-semibold truncate pr-2">{doc.name}</p>
@@ -153,7 +155,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                                             Détails / Modifier
                                         </DropdownMenuItem>
                                         {doc.fileUrl && (
-                                            <DropdownMenuItem onClick={() => handleViewFile(doc.fileUrl!)}>
+                                            <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
                                                 <Eye className="mr-2 h-4 w-4" />
                                                 Consulter le fichier
                                             </DropdownMenuItem>
