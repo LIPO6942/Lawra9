@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Loader2, Wifi } from 'lucide-react';
 import Link from 'next/link';
+import { Skeleton } from '../ui/skeleton';
 
 const providerDetails: Record<ISP, { name: string; link: string; className: string }> = {
     'Orange': { name: 'Orange', link: 'https://www.orange.tn/espace-client', className: 'border-orange-500/50 hover:bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300' },
@@ -24,8 +25,10 @@ export const ProviderLinksCard = () => {
                 <CardHeader>
                     <CardTitle className="text-base font-medium flex items-center gap-2"><Wifi className="h-4 w-4"/> Accès Rapide Fournisseurs</CardTitle>
                 </CardHeader>
-                <CardContent className="flex items-center justify-center h-24">
-                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                   <Skeleton className="h-9 w-full" />
+                   <Skeleton className="h-9 w-full" />
+                   <Skeleton className="h-9 w-full" />
                 </CardContent>
             </Card>
         )
@@ -34,7 +37,6 @@ export const ProviderLinksCard = () => {
     const stegLink = stegRef ? `https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html?contrat=${stegRef}` : 'https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html';
     const sonedeLink = sonedeRef ? `http://www.sonede.com.tn/onl/facture/saisie_ident.php?id=${sonedeRef}` : 'http://www.sonede.com.tn/onl/facture/saisie_ident.php';
     
-    // Correction: On vérifie que 'isp' existe avant d'accéder à providerDetails[isp]
     const ispProvider = isp ? providerDetails[isp] : null;
 
     return (

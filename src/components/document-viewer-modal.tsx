@@ -17,7 +17,7 @@ export function DocumentViewerModal({ open, onOpenChange, document }: DocumentVi
     return null;
   }
 
-  const isImage = document.fileUrl && /\.(jpg|jpeg|png|gif|webp)$/i.test(document.name) || document.fileUrl.startsWith('data:image');
+  const isImage = document.fileUrl && (/\.(jpg|jpeg|png|gif|webp)$/i.test(document.name) || document.fileUrl.startsWith('data:image'));
 
   const handleOpenFile = () => {
     if (document.fileUrl) {
