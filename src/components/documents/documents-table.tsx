@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, GripVertical } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -13,7 +13,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { UploadDocumentDialog } from '../upload-document-dialog';
 import { useDocuments } from '@/contexts/document-context';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
-import { DocumentViewerModal } from '../document-viewer-modal';
 import { Card } from '../ui/card';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
@@ -51,27 +50,6 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
 };
 
 
-const ConsumptionPeriod = ({ doc }: { doc: Document }) => {
-    let dateToDisplay: Date | null = null;
-    let label = '';
-
-    if (doc.issueDate) {
-        const date = parseISO(doc.issueDate);
-        if (isValid(date)) dateToDisplay = date;
-        label = 'Émis le';
-    } else if (doc.createdAt) {
-        const date = parseISO(doc.createdAt);
-        if (isValid(date)) dateToDisplay = date;
-        label = 'Ajouté le';
-    }
-
-    if(dateToDisplay) {
-       return <span className="text-muted-foreground">{label} {format(dateToDisplay, 'd MMM yyyy', { locale: fr })}</span>;
-    }
-    
-    return null;
-}
-
 interface DocumentsTableProps {
     documents: Document[];
     onUpdate: (id: string, data: Partial<Document>) => void;
@@ -81,7 +59,6 @@ interface DocumentsTableProps {
 
 export function DocumentsTable({ documents, isMaison = false }: DocumentsTableProps) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -94,21 +71,16 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
         setIsEditModalOpen(true);
     }
     
-    const openViewModal = (doc: Document) => {
-        setSelectedDocument(doc);
-        setIsViewModalOpen(true);
+    const handleViewFile = (fileUrl?: string) => {
+        if (fileUrl) {
+            window.open(fileUrl, '_blank', 'noopener,noreferrer');
+        }
     }
 
     const confirmDelete = (doc: Document) => {
         setDocToDelete(doc);
         setIsDeleteAlertOpen(true);
     };
-    
-    const handleViewFileInNewTab = (fileUrl?: string) => {
-        if (fileUrl) {
-            window.open(fileUrl, '_blank', 'noopener,noreferrer');
-        }
-    }
 
     const executeDelete = async () => {
         if (!docToDelete) return;
@@ -140,9 +112,9 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                             <div className="hidden sm:block">
                                <CategoryIcon category={doc.category} />
                             </div>
-                            <div className="flex-1 min-w-0" onClick={() => openEditModal(doc)} >
+                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.fileUrl)}>
                                 <div className="flex items-start justify-between">
-                                    <div className="flex-1 cursor-pointer">
+                                    <div className="flex-1">
                                         <p className="font-semibold truncate pr-2">{doc.name}</p>
                                         <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
                                     </div>
@@ -159,7 +131,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                                     <div className="flex items-center gap-1 text-muted-foreground">
                                         <CalendarDays className="h-4 w-4" />
                                         <span>
-                                            { isMaison ? (format(parseISO(doc.createdAt), 'd MMM yyyy')) : (doc.issueDate ? format(parseISO(doc.issueDate), 'd MMM yyyy') : 'N/A') }
+                                            { isMaison && doc.createdAt ? (format(parseISO(doc.createdAt), 'd MMM yyyy')) : (doc.issueDate ? format(parseISO(doc.issueDate), 'd MMM yyyy') : 'N/A') }
                                         </span>
                                     </div>
                                 </div>
@@ -181,7 +153,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                                             Détails / Modifier
                                         </DropdownMenuItem>
                                         {doc.fileUrl && (
-                                            <DropdownMenuItem onClick={() => handleViewFileInNewTab(doc.fileUrl!)}>
+                                            <DropdownMenuItem onClick={() => handleViewFile(doc.fileUrl!)}>
                                                 <Eye className="mr-2 h-4 w-4" />
                                                 Consulter le fichier
                                             </DropdownMenuItem>
@@ -217,12 +189,6 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            <DocumentViewerModal 
-                open={isViewModalOpen}
-                onOpenChange={setIsViewModalOpen}
-                document={selectedDocument}
-            />
 
             {selectedDocument && (
                 <EditDialogComponent

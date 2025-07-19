@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { MoreHorizontal, Edit, Trash2, Expand, Info, Loader2 } from 'lucide-react';
-import { DocumentViewerModal } from '../document-viewer-modal';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -21,16 +20,16 @@ interface MaisonImageGalleryProps {
 }
 
 export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGalleryProps) {
-    const [isViewerOpen, setIsViewerOpen] = useState(false);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<Document | null>(null);
     const [imageToDelete, setImageToDelete] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-    const openViewer = (image: Document) => {
-        setSelectedImage(image);
-        setIsViewerOpen(true);
+    const openViewer = (imageUrl?: string) => {
+        if (imageUrl) {
+            window.open(imageUrl, '_blank', 'noopener,noreferrer');
+        }
     };
 
     const openEditor = (image: Document) => {
@@ -70,7 +69,7 @@ export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGa
                 {images.map(image => (
                     <Card key={image.id} className="group relative overflow-hidden rounded-lg shadow-sm hover:shadow-xl transition-shadow duration-300">
                         <CardContent className="p-0">
-                           <button onClick={() => openViewer(image)} className="w-full aspect-square relative block">
+                           <button onClick={() => openViewer(image.fileUrl)} className="w-full aspect-square relative block">
                                 <Image
                                     src={image.fileUrl!}
                                     alt={image.name}
@@ -92,7 +91,7 @@ export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGa
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openViewer(image)}>
+                                        <DropdownMenuItem onClick={() => openViewer(image.fileUrl)}>
                                             <Expand className="mr-2 h-4 w-4" />
                                             Agrandir
                                         </DropdownMenuItem>
@@ -112,18 +111,12 @@ export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGa
 
                            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
                                <h3 className="text-white font-semibold text-sm truncate">{image.name}</h3>
-                               <p className="text-white/80 text-xs">{format(parseISO(image.createdAt), 'd MMM yyyy', { locale: fr })}</p>
+                               <p className="text-white/80 text-xs">{image.createdAt ? format(parseISO(image.createdAt), 'd MMM yyyy', { locale: fr }) : ''}</p>
                            </div>
                         </CardContent>
                     </Card>
                 ))}
             </div>
-
-            <DocumentViewerModal 
-                open={isViewerOpen}
-                onOpenChange={setIsViewerOpen}
-                document={selectedImage}
-            />
 
             {selectedImage && (
                  <MaisonUploadDialog
