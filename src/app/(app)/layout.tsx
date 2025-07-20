@@ -223,11 +223,11 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               <main className="flex-1 items-start p-4 sm:px-6 sm:py-0">{children}</main>
               
               {/* Mobile Bottom Bar */}
-              <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around">
+              <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around z-50">
                 {[...mainNavItems, ...secondaryNavItems].map(item => (
                      <Link key={`mobile-${item.href}`} href={item.href} className={cn(
                         "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
-                        pathname.startsWith(item.href) && "text-primary"
+                        pathname === item.href && "text-primary"
                     )}>
                         <item.icon className="h-5 w-5" />
                         <span className="text-xs font-medium">{item.label}</span>
