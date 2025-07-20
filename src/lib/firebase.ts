@@ -25,11 +25,10 @@ function initializeFirebaseClient() {
   
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
   } else {
     app = getApp();
-    auth = getAuth(app);
   }
+  auth = getAuth(app);
 }
 
 function getFirebaseAuth(): Auth {
@@ -39,5 +38,4 @@ function getFirebaseAuth(): Auth {
   return auth!;
 }
 
-// Export a function to get the auth instance, which will initialize if needed.
 export { getFirebaseAuth, initializeFirebaseClient };
