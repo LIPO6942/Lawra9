@@ -270,7 +270,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-    return null; // ou une page d'erreur, mais la redirection devrait déjà avoir eu lieu
+    // Redirection en cours, ne rien afficher
+    return null; 
   }
 
   return <AppLayout>{children}</AppLayout>;

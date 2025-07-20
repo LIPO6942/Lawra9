@@ -12,7 +12,6 @@ const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-// Ce layout vérifie si un utilisateur est déjà connecté et le redirige vers le tableau de bord.
 function AuthLayout({
   children,
 }: {
