@@ -16,26 +16,42 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 
-function initializeFirebaseClient() {
+function initializeFirebaseClient(): boolean {
+  if (app) {
+    return true;
+  }
+
   if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-    throw new Error(
+    console.error(
       'ERREUR CRITIQUE: Configuration Firebase manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont dans votre fichier .env.local.'
     );
+    return false; // Indicate failure instead of throwing
   }
   
   if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+    } catch (error) {
+        console.error("Firebase initialization failed:", error);
+        app = null;
+        auth = null;
+        return false;
+    }
   } else {
     app = getApp();
+    auth = getAuth(app);
   }
-  auth = getAuth(app);
+  return true;
 }
 
-function getFirebaseAuth(): Auth {
+function getFirebaseAuth(): Auth | null {
   if (!auth) {
-    initializeFirebaseClient();
+    if (!initializeFirebaseClient()) {
+        return null;
+    }
   }
-  return auth!;
+  return auth;
 }
 
 export { getFirebaseAuth, initializeFirebaseClient };
