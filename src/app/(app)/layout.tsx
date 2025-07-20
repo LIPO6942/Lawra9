@@ -90,7 +90,7 @@ function ProviderQuickLinks() {
 function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user } = useAuth(); // No loading needed here
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
@@ -113,17 +113,6 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     return email ? email[0].toUpperCase() : 'U';
   }
 
-  if (loading || !user) {
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <PaperworkIcon className="h-10 w-10 text-primary animate-pulse"/>
-                <p className="text-muted-foreground">Chargement de votre espace...</p>
-            </div>
-        </div>
-    );
-  }
-  
   if (pathname === '/view') {
     return <>{children}</>;
   }
@@ -202,16 +191,16 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="icon" className="overflow-hidden rounded-full h-9 w-9">
                                 <Avatar className="h-9 w-9">
-                                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || "User"} />
-                                    <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+                                    <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || user?.email || "User"} />
+                                    <AvatarFallback>{getInitials(user?.displayName, user?.email)}</AvatarFallback>
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel className="font-normal">
                                 <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium leading-none">{user.displayName || 'Utilisateur'}</p>
-                                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                                    <p className="text-sm font-medium leading-none">{user?.displayName || 'Utilisateur'}</p>
+                                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />

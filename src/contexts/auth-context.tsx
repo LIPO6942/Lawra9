@@ -20,8 +20,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // La vérification de la configuration est maintenant dans firebase.ts
-    // Si auth n'est pas initialisé, une erreur sera déjà dans la console.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         setUser(user);
         setUserId(user ? user.uid : null);
@@ -32,14 +30,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const value = { user, loading, userId };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-accent" />
-      </div>
-    );
-  }
 
   return (
       <AuthContext.Provider value={value}>
