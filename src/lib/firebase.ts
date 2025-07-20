@@ -18,18 +18,9 @@ let app: FirebaseApp;
 let auth: Auth;
 let storage: FirebaseStorage;
 
+
 // This check is crucial to ensure Firebase is initialized correctly.
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  console.error(
-    'ERREUR CRITIQUE: Configuration Firebase manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont dans votre fichier .env.local'
-  );
-  // We throw an error or handle it gracefully, but don't create fake objects.
-  // For the purpose of this component, we assign them to prevent app crash on import,
-  // but auth features will not work and will throw errors.
-  app = {} as FirebaseApp;
-  auth = {} as Auth;
-  storage = {} as FirebaseStorage;
-} else {
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
    try {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
@@ -41,6 +32,13 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
     auth = {} as Auth;
     storage = {} as FirebaseStorage;
   }
+} else {
+    console.error(
+    'ERREUR CRITIQUE: Configuration Firebase manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont dans votre fichier .env.local'
+  );
+  app = {} as FirebaseApp;
+  auth = {} as Auth;
+  storage = {} as FirebaseStorage;
 }
 
 
