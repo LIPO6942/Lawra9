@@ -1,7 +1,4 @@
 
-import { config } from 'dotenv';
-config();
-
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
@@ -13,8 +10,8 @@ if (apiKey) {
 }
 
 if (!apiKey) {
-  console.error("ERREUR CRITIQUE: La variable d'environnement GOOGLE_API_KEY est manquante dans votre fichier .env.");
-  throw new Error("La variable d'environnement GOOGLE_API_KEY est manquante. Veuillez l'ajouter à votre fichier .env pour utiliser les fonctionnalités IA.");
+  console.error("ERREUR CRITIQUE: La variable d'environnement GOOGLE_API_KEY est manquante dans votre fichier .env.local.");
+  throw new Error("La variable d'environnement GOOGLE_API_KEY est manquante. Veuillez l'ajouter à votre fichier .env.local pour utiliser les fonctionnalités IA.");
 } else {
   // Affiche un message pour confirmer que la clé est chargée, sans l'exposer entièrement.
   console.log(`Clé d'API Google chargée avec succès (commence par: ${apiKey.substring(0, 4)}...).`);
