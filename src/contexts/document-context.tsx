@@ -2,11 +2,18 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import { Document } from '@/lib/types';
+import { Document, DocumentWithFile } from '@/lib/types';
 import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
+import {
+  openDB,
+  addDocument as dbAddDocument,
+  updateDocument as dbUpdateDocument,
+  deleteDocument as dbDeleteDocument,
+  getAllDocuments as dbGetAllDocuments
+} from '@/lib/idb';
 
 interface MonthlyExpense {
   month: string;
@@ -25,8 +32,8 @@ interface DocumentContextType {
   documents: Document[];
   alerts: Alert[];
   monthlyExpenses: MonthlyExpense[];
-  addDocument: (doc: Omit<Document, 'id' | 'createdAt'>) => Promise<void>;
-  updateDocument: (id: string, data: Partial<Document>) => Promise<void>;
+  addDocument: (doc: DocumentWithFile) => Promise<void>;
+  updateDocument: (id: string, data: Partial<Document>, file?: File | null) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   markAsPaid: (id: string) => void;
   getDocumentById: (id: string) => Document | undefined;
@@ -39,69 +46,87 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const getLocalStorageKey = useCallback(() => {
-    return user ? `lawra9-documents-${user.uid}` : null;
+  const loadDocuments = useCallback(async () => {
+    if (user) {
+      try {
+        const db = await openDB(user.uid);
+        const docs = await dbGetAllDocuments(db);
+        const docsWithUrls = docs.map(doc => {
+          if (doc.file instanceof Blob) {
+            return { ...doc, fileUrl: URL.createObjectURL(doc.file) };
+          }
+          return doc;
+        });
+        setDocuments(docsWithUrls.sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()));
+      } catch (error) {
+        console.error("Failed to load documents from IndexedDB", error);
+        toast({ variant: 'destructive', title: 'Erreur de chargement', description: 'Impossible de charger vos documents.' });
+      }
+    } else {
+      setDocuments([]);
+    }
+  }, [user, toast]);
+
+  useEffect(() => {
+    loadDocuments();
+
+    // Cleanup object URLs on unmount
+    return () => {
+      documents.forEach(doc => {
+        if (doc.fileUrl && doc.fileUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(doc.fileUrl);
+        }
+      });
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  useEffect(() => {
-    const key = getLocalStorageKey();
-    if (key) {
-        try {
-          const storedDocuments = localStorage.getItem(key);
-          if (storedDocuments) {
-            const parsedDocs = JSON.parse(storedDocuments);
-            setDocuments(parsedDocs.sort((a: Document, b: Document) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()));
-          } else {
-            setDocuments([]); 
-          }
-        } catch (error) {
-          console.error("Failed to load documents from local storage", error);
-        }
-    } else {
-        setDocuments([]);
-    }
-  }, [user, getLocalStorageKey]);
 
-  useEffect(() => {
-    const key = getLocalStorageKey();
-    if (key) {
-        try {
-          localStorage.setItem(key, JSON.stringify(documents));
-        } catch (error) {
-           console.error("Failed to save documents to local storage", error);
-           if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-             toast({
-                variant: 'destructive',
-                title: 'Erreur de stockage local',
-                description: 'Le quota de stockage de votre navigateur est plein. Impossible de sauvegarder de nouveaux documents.'
-             });
-          }
-        }
-    }
-  }, [documents, user, getLocalStorageKey, toast]);
-
-
-  const addDocument = async (doc: Omit<Document, 'id' | 'createdAt'>) => {
+  const addDocument = async (doc: DocumentWithFile) => {
+    if (!user) return;
+    const db = await openDB(user.uid);
     const newDoc = { ...doc, id: `doc-${Date.now()}`, createdAt: new Date().toISOString() };
-    setDocuments(prevDocs => [newDoc, ...prevDocs].sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()));
+    await dbAddDocument(db, newDoc);
+    await loadDocuments(); // Refresh state from DB
   };
 
-  const updateDocument = async (id: string, data: Partial<Document>) => {
-    setDocuments(prevDocs =>
-      prevDocs.map(doc => (doc.id === id ? { ...doc, ...data } : doc))
-    );
+  const updateDocument = async (id: string, data: Partial<Document>, file?: File | null) => {
+    if (!user) return;
+    const db = await openDB(user.uid);
+    const docToUpdate = documents.find(d => d.id === id);
+    if (!docToUpdate) return;
+    
+    const updatedData = { ...docToUpdate, ...data };
+    
+    // If a new file is provided (or removed), update it. Otherwise, keep the old one.
+    if (file) {
+      updatedData.file = file;
+    } else if (file === null) { // Explicitly removing file
+      delete updatedData.file;
+    }
+
+    await dbUpdateDocument(db, updatedData);
+    await loadDocuments(); // Refresh state from DB
   };
 
   const deleteDocument = async (id: string) => {
-    setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
+    if (!user) return;
+    const db = await openDB(user.uid);
+    await dbDeleteDocument(db, id);
+    await loadDocuments(); // Refresh state from DB
     toast({ title: 'Document supprimé' });
   };
   
-  const markAsPaid = useCallback((id: string) => {
-    setDocuments(prevDocs =>
-      prevDocs.map(doc => (doc.id === id ? { ...doc, dueDate: undefined } : doc))
-    );
-  }, []);
+  const markAsPaid = useCallback(async (id: string) => {
+    if (!user) return;
+    const db = await openDB(user.uid);
+    const docToUpdate = documents.find(d => d.id === id);
+    if (docToUpdate) {
+        docToUpdate.dueDate = undefined;
+        await dbUpdateDocument(db, docToUpdate);
+        await loadDocuments();
+    }
+  }, [user, documents, loadDocuments]);
   
   const getDocumentById = useCallback((id: string) => {
     return documents.find(doc => doc.id === id);

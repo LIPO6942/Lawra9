@@ -15,9 +15,14 @@ export type Document = {
   consumptionPeriod?: string; // For special cases like SONEDE
   taxAmount?: string;
   totalExclTax?: string;
-  fileUrl?: string;
+  file?: File | Blob; // Store the file object itself
+  fileUrl?: string; // Temporary URL for display, generated from file object
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
 };
+
+export type DocumentWithFile = Omit<Document, 'id' | 'createdAt' | 'fileUrl'> & {
+  file?: File | Blob;
+}
 
 export type Alert = {
   id: string;

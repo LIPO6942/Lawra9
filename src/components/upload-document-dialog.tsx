@@ -20,14 +20,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { extractInvoiceData, ExtractInvoiceDataOutput } from '@/ai/flows/extract-invoice-data';
 import { detectDocumentType, DetectDocumentTypeOutput } from '@/ai/flows/detect-document-type';
 import { useDocuments } from '@/contexts/document-context';
-import { Document } from '@/lib/types';
+import { Document, DocumentWithFile } from '@/lib/types';
 import { Textarea } from './ui/textarea';
 import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { auth } from '@/lib/firebase';
-
 
 type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
 
@@ -80,7 +78,6 @@ const frenchCategories: Record<string, Document['category']> = {
   "Contrat": "Contrat",
   "Autre": "Autre",
 };
-
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -284,24 +281,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
   const handleSave = async () => {
     setIsProcessing(true);
-    let fileUrl = documentToEdit?.fileUrl;
 
     try {
-      if (fileToUpload) {
-          setProcessingMessage('Conversion du fichier...');
-          fileUrl = await fileToDataUrl(fileToUpload);
-      }
-
-      const finalDocumentData: Partial<Document> = { ...formData, fileUrl };
-
       if (isEditMode && documentToEdit) {
         setProcessingMessage('Mise à jour du document...');
-        await updateDocument(documentToEdit.id, finalDocumentData);
+        await updateDocument(documentToEdit.id, formData, fileToUpload);
         toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
 
       } else {
         setProcessingMessage('Finalisation...');
-        const docToAdd: Omit<Document, 'id' | 'createdAt'> = {
+        const docToAdd: DocumentWithFile = {
             name: formData.name || 'Nouveau document',
             category: formData.category || 'Autre',
             supplier: formData.supplier,
@@ -315,7 +304,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             summary: formData.summary,
             taxAmount: formData.taxAmount,
             totalExclTax: formData.totalExclTax,
-            fileUrl: fileUrl,
+            file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
         toast({ title: "Document enregistré !", description: `"${docToAdd.name}" a été ajouté.` });

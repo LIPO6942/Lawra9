@@ -21,8 +21,14 @@ function DocumentView() {
       const doc = getDocumentById(id);
       setDocument(doc);
       if (doc?.fileUrl) {
-        const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.fileUrl) || doc.fileUrl.startsWith('data:image');
-        setIsImage(isImg);
+        // Check file type from the Blob/File if available
+        if (doc.file && doc.file.type.startsWith('image/')) {
+          setIsImage(true);
+        } else {
+          // Fallback to checking URL for externally stored files
+          const isImgUrl = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.fileUrl) || doc.fileUrl.startsWith('data:image');
+          setIsImage(isImgUrl);
+        }
       }
     } else {
       setDocument(null);
@@ -72,7 +78,7 @@ function DocumentView() {
                 <img src={document.fileUrl} alt={document.name} className="max-w-full max-h-full object-contain" />
             </div>
         ) : (
-          <embed src={document.fileUrl} type="application/pdf" className="h-full w-full" />
+          <embed src={document.fileUrl} type={document.file?.type || 'application/pdf'} className="h-full w-full" />
         )}
       </main>
     </div>

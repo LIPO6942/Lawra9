@@ -18,8 +18,7 @@ import { PlusCircle, Upload, Loader2, FileText, CheckCircle } from 'lucide-react
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useDocuments } from '@/contexts/document-context';
-import { Document } from '@/lib/types';
-import { auth } from '@/lib/firebase';
+import { Document, DocumentWithFile } from '@/lib/types';
 
 interface MaisonUploadDialogProps {
   open?: boolean;
@@ -37,16 +36,6 @@ const maisonCategories = [
   "Taxe municipale",
   "Autre document maison"
 ];
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
 
 export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, children }: MaisonUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
@@ -109,12 +98,6 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
   };
 
   const handleSave = async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      toast({ variant: 'destructive', title: "Utilisateur non connecté", description: "Veuillez vous reconnecter." });
-      return;
-    }
-
     if (!formData.name) {
       toast({ variant: 'destructive', title: "Le nom du document est requis" });
       return;
@@ -122,24 +105,17 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
 
     setIsProcessing(true);
     
-    let fileUrl = documentToEdit?.fileUrl;
-
     try {
-      if (fileToUpload) {
-        fileUrl = await fileToDataUrl(fileToUpload);
-      }
-
-      const finalDocumentData: Partial<Document> = { ...formData, fileUrl };
-
       if (isEditMode && documentToEdit) {
-        await updateDocument(documentToEdit.id, finalDocumentData);
-        toast({ title: "Document modifié !", description: `Le document "${finalDocumentData.name}" a été mis à jour.`});
+        // Pass fileToUpload which can be null if user didn't change the file
+        await updateDocument(documentToEdit.id, formData, fileToUpload);
+        toast({ title: "Document modifié !", description: `Le document "${formData.name}" a été mis à jour.`});
       } else {
-        const docToAdd: Omit<Document, 'id' | 'createdAt'> = {
-            name: finalDocumentData.name || 'Nouveau document',
+        const docToAdd: DocumentWithFile = {
+            name: formData.name || 'Nouveau document',
             category: 'Maison',
-            subCategory: finalDocumentData.subCategory,
-            fileUrl: finalDocumentData.fileUrl,
+            subCategory: formData.subCategory,
+            file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
         toast({ title: "Document archivé !", description: `"${docToAdd.name}" a été ajouté à votre espace Maison.` });
