@@ -21,9 +21,11 @@ let storage: FirebaseStorage;
 // This check is crucial to ensure Firebase is initialized correctly.
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   console.error(
-    'Firebase config is missing. Ensure NEXT_PUBLIC_FIREBASE_* variables are in your .env file and the next.config.ts is correct.'
+    'ERREUR CRITIQUE: Configuration Firebase manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont dans votre fichier .env.local'
   );
-  // Provide dummy objects to prevent app from crashing if firebase fails to init
+  // We throw an error or handle it gracefully, but don't create fake objects.
+  // For the purpose of this component, we assign them to prevent app crash on import,
+  // but auth features will not work and will throw errors.
   app = {} as FirebaseApp;
   auth = {} as Auth;
   storage = {} as FirebaseStorage;
@@ -33,7 +35,7 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
     auth = getAuth(app);
     storage = getStorage(app);
   } catch (error) {
-    console.error('Firebase initialization error:', error);
+    console.error('Erreur d\'initialisation de Firebase:', error);
     // Provide dummy objects to prevent app from crashing if firebase fails to init
     app = {} as FirebaseApp;
     auth = {} as Auth;
