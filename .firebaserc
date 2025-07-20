@@ -1,6 +1,7 @@
 {
   "projects": {
-    "staging": "lawra9-ee888"
+    "staging": "lawra9-ee888",
+    "default": "lawra9-ee888"
   },
   "targets": {},
   "etags": {}
