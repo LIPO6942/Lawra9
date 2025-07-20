@@ -19,7 +19,6 @@ let app: FirebaseApp;
 let auth: Auth;
 
 // Vérifie si les clés sont chargées pour éviter les erreurs.
-// Si ce message apparaît, c'est que .env.local n'est toujours pas lu.
 if (!firebaseConfig.apiKey) {
     console.error("ERREUR: La configuration Firebase est manquante. Assurez-vous que .env.local est à la racine et que le serveur a été redémarré.");
 }

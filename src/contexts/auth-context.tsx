@@ -20,12 +20,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!auth) {
-        console.error("Firebase Auth is not initialized. Check your .env.local file.");
-        setLoading(false);
-        return;
-    }
-
+    // La vérification de la configuration est maintenant dans firebase.ts
+    // Si auth n'est pas initialisé, une erreur sera déjà dans la console.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         setUser(user);
         setUserId(user ? user.uid : null);
