@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth, initializeFirebaseClient } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
@@ -18,8 +18,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false);
 
   useEffect(() => {
+    try {
+      initializeFirebaseClient();
+      setFirebaseInitialized(true);
+    } catch (error) {
+      console.error(error);
+      setLoading(false); // Stop loading on initialization failure
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!firebaseInitialized) return;
+
+    const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setUserId(user ? user.uid : null);
@@ -27,14 +41,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [firebaseInitialized]);
 
   const value = { user, loading, userId };
 
-  if (loading) {
+  if (loading || !firebaseInitialized) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-accent" />
+      </div>
+    );
+  }
+  
+  if (!firebaseInitialized && !loading) {
+     return (
+      <div className="flex items-center justify-center min-h-screen bg-background text-destructive p-4 text-center">
+        Erreur de configuration Firebase. Vérifiez vos clés dans .env.local et redémarrez.
       </div>
     );
   }
