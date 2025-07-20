@@ -14,32 +14,42 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp;
-let auth: Auth;
-let storage: FirebaseStorage;
-
-
-// This check is crucial to ensure Firebase is initialized correctly.
-if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-   try {
-    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-    auth = getAuth(app);
-    storage = getStorage(app);
-  } catch (error) {
-    console.error('Erreur d\'initialisation de Firebase:', error);
-    // Provide dummy objects to prevent app from crashing if firebase fails to init
-    app = {} as FirebaseApp;
-    auth = {} as Auth;
-    storage = {} as FirebaseStorage;
+// Lazy initialization for Firebase App
+function getFirebaseApp(): FirebaseApp {
+  if (getApps().length > 0) {
+    return getApp();
   }
-} else {
-    console.error(
-    'ERREUR CRITIQUE: Configuration Firebase manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont dans votre fichier .env.local'
-  );
-  app = {} as FirebaseApp;
-  auth = {} as Auth;
-  storage = {} as FirebaseStorage;
+
+  // This check is crucial to ensure Firebase is initialized correctly.
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+     throw new Error(
+      'ERREUR CRITIQUE: Configuration Firebase manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont dans votre fichier .env.local et que le serveur a été redémarré.'
+    );
+  }
+  
+  return initializeApp(firebaseConfig);
+}
+
+// We export functions that ensure the app is initialized before getting the service.
+let authInstance: Auth | null = null;
+let storageInstance: FirebaseStorage | null = null;
+
+function getFirebaseAuth(): Auth {
+    if (!authInstance) {
+        authInstance = getAuth(getFirebaseApp());
+    }
+    return authInstance;
+}
+
+function getFirebaseStorage(): FirebaseStorage {
+    if (!storageInstance) {
+        storageInstance = getStorage(getFirebaseApp());
+    }
+    return storageInstance;
 }
 
 
-export { app, auth, storage };
+// Export getters instead of direct instances
+export const app = getFirebaseApp();
+export const auth = getFirebaseAuth();
+export const storage = getFirebaseStorage();
