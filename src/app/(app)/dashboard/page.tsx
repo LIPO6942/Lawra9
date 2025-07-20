@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   
   const getFirstName = () => {
-    if (user?.displayName) {
+    if (user && user.displayName) {
         return user.displayName.split(' ')[0];
     }
     return 'Utilisateur';
