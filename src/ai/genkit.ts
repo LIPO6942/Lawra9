@@ -2,13 +2,13 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-// Next.js automatically loads environment variables from .env.local
-// No other configuration is needed.
+// IMPORTANT: Assurez-vous que votre clé API Google est définie comme variable d'environnement
+// dans votre environnement de déploiement. Pour le développement local,
+// Next.js charge automatiquement les variables depuis .env.local
 const apiKey = process.env.GOOGLE_API_KEY;
 
 if (!apiKey) {
-  console.error("ERREUR CRITIQUE: La variable d'environnement GOOGLE_API_KEY est manquante dans votre fichier .env.local.");
-  // We don't throw an error to avoid breaking the build, but Genkit will not work.
+  console.error("ERREUR CRITIQUE: La variable d'environnement GOOGLE_API_KEY est manquante. Genkit ne fonctionnera pas.");
 }
 
 export const ai = genkit({

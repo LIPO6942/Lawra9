@@ -4,30 +4,31 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 
+// IMPORTANT: Remplacez ces valeurs par vos vraies clés Firebase.
+// Cette méthode est utilisée car la lecture de .env.local est instable dans cet environnement.
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "VOTRE_API_KEY_ICI",
+  authDomain: "VOTRE_AUTH_DOMAIN_ICI",
+  projectId: "VOTRE_PROJECT_ID_ICI",
+  storageBucket: "VOTRE_STORAGE_BUCKET_ICI",
+  messagingSenderId: "VOTRE_MESSAGING_SENDER_ID_ICI",
+  appId: "VOTRE_APP_ID_ICI",
 };
 
 let app: FirebaseApp;
 let auth: Auth;
 
-if (!getApps().length) {
-    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-        console.error("Firebase config is missing. Make sure .env.local is set up correctly.");
-        // We avoid throwing an error to prevent app crash, but auth will not work.
-    } else {
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-    }
-} else {
-    app = getApp();
-    auth = getAuth(app);
+// Assurez-vous que les clés ne sont pas les valeurs d'exemple avant d'initialiser.
+if (firebaseConfig.apiKey === "VOTRE_API_KEY_ICI") {
+    console.error("ERREUR: Veuillez remplacer les valeurs d'exemple dans src/lib/firebase.ts par vos vraies clés Firebase.");
 }
 
-// @ts-ignore
+if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+} else {
+    app = getApp();
+}
+
+auth = getAuth(app);
+
 export { app, auth };
