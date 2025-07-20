@@ -28,9 +28,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedDevOrigins: [
-          'localhost:9006', 
-          'http://localhost:9006',
-          'http://127.0.0.1:9006'
+          'http://localhost:3000',
+          'http://127.0.0.1:3000'
       ],
     },
   },

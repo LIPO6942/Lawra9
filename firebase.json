@@ -1,9 +1,6 @@
+
 {
   "emulators": {
-    "apphosting": {
-      "port": 9006,
-      "rootDirectory": "src/app"
-    },
     "auth": {
       "port": 9099
     },
