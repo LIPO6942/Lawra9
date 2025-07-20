@@ -13,45 +13,21 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
+let app: FirebaseApp;
+let auth: Auth;
 
-function initializeFirebaseClient(): boolean {
-  if (app) {
-    return true;
-  }
-
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-    console.error(
-      'ERREUR CRITIQUE: Configuration Firebase manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont dans votre fichier .env.local.'
-    );
-    return false; // Indicate failure instead of throwing
-  }
-  
-  if (getApps().length === 0) {
-    try {
+if (!getApps().length) {
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+        console.error("Firebase config is missing. Make sure .env.local is set up correctly.");
+        // We avoid throwing an error to prevent app crash, but auth will not work.
+    } else {
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
-    } catch (error) {
-        console.error("Firebase initialization failed:", error);
-        app = null;
-        auth = null;
-        return false;
     }
-  } else {
+} else {
     app = getApp();
     auth = getAuth(app);
-  }
-  return true;
 }
 
-function getFirebaseAuth(): Auth | null {
-  if (!auth) {
-    if (!initializeFirebaseClient()) {
-        return null;
-    }
-  }
-  return auth;
-}
-
-export { getFirebaseAuth, initializeFirebaseClient };
+// @ts-ignore
+export { app, auth };
