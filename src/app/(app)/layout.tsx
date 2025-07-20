@@ -251,25 +251,28 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
 
   React.useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.replace('/login');
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, router]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
-             <div className="flex flex-col items-center gap-4">
-                <PaperworkIcon className="h-10 w-10 text-primary animate-pulse"/>
-                <p className="text-muted-foreground">Chargement de la session...</p>
+             <div className="flex flex-col items-center gap-2">
+                <PaperworkIcon className="h-8 w-8 text-primary animate-pulse"/>
+                <p className="text-muted-foreground text-sm mt-2">Chargement de la session...</p>
             </div>
         </div>
     );
   }
   
+  if (!user) {
+    return null; // ou une page d'erreur, mais la redirection devrait déjà avoir eu lieu
+  }
+
   return <AppLayout>{children}</AppLayout>;
 }
 
