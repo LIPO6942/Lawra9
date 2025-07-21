@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, FilePlus2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -15,12 +15,14 @@ export default function DocumentsPage() {
   const { documents, updateDocument, deleteDocument } = useDocuments();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredDocuments = documents.filter(doc => 
-    doc.category !== 'Maison' &&
-    (doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (doc.supplier && doc.supplier.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
+  const filteredDocuments = useMemo(() => {
+    return documents.filter(doc => 
+      doc.category !== 'Maison' &&
+      (doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (doc.supplier && doc.supplier.toLowerCase().includes(searchTerm.toLowerCase())))
+    );
+  }, [documents, searchTerm]);
 
   return (
     <div className="flex flex-col gap-6">

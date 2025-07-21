@@ -9,11 +9,14 @@ import { FilePlus2, FileText, Bell, LineChart } from 'lucide-react';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
 import { AlertsCard } from '@/components/dashboard/alerts-card';
+import { useMemo } from 'react';
 
 
 export default function DashboardPage() {
   const { documents, alerts, monthlyExpenses } = useDocuments();
   const { user } = useAuth();
+
+  const regularDocuments = useMemo(() => documents.filter(doc => doc.category !== 'Maison'), [documents]);
   
   const getFirstName = () => {
     if (user && user.displayName) {
@@ -48,7 +51,7 @@ export default function DashboardPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.length}</div>
+            <div className="text-2xl font-bold">{regularDocuments.length}</div>
             <p className="text-xs text-muted-foreground">
               fichiers et factures archivés
             </p>
