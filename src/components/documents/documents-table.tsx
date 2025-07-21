@@ -126,7 +126,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id, doc.fileUrl)}>
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                        <p className="font-semibold truncate pr-2">{doc.name}</p>
+                                        <p className="font-semibold pr-2 break-words">{doc.name}</p>
                                         <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
                                     </div>
                                     {!isMaison && (

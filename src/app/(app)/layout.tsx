@@ -44,8 +44,8 @@ const providerDetails: Record<ISP, { name: string; link: string; className: stri
 function ProviderQuickLinks() {
     const { isp, stegRef, sonedeRef } = useUserPreferences();
     
-    const stegLink = stegRef ? `https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html?contrat=${stegRef}` : 'https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html';
-    const sonedeLink = sonedeRef ? `http://www.sonede.com.tn/onl/facture/saisie_ident.php?id=${sonedeRef}` : 'http://www.sonede.com.tn/onl/facture/saisie_ident.php';
+    const stegLink = `https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html${stegRef ? `?contrat=${stegRef}` : ''}`;
+    const sonedeLink = `http://www.sonede.com.tn/onl/facture/saisie_ident.php${sonedeRef ? `?id=${sonedeRef}` : ''}`;
     const ispProvider = isp ? providerDetails[isp] : null;
 
     return (
@@ -216,7 +216,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around z-50">
                 {mainNavItems.map(item => (
                      <Link key={`mobile-${item.href}`} href={item.href} className={cn(
-                        "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
+                        "flex flex-col items-center justify-center gap-0 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
                         (pathname === item.href || (item.href === '/documents' && pathname.startsWith(item.href))) && "text-primary"
                     )}>
                         <item.icon className="h-6 w-6" />
