@@ -10,13 +10,45 @@ import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { ExpensesChartCard } from '@/components/dashboard/expenses-chart-card';
 import { AlertsCard } from '@/components/dashboard/alerts-card';
 import { useMemo } from 'react';
+import { parseISO, getMonth, getYear, isValid } from 'date-fns';
+import { Document } from '@/lib/types';
 
+
+const getDocumentDate = (doc: Document): Date | null => {
+    const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
+    for (const dateStr of datePriority) {
+        if (dateStr) {
+            const date = parseISO(dateStr);
+            if (isValid(date)) {
+                return date;
+            }
+        }
+    }
+    return null;
+}
 
 export default function DashboardPage() {
   const { documents, alerts, monthlyExpenses } = useDocuments();
   const { user } = useAuth();
 
   const regularDocuments = useMemo(() => documents.filter(doc => doc.category !== 'Maison'), [documents]);
+
+  const currentMonthExpenses = useMemo(() => {
+    const now = new Date();
+    const currentMonth = getMonth(now);
+    const currentYear = getYear(now);
+
+    return documents.reduce((total, doc) => {
+        const docDate = getDocumentDate(doc);
+        if (doc.amount && docDate && getMonth(docDate) === currentMonth && getYear(docDate) === currentYear) {
+            const amount = parseFloat(doc.amount.replace(',', '.'));
+            if (!isNaN(amount)) {
+                return total + amount;
+            }
+        }
+        return total;
+    }, 0);
+  }, [documents]);
   
   const getFirstName = () => {
     if (user && user.displayName) {
@@ -64,7 +96,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-                {monthlyExpenses.length > 0 ? Object.values(monthlyExpenses[monthlyExpenses.length-1]).reduce((acc: number, val) => typeof val === 'number' ? acc + val : acc, 0).toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '0,000'}
+                {currentMonthExpenses.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                 <span className="text-sm font-normal"> TND</span>
             </div>
             <p className="text-xs text-muted-foreground">
