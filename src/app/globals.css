@@ -5,77 +5,77 @@
 
 @layer base {
   :root {
-    --background: 160 50% 96%; /* Light Mint */
-    --foreground: 180 10% 10%;
+    --background: 220 20% 98%;      /* Very Light Cool Gray */
+    --foreground: 220 15% 20%;      /* Dark Slate Gray */
     
-    --card: 0 0% 100%;
-    --card-foreground: 180 10% 10%;
+    --card: 0 0% 100%;              /* White */
+    --card-foreground: 220 15% 20%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 180 10% 10%;
+    --popover-foreground: 220 15% 20%;
     
-    --primary: 180 82% 45%; /* Vibrant Turquoise */
-    --primary-foreground: 0 0% 100%;
+    --primary: 221 83% 53%;         /* Strong Blue */
+    --primary-foreground: 210 40% 98%;
     
-    --secondary: 170 30% 94%;
-    --secondary-foreground: 180 10% 10%;
+    --secondary: 220 15% 94%;      /* Light Slate Gray */
+    --secondary-foreground: 220 10% 25%;
     
-    --muted: 170 30% 94%;
-    --muted-foreground: 180 5% 45%;
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 45%;
     
-    --accent: 35 92% 58%; /* Bright Citrus Orange */
-    --accent-foreground: 0 0% 100%;
+    --accent: 45 93% 47%;           /* Vibrant Gold/Amber */
+    --accent-foreground: 35 90% 15%; /* Dark text for accent */
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     
-    --border: 170 20% 88%;
-    --input: 170 20% 92%;
-    --ring: 180 82% 45%;
+    --border: 220 10% 90%;
+    --input: 220 10% 92%;
+    --ring: 221 83% 53%;
     
     --radius: 0.75rem;
 
-    --chart-1: 180 82% 45%; /* Turquoise */
+    --chart-1: 221 83% 53%; /* Blue */
     --chart-2: 160 70% 45%; /* Green */
-    --chart-3: 35 92% 58%;  /* Orange */
-    --chart-4: 45 95% 55%;  /* Yellow */
-    --chart-5: 260 85% 65%; /* Purple */
+    --chart-3: 45 93% 47%;  /* Gold */
+    --chart-4: 25 95% 53%;  /* Orange */
+    --chart-5: 346 82% 60%; /* Red-Pink */
   }
 
   .dark {
-    --background: 180 15% 12%; /* Dark Teal */
-    --foreground: 180 5% 95%;
+    --background: 222 47% 11%;      /* Dark Slate Blue */
+    --foreground: 210 40% 98%;      /* Light Gray */
 
-    --card: 180 15% 16%;
-    --card-foreground: 180 5% 95%;
+    --card: 222 47% 15%;            /* Slightly Lighter Slate */
+    --card-foreground: 210 40% 98%;
 
-    --popover: 180 15% 12%;
-    --popover-foreground: 180 5% 95%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 180 82% 55%; /* Lighter Turquoise */
-    --primary-foreground: 180 10% 10%;
+    --primary: 217 91% 60%;         /* Vibrant Blue */
+    --primary-foreground: 220 15% 10%;
 
-    --secondary: 180 15% 22%;
-    --secondary-foreground: 180 5% 95%;
+    --secondary: 222 47% 18%;       /* Darker Secondary */
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 180 15% 22%;
-    --muted-foreground: 180 5% 65%;
+    --muted: 222 47% 18%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 35 92% 62%; /* Lighter Citrus Orange */
-    --accent-foreground: 0 0% 10%;
+    --accent: 45 93% 55%;           /* Brighter Gold */
+    --accent-foreground: 35 90% 15%;
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     
-    --border: 180 15% 25%;
-    --input: 180 15% 25%;
-    --ring: 180 82% 55%;
+    --border: 217 32% 27%;
+    --input: 217 32% 22%;
+    --ring: 216 91% 60%;
 
-    --chart-1: 180 82% 55%;
+    --chart-1: 217 91% 60%;
     --chart-2: 160 70% 55%;
-    --chart-3: 35 92% 62%;
-    --chart-4: 45 95% 65%;
-    --chart-5: 260 85% 75%;
+    --chart-3: 45 93% 55%;
+    --chart-4: 25 95% 63%;
+    --chart-5: 346 82% 70%;
   }
 }
 
