@@ -41,7 +41,7 @@ export default function DashboardPage() {
           </UploadDocumentDialog>
       </div>
       
-       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Documents Totaux</CardTitle>
@@ -51,18 +51,6 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">{documents.length}</div>
             <p className="text-xs text-muted-foreground">
               fichiers et factures archivés
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Alertes Actives</CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{alerts.length}</div>
-            <p className="text-xs text-muted-foreground">
-                {alerts.filter(a => a.type === 'Paiement').length} paiements à venir
             </p>
           </CardContent>
         </Card>
