@@ -4,8 +4,8 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 
-// Cette configuration lit directement depuis process.env, qui est alimenté par .env.local
-// lorsque le fichier est correctement placé à la racine du projet.
+// Cette configuration lit les variables d'environnement `NEXT_PUBLIC_`
+// qui sont exposées au client par Next.js.
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -20,7 +20,7 @@ let auth: Auth;
 
 // Vérifie si les clés sont chargées pour éviter les erreurs.
 if (!firebaseConfig.apiKey) {
-    console.error("ERREUR: La configuration Firebase est manquante. Assurez-vous que .env.local est à la racine et que le serveur a été redémarré.");
+    console.error("ERREUR: La configuration Firebase est manquante. Assurez-vous que les variables NEXT_PUBLIC_FIREBASE_* sont définies dans votre environnement ou votre fichier .env.local et que le serveur a été redémarré.");
 }
 
 if (!getApps().length) {
