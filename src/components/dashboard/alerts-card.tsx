@@ -66,8 +66,8 @@ export function AlertsCard({ alerts }: AlertsCardProps) {
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
                           {differenceInDays(parseISO(alert.dueDate), new Date()) < 0 ? <AlertTriangle className="h-5 w-5 text-destructive" /> : <Clock className="h-5 w-5 text-orange-500" />}
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none truncate" title={alert.documentName}>{alert.documentName}</p>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <p className="text-sm font-medium leading-none break-words" title={alert.documentName}>{alert.documentName}</p>
                         <p className="text-sm text-muted-foreground">{alert.type} - {format(parseISO(alert.dueDate), 'd MMMM', { locale: fr })}</p>
                       </div>
                       <div className="flex items-center space-x-2">

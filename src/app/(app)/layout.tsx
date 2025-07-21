@@ -48,6 +48,10 @@ function ProviderQuickLinks() {
     const sonedeLink = `http://www.sonede.com.tn/onl/facture/saisie_ident.php${sonedeRef ? `?id=${sonedeRef}` : ''}`;
     const ispProvider = isp ? providerDetails[isp] : null;
 
+    if (!stegRef && !sonedeRef && !ispProvider) {
+        return null;
+    }
+
     return (
         <div className="flex items-center gap-2">
             {stegRef && (
