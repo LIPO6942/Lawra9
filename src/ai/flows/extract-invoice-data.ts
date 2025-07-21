@@ -2,9 +2,9 @@
 'use server';
 
 /**
- * @fileOverview A flow to extract invoice and receipt data from images or PDFs.
+ * @fileOverview A flow to extract invoice data and detect document type from images or PDFs.
  *
- * - extractInvoiceData - A function that handles the data extraction process.
+ * - extractInvoiceData - A function that handles the data extraction and type detection process.
  * - ExtractInvoiceDataInput - The input type for the extractInvoiceData function.
  * - ExtractInvoiceDataOutput - The return type for the extractInvoiceData function.
  */
@@ -22,6 +22,7 @@ const ExtractInvoiceDataInputSchema = z.object({
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
 const ExtractInvoiceDataOutputSchema = z.object({
+  documentType: z.string().describe('Le type de document détecté (STEG, SONEDE, Reçu Bancaire, Maison, Internet, Assurance, Contrat, Autre).'),
   supplier: z.string().describe('Le nom du fournisseur ou de l\'entité. Ex: "STEG", "SONEDE", "Orange", "Banque Zitouna", "Kiosque Ali".'),
   amount: z.string().describe('Le montant total payé ou à payer.'),
   dueDate: z.string().optional().describe('La date d\'échéance au format AAAA-MM-JJ. Laisser vide si non applicable.'),
@@ -43,9 +44,13 @@ const prompt = ai.definePrompt({
   name: 'extractInvoiceDataPrompt',
   input: {schema: ExtractInvoiceDataInputSchema},
   output: {schema: ExtractInvoiceDataOutputSchema},
-  prompt: `Vous êtes un expert dans l'extraction de données à partir de factures et reçus tunisiens.
+  prompt: `Vous êtes un expert dans l'analyse de documents et factures tunisiens. Votre tâche est de détecter le type de document ET d'en extraire les informations pertinentes.
 
-  Veuillez extraire les informations suivantes de l'image du document fournie :
+  **Étape 1 : Détection du type de document**
+  Identifiez d'abord le type du document parmi les choix suivants : STEG (facture d'électricité), SONEDE (facture d'eau), Reçu Bancaire (reçu de retrait, de dépôt, etc.), Maison (contrat de location, titre de propriété), Internet (facture de fournisseur d'accès comme Orange, Ooredoo, Topnet), Assurance, Contrat, ou Autre. Renseignez le champ "documentType".
+
+  **Étape 2 : Extraction des données**
+  Veuillez extraire les informations suivantes de l'image du document fournie et renseignez les autres champs :
   - Nom du fournisseur ou de l'entité : Soyez précis. Pour l'électricité, c'est "STEG". Pour l'eau, "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna"). Pour un ticket de caisse, le nom du magasin.
   - Montant : Le montant total.
   - Date d'échéance : La date limite de paiement.
@@ -54,7 +59,7 @@ const prompt = ai.definePrompt({
   - Période de facturation (si applicable) : Dates de début et de fin.
   - Quantité consommée (pour STEG/SONEDE) : Cherchez le mot "الكمية" et extrayez la valeur numérique et son unité (ex: KWh, m³).
 
-  Détails spécifiques :
+  **Détails spécifiques :**
   1. Pour les factures SONEDE : La période de consommation est un trimestre (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans le champ "consumptionPeriod" et laissez "billingStartDate" et "billingEndDate" vides.
   2. Pour les reçus et tickets de caisse : Les périodes de facturation et la quantité consommée ne sont généralement pas applicables. Laissez ces champs vides.
 

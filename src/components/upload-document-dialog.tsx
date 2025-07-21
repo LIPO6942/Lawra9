@@ -13,28 +13,18 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { PlusCircle, UploadCloud, Loader2, Camera, FileText, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { extractInvoiceData, ExtractInvoiceDataOutput } from '@/ai/flows/extract-invoice-data';
-import { detectDocumentType, DetectDocumentTypeOutput } from '@/ai/flows/detect-document-type';
 import { useDocuments } from '@/contexts/document-context';
 import { Document, DocumentWithFile } from '@/lib/types';
-import { Textarea } from './ui/textarea';
 import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { MaisonUploadDialog } from './maison-upload-dialog';
 
-type AnalysisResult = Partial<DetectDocumentTypeOutput> & Partial<ExtractInvoiceDataOutput>;
-
-interface UploadDocumentDialogProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  documentToEdit?: Document | null;
-  children?: ReactNode;
-}
+type AnalysisResult = Partial<ExtractInvoiceDataOutput>;
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
     const docType = result.documentType as Document['category'];
@@ -88,18 +78,16 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
-export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, children }: UploadDocumentDialogProps) {
+export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null, children }: { open?: boolean; onOpenChange?: (open: boolean) => void; documentToEdit?: Document | null, children?: ReactNode}) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
-  const [step, setStep] = useState<'selection' | 'form'>('selection');
   
-  const [originalFileName, setOriginalFileName] = useState<string | null>(null);
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
-  const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
-  const { addDocument, updateDocument } = useDocuments();
+  const { addDocument } = useDocuments();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,18 +98,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     if (open !== undefined) {
       setIsOpen(open);
     }
-    if (!open) {
+    if (documentToEdit) {
+      setSelectedDocument(documentToEdit);
+      setIsEditModalOpen(true);
+    }
+    if (!open && !documentToEdit) {
         resetDialog();
     }
-  }, [open]);
-  
-  useEffect(() => {
-    if (isOpen && isEditMode && documentToEdit) {
-      setFormData(documentToEdit);
-      setStep('form');
-    }
-  }, [isOpen, isEditMode, documentToEdit]);
-  
+  }, [open, documentToEdit]);
+
   const handleTabChange = (value: string) => {
     if (value === 'camera' && !hasCameraPermission) {
       getCameraPermission();
@@ -192,37 +177,23 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const resetDialog = () => {
     setIsProcessing(false);
     setProcessingMessage('');
-    setOriginalFileName(null);
-    setFileToUpload(null);
-    setFormData({});
-    setStep('selection');
     stopCameraStream();
     setHasCameraPermission(null);
   };
   
-  const processDocumentForAnalysis = async (file: File) => {
+  const processAndSaveDocument = async (file: File) => {
       setIsProcessing(true);
       const fileName = file.name;
-      setOriginalFileName(fileName);
-      setFileToUpload(file);
-
-      setProcessingMessage('Analyse du document...');
       
       try {
+          setProcessingMessage('Analyse du document...');
           const documentDataUri = await fileToDataUrl(file);
           
-          const settledResults = await Promise.allSettled([
-              detectDocumentType({ documentDataUri }),
-              extractInvoiceData({ invoiceDataUri: documentDataUri })
-          ]);
-
-          let result: AnalysisResult = {};
-          if (settledResults[0].status === 'fulfilled') result = { ...result, ...settledResults[0].value };
-          if (settledResults[1].status === 'fulfilled') result = { ...result, ...settledResults[1].value };
+          const result: AnalysisResult = await extractInvoiceData({ invoiceDataUri: documentDataUri });
 
           const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
           
-          setFormData({
+          const newDoc: DocumentWithFile = {
               name: formatDocumentName(result, fileName),
               category: aiCategory,
               supplier: result.supplier,
@@ -234,13 +205,19 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               billingEndDate: result.billingEndDate,
               consumptionPeriod: result.consumptionPeriod,
               consumptionQuantity: result.consumptionQuantity,
-          });
-          setStep('form');
+              file: file,
+          };
+
+          setProcessingMessage('Sauvegarde du document...');
+          await addDocument(newDoc);
+          
+          toast({ title: "Document enregistré !", description: `"${newDoc.name}" a été ajouté avec succès.` });
+          handleOpenChange(false);
 
       } catch (error: any) {
           console.error('L\'analyse du document a échoué :', error);
           toast({ variant: 'destructive', title: "L'analyse a échoué", description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."});
-          resetDialog();
+          handleOpenChange(false);
       } finally {
           setIsProcessing(false);
           setProcessingMessage('');
@@ -250,7 +227,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      await processDocumentForAnalysis(selectedFile);
+      await processAndSaveDocument(selectedFile);
       event.target.value = '';
     }
   };
@@ -267,66 +244,20 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               canvas.toBlob(async (blob) => {
                   if (blob) {
                       const capturedFile = new File([blob], `Capture-${new Date().toISOString()}.jpg`, { type: 'image/jpeg' });
-                      await processDocumentForAnalysis(capturedFile);
+                      await processAndSaveDocument(capturedFile);
                   }
               }, 'image/jpeg');
           }
       }
   };
 
-  const handleFormChange = (field: keyof Document, value: string | number | undefined) => {
-    setFormData(prev => ({...prev, [field]: value}));
+  const dialogTitle = "Ajouter un nouveau document";
+  const dialogDescription = "Uploadez un fichier ou prenez une photo. Notre IA l'analysera et le sauvegardera automatiquement pour vous.";
+
+  // This component now only handles ADDING. Editing is delegated.
+  if (isEditMode) {
+     return <MaisonUploadDialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen} documentToEdit={documentToEdit} />
   }
-
-  const handleSave = async () => {
-    setIsProcessing(true);
-
-    try {
-      if (isEditMode && documentToEdit) {
-        setProcessingMessage('Mise à jour du document...');
-        await updateDocument(documentToEdit.id, formData, fileToUpload);
-        toast({ title: "Document modifié !", description: `Le document "${formData.name || 'sélectionné'}" a été mis à jour.`});
-
-      } else {
-        setProcessingMessage('Finalisation...');
-        const docToAdd: DocumentWithFile = {
-            name: formData.name || 'Nouveau document',
-            category: formData.category || 'Autre',
-            supplier: formData.supplier,
-            amount: formData.amount,
-            dueDate: formData.dueDate,
-            issueDate: formData.issueDate,
-            invoiceNumber: formData.invoiceNumber,
-            billingStartDate: formData.billingStartDate,
-            billingEndDate: formData.billingEndDate,
-            consumptionPeriod: formData.consumptionPeriod,
-            consumptionQuantity: formData.consumptionQuantity,
-            file: fileToUpload || undefined,
-        };
-        await addDocument(docToAdd);
-        toast({ title: "Document enregistré !", description: `"${docToAdd.name}" a été ajouté.` });
-      }
-        
-      handleOpenChange(false);
-
-    } catch (error: any) {
-      console.error("Save error:", error);
-      toast({ variant: 'destructive', title: "Erreur de sauvegarde", description: `Un problème est survenu : ${error.message}` });
-    } finally {
-      setIsProcessing(false);
-      setProcessingMessage('');
-    }
-  };
-
-  const dialogTitle = isEditMode 
-    ? "Modifier le document" 
-    : "Ajouter un nouveau document";
-
-  const dialogDescription = isEditMode 
-    ? "Modifiez les informations de votre document ci-dessous." 
-    : step === 'selection' 
-        ? "Uploadez un fichier ou prenez une photo. Notre IA l'analysera pour vous."
-        : "Veuillez vérifier les informations extraites par l'IA avant de sauvegarder.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -346,15 +277,13 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           </DialogDescription>
         </DialogHeader>
 
-        {isProcessing && (
+        {isProcessing ? (
              <div className="flex flex-col items-center justify-center space-y-4 py-12">
                 <Loader2 className="h-16 w-16 animate-spin text-accent" />
                 <p className="font-semibold text-lg">Traitement en cours...</p>
                 <p className="text-sm text-muted-foreground">{processingMessage}</p>
              </div>
-        )}
-        
-        {!isProcessing && step === 'selection' && !isEditMode && (
+        ) : (
             <Tabs defaultValue="file" className="w-full" onValueChange={handleTabChange}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="file">Fichier</TabsTrigger>
@@ -393,80 +322,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 </div>
               </TabsContent>
             </Tabs>
-        )}
-
-        {!isProcessing && step === 'form' && (
-          <>
-            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
-              {(fileToUpload || formData.fileUrl) && !isEditMode && (
-                <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload?.name || originalFileName}</span>
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="doc-name">Nom du document</Label>
-                <Input id="doc-name" value={formData.name || ''} onChange={e => handleFormChange('name', e.target.value)} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="doc-category">Catégorie</Label>
-                <Select value={formData.category || ''} onValueChange={(value) => handleFormChange('category', value as Document['category'])}>
-                    <SelectTrigger id="doc-category" className="w-full">
-                        <SelectValue placeholder="Sélectionnez une catégorie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                          <SelectItem value="STEG">STEG</SelectItem>
-                          <SelectItem value="SONEDE">SONEDE</SelectItem>
-                          <SelectItem value="Reçu Bancaire">Reçu Bancaire</SelectItem>
-                          <SelectItem value="Maison">Maison</SelectItem>
-                          <SelectItem value="Internet">Internet</SelectItem>
-                          <SelectItem value="Assurance">Assurance</SelectItem>
-                          <SelectItem value="Contrat">Contrat</SelectItem>
-                          <SelectItem value="Autre">Autre</SelectItem>
-                    </SelectContent>
-                </Select>
-              </div>
-
-              <>
-                  <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                          <Label htmlFor="doc-supplier">Fournisseur</Label>
-                          <Input id="doc-supplier" value={formData.supplier || ''} onChange={e => handleFormChange('supplier', e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                          <Label htmlFor="doc-amount">Montant (TND)</Label>
-                          <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} />
-                      </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                      <Label htmlFor="doc-issue-date">Date d'émission</Label>
-                      <Input id="doc-issue-date" type="text" placeholder="AAAA-MM-JJ" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="doc-due-date">Date d'échéance</Label>
-                        <Input id="doc-due-date" type="text" placeholder="AAAA-MM-JJ" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="doc-invoice-number">N° Facture/Réf.</Label>
-                        <Input id="doc-invoice-number" value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="doc-consumption">Qté. Consommée</Label>
-                        <Input id="doc-consumption" value={formData.consumptionQuantity || ''} onChange={e => handleFormChange('consumptionQuantity', e.target.value)} placeholder="Ex: 150 kWh" />
-                    </div>
-                  </div>
-              </>
-            </div>
-            <DialogFooter className="pt-4">
-                {!isEditMode && <Button variant="ghost" onClick={resetDialog}>Retour</Button>}
-              <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90">Enregistrer</Button>
-            </DialogFooter>
-          </>
         )}
       </DialogContent>
     </Dialog>
