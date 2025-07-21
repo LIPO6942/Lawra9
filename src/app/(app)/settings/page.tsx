@@ -99,9 +99,9 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center space-x-3">
-        <Settings className="h-8 w-8 text-primary" />
+        <User className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">Paramètres</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-headline">Profil & Paramètres</h1>
           <p className="text-muted-foreground">Gérez votre compte et les préférences de l'application.</p>
         </div>
       </div>
@@ -139,8 +139,8 @@ export default function SettingsPage() {
 
         <Card>
            <CardHeader>
-            <CardTitle>Fournisseurs</CardTitle>
-            <CardDescription>Configurez vos contrats pour un accès rapide et des suggestions améliorées.</CardDescription>
+            <CardTitle>Fournisseurs & Raccourcis</CardTitle>
+            <CardDescription>Configurez vos contrats pour un accès rapide depuis l'accueil.</CardDescription>
            </CardHeader>
           <form onSubmit={handleProviderUpdate}>
               <CardContent className="space-y-4">

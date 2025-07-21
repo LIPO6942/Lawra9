@@ -87,6 +87,32 @@ function ProviderQuickLinks() {
     );
 }
 
+function UserMenuContent({ onSignOut }: { onSignOut: () => void }) {
+    return (
+        <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{auth.currentUser?.displayName || 'Utilisateur'}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{auth.currentUser?.email}</p>
+                </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+                <Link href="/settings"><UserIcon className="mr-2 h-4 w-4" /><span>Profil & Paramètres</span></Link>
+            </DropdownMenuItem>
+             <DropdownMenuItem asChild>
+                <Link href="#"><LifeBuoy className="mr-2 h-4 w-4" /><span>Support</span></Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Se déconnecter</span>
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    );
+}
+
+
 function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -196,26 +222,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel className="font-normal">
-                                <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium leading-none">{user?.displayName || 'Utilisateur'}</p>
-                                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                                <Link href="/settings"><UserIcon className="mr-2 h-4 w-4" /><span>Profil</span></Link>
-                            </DropdownMenuItem>
-                             <DropdownMenuItem asChild>
-                                <Link href="#"><LifeBuoy className="mr-2 h-4 w-4" /><span>Support</span></Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleSignOut}>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                <span>Se déconnecter</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
+                        <UserMenuContent onSignOut={handleSignOut} />
                     </DropdownMenu>
                  </div>
               </header>
@@ -223,7 +230,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               <main className="flex-1 items-start p-4 sm:px-6 sm:py-0">{children}</main>
               
               {/* Mobile Bottom Bar */}
-              <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around z-50">
+               <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around z-50">
                 {[...mainNavItems, ...secondaryNavItems].map(item => (
                      <Link key={`mobile-${item.href}`} href={item.href} className={cn(
                         "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
@@ -233,13 +240,18 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                         <span className="text-xs font-medium">{item.label}</span>
                     </Link>
                 ))}
-                <Link href="/settings" className={cn(
-                    "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
-                     pathname.startsWith('/settings') && "text-primary"
-                )}>
-                    <Settings className="h-5 w-5" />
-                    <span className="text-xs font-medium">Paramètres</span>
-                </Link>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button className={cn(
+                            "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
+                             pathname.startsWith('/settings') && "text-primary"
+                        )}>
+                            <UserIcon className="h-5 w-5" />
+                            <span className="text-xs font-medium">Profil</span>
+                        </button>
+                    </DropdownMenuTrigger>
+                    <UserMenuContent onSignOut={handleSignOut} />
+                </DropdownMenu>
               </nav>
               <div className="sm:hidden h-16" /> {/* Spacer for bottom nav */}
           </div>
