@@ -246,7 +246,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                       const capturedFile = new File([blob], `Capture-${new Date().toISOString()}.jpg`, { type: 'image/jpeg' });
                       await processAndSaveDocument(capturedFile);
                   }
-              }, 'image/jpeg');
+              }, 'image/jpeg', 0.9); // Force JPEG format with 90% quality
           }
       }
   };
