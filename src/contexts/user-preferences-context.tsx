@@ -13,10 +13,7 @@ interface UserPreferences {
 }
 
 interface UserPreferencesContextType extends UserPreferences {
-  setIsp: (isp: ISP) => void;
-  setStegRef: (ref: string) => void;
-  setSonedeRef: (ref: string) => void;
-  savePreferences: () => Promise<void>;
+  savePreferences: (newPrefs: UserPreferences) => Promise<void>;
   loading: boolean;
 }
 
@@ -55,30 +52,19 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
       } finally {
         setLoading(false);
       }
-    } else if (!userId) {
-        // Handle logout case
+    } else if (userId === null) { // Explicitly check for logout/not logged in
         setPreferences(getInitialState());
         setLoading(false);
     }
   }, [userId, getLocalStorageKey]);
   
-  const setIsp = (isp: ISP) => {
-    setPreferences(p => ({ ...p, isp }));
-  };
-
-  const setStegRef = (ref: string) => {
-    setPreferences(p => ({ ...p, stegRef: ref }));
-  };
-
-  const setSonedeRef = (ref: string) => {
-    setPreferences(p => ({ ...p, sonedeRef: ref }));
-  };
-  
-  const savePreferences = async () => {
+  const savePreferences = async (newPrefs: UserPreferences) => {
     const key = getLocalStorageKey();
     if (key) {
         try {
-            localStorage.setItem(key, JSON.stringify(preferences));
+            // Update state first, then save to localStorage
+            setPreferences(newPrefs);
+            localStorage.setItem(key, JSON.stringify(newPrefs));
         } catch(error) {
             console.error("Failed to save preferences", error);
             throw error;
@@ -88,9 +74,6 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
 
   const value = {
     ...preferences,
-    setIsp,
-    setStegRef,
-    setSonedeRef,
     savePreferences,
     loading,
   };

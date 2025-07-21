@@ -12,23 +12,23 @@ import { updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2, Settings, User } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useUserPreferences } from '@/contexts/user-preferences-context';
+import { useUserPreferences, ISP } from '@/contexts/user-preferences-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  const { isp, stegRef, sonedeRef, setIsp, setStegRef, setSonedeRef, savePreferences } = useUserPreferences();
+  const { isp, stegRef, sonedeRef, savePreferences, loading: prefsLoading } = useUserPreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingProviders, setIsSavingProviders] = useState(false);
 
   // Local state for provider settings form
-  const [localIsp, setLocalIsp] = useState(isp || '');
-  const [localStegRef, setLocalStegRef] = useState(stegRef || '');
-  const [localSonedeRef, setLocalSonedeRef] = useState(sonedeRef || '');
+  const [localIsp, setLocalIsp] = useState<ISP | null>(null);
+  const [localStegRef, setLocalStegRef] = useState('');
+  const [localSonedeRef, setLocalSonedeRef] = useState('');
 
   useEffect(() => {
     if (user?.displayName) {
@@ -37,10 +37,12 @@ export default function SettingsPage() {
   }, [user]);
 
   useEffect(() => {
-    setLocalIsp(isp || '');
-    setLocalStegRef(stegRef || '');
-    setLocalSonedeRef(sonedeRef || '');
-  }, [isp, stegRef, sonedeRef]);
+    if (!prefsLoading) {
+      setLocalIsp(isp);
+      setLocalStegRef(stegRef || '');
+      setLocalSonedeRef(sonedeRef || '');
+    }
+  }, [isp, stegRef, sonedeRef, prefsLoading]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,10 +71,12 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsSavingProviders(true);
     try {
-      setIsp(localIsp as any);
-      setStegRef(localStegRef);
-      setSonedeRef(localSonedeRef);
-      await savePreferences();
+      // Pass the new values directly to the save function
+      await savePreferences({
+        isp: localIsp,
+        stegRef: localStegRef,
+        sonedeRef: localSonedeRef
+      });
       toast({
         title: 'Préférences enregistrées',
         description: 'Vos informations de fournisseurs ont été mises à jour.',
@@ -88,7 +92,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || prefsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -146,7 +150,7 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                    <div className="space-y-2">
                       <Label htmlFor="isp-select">Fournisseur d'accès Internet</Label>
-                       <Select value={localIsp} onValueChange={setLocalIsp}>
+                       <Select value={localIsp || ''} onValueChange={(v) => setLocalIsp(v as ISP)}>
                           <SelectTrigger id="isp-select">
                               <SelectValue placeholder="Sélectionnez votre FAI" />
                           </SelectTrigger>
