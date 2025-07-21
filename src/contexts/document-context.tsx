@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import { Document, DocumentWithFile } from '@/lib/types';
+import { Alert, Document, DocumentWithFile } from '@/lib/types';
 import { parseISO, differenceInDays, format, getYear, isValid, getMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
@@ -23,14 +23,6 @@ interface MonthlyExpense {
 interface ConsumptionData {
     month: string;
     [key: string]: number | string; // e.g., STEG: 150, SONEDE: 75
-}
-
-interface Alert {
-  id: string;
-  documentId: string;
-  documentName: string;
-  dueDate: string;
-  type: 'Paiement' | 'Renouvellement';
 }
 
 interface DocumentContextType {
@@ -151,7 +143,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return documents.find(doc => doc.id === id);
   }, [documents]);
 
-  const alerts = useMemo(() => {
+  const alerts = useMemo((): Alert[] => {
     return documents
       .filter(doc => {
         if (!doc.dueDate || doc.category === 'Maison') return false;
@@ -166,7 +158,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         documentId: doc.id,
         documentName: doc.name,
         dueDate: doc.dueDate!,
-        type: (doc.category === 'STEG' || doc.category === 'SONEDE') ? 'Paiement' : 'Renouvellement',
+        type: ((doc.category === 'STEG' || doc.category === 'SONEDE') ? 'Paiement' : 'Renouvellement') as Alert['type'],
       }))
       .sort((a,b) => differenceInDays(parseISO(a.dueDate), new Date()) - differenceInDays(parseISO(b.dueDate), new Date()));
   }, [documents]);
