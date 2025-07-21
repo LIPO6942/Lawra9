@@ -24,11 +24,14 @@ const UserPreferencesContext = createContext<UserPreferencesContextType | undefi
 
 export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { userId } = useAuth();
-  const [preferences, setPreferences] = useState<UserPreferences>({
+  
+  const getInitialState = (): UserPreferences => ({
     isp: null,
     stegRef: null,
     sonedeRef: null,
   });
+
+  const [preferences, setPreferences] = useState<UserPreferences>(getInitialState());
   const [loading, setLoading] = useState(true);
 
   const getLocalStorageKey = useCallback(() => {
@@ -44,15 +47,16 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
         if (storedPrefs) {
           setPreferences(JSON.parse(storedPrefs));
         } else {
-           setPreferences({ isp: null, stegRef: null, sonedeRef: null });
+           setPreferences(getInitialState());
         }
       } catch (error) {
         console.error("Failed to load user preferences from local storage", error);
+        setPreferences(getInitialState());
       } finally {
         setLoading(false);
       }
     } else {
-        setPreferences({ isp: null, stegRef: null, sonedeRef: null });
+        setPreferences(getInitialState());
         setLoading(false);
     }
   }, [userId, getLocalStorageKey]);
