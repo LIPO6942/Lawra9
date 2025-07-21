@@ -35,6 +35,8 @@ const getDocumentDate = (doc: Document): Date | null => {
     return null;
 }
 
+type Month = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+
 export default function HistoryPage() {
   const { documents } = useDocuments();
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
@@ -48,7 +50,7 @@ export default function HistoryPage() {
 
     const months = Array.from({ length: 12 }, (_, i) => ({
       value: (i).toString(),
-      label: fr.localize?.month(i, { width: 'wide' }).replace(/^\w/, c => c.toUpperCase())
+      label: fr.localize?.month(i as Month, { width: 'wide' }).replace(/^\w/, c => c.toUpperCase())
     }));
     
     const filteredDocs = documents.filter(doc => {
