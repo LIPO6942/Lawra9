@@ -66,7 +66,7 @@ export function ExpensesChartCard({ data }: ExpensesChartCardProps) {
                                         {payload.map((pld, index) => (
                                           <div key={index} className="flex items-center justify-between">
                                             <div className="flex items-center">
-                                                <span className="block h-2 w-2 rounded-full mr-2" style={{backgroundColor: pld.fill}}></span>
+                                                <span className="block h-2 w-2 rounded-full mr-2" style={{backgroundColor: pld.color}}></span>
                                                 <p className="text-xs text-muted-foreground">{pld.name}:</p>
                                             </div>
                                             <p className="text-xs font-semibold ml-4">{pld.value?.toLocaleString('fr-TN')} TND</p>
