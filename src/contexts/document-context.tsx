@@ -135,11 +135,11 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const db = await openDB(user.uid);
     const docToUpdate = documents.find(d => d.id === id);
     if (docToUpdate) {
-        // If the document has no issue date, set it to now to make sure it's counted in expenses
-        if (!docToUpdate.issueDate) {
-          docToUpdate.issueDate = new Date().toISOString();
-        }
-        // Remove due date to clear the alert
+        // Always set the issueDate to now to correctly anchor the expense to the payment date.
+        // This ensures it is included in the current month's expenses.
+        docToUpdate.issueDate = new Date().toISOString();
+        
+        // Remove due date to clear the alert.
         docToUpdate.dueDate = undefined;
 
         await dbUpdateDocument(db, docToUpdate);
