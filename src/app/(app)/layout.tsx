@@ -42,10 +42,10 @@ const providerDetails: Record<ISP, { name: string; link: string; className: stri
 };
 
 function ProviderQuickLinks() {
-    const { isp, stegRef, sonedeRef } = useUserPreferences();
+    const { isp } = useUserPreferences();
     
-    const stegLink = `https://www.steg.com.tn/fr/services_en_ligne/facture_en_ligne.html${stegRef ? `?contrat=${stegRef}` : ''}`;
-    const sonedeLink = `http://www.sonede.com.tn/onl/facture/saisie_ident.php${sonedeRef ? `?id=${sonedeRef}` : ''}`;
+    const stegLink = "https://espace.steg.com.tn/fr/espace/login.php";
+    const sonedeLink = "https://portail.sonede.com.tn/login";
     const ispProvider = isp ? providerDetails[isp] : null;
 
     return (
@@ -56,7 +56,7 @@ function ProviderQuickLinks() {
                        <Link href={stegLink} target="_blank"><Zap className="h-5 w-5"/></Link>
                     </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Payer facture STEG</p></TooltipContent>
+                <TooltipContent><p>Espace client STEG</p></TooltipContent>
             </Tooltip>
              <Tooltip>
                 <TooltipTrigger asChild>
@@ -64,7 +64,7 @@ function ProviderQuickLinks() {
                        <Link href={sonedeLink} target="_blank"><Droplets className="h-5 w-5"/></Link>
                     </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Payer facture SONEDE</p></TooltipContent>
+                <TooltipContent><p>Espace client SONEDE</p></TooltipContent>
              </Tooltip>
             {ispProvider && (
                  <Tooltip>
