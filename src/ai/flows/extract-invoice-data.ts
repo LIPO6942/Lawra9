@@ -30,6 +30,7 @@ const ExtractInvoiceDataOutputSchema = z.object({
   billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
+  consumptionQuantity: z.string().optional().describe("La quantité consommée (ex: '150 KWh', '75 m³'). Inclure l'unité si possible. Laisser vide si non applicable."),
   reference: z.string().optional().describe('Le numéro de référence de la facture ou de la transaction.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
@@ -51,10 +52,11 @@ const prompt = ai.definePrompt({
   - Date d'émission : La date à laquelle le document a été créé.
   - Numéro de facture : Le numéro d'identification de la facture.
   - Période de facturation (si applicable) : Dates de début et de fin.
+  - Quantité consommée (pour STEG/SONEDE) : Cherchez le mot "الكمية" et extrayez la valeur numérique et son unité (ex: KWh, m³).
 
   Détails spécifiques :
   1. Pour les factures SONEDE : La période de consommation est un trimestre (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans le champ "consumptionPeriod" et laissez "billingStartDate" et "billingEndDate" vides.
-  2. Pour les reçus et tickets de caisse : Les périodes de facturation ne sont généralement pas applicables. Laissez ces champs vides.
+  2. Pour les reçus et tickets de caisse : Les périodes de facturation et la quantité consommée ne sont généralement pas applicables. Laissez ces champs vides.
 
   Retournez toutes les dates au format AAAA-MM-JJ.
 

@@ -12,6 +12,7 @@ export type Document = {
   billingStartDate?: string; // ISO date string
   billingEndDate?: string; // ISO date string
   consumptionPeriod?: string; // For special cases like SONEDE
+  consumptionQuantity?: string; // e.g., "150 kWh" or "75 m³"
   file?: File | Blob; // Store the file object itself
   fileUrl?: string; // Temporary URL for display, generated from file object
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'

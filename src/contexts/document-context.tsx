@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { Document, DocumentWithFile } from '@/lib/types';
-import { parseISO, differenceInDays, format, getYear, isValid } from 'date-fns';
+import { parseISO, differenceInDays, format, getYear, isValid, getMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,11 @@ interface MonthlyExpense {
   [key: string]: number | string;
 }
 
+interface ConsumptionData {
+    month: string;
+    [key: string]: number | string; // e.g., STEG: 150, SONEDE: 75
+}
+
 interface Alert {
   id: string;
   documentId: string;
@@ -32,6 +37,7 @@ interface DocumentContextType {
   documents: Document[];
   alerts: Alert[];
   monthlyExpenses: MonthlyExpense[];
+  consumptionData: ConsumptionData[];
   addDocument: (doc: DocumentWithFile) => Promise<void>;
   updateDocument: (id: string, data: Partial<Document>, file?: File | null) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
@@ -40,6 +46,19 @@ interface DocumentContextType {
 }
 
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
+
+const getDocumentDate = (doc: Document): Date | null => {
+    const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
+    for (const dateStr of datePriority) {
+        if (dateStr) {
+            const date = parseISO(dateStr);
+            if (isValid(date)) {
+                return date;
+            }
+        }
+    }
+    return null;
+}
 
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -159,17 +178,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     documents.forEach(doc => {
       if (!doc.amount || doc.category === 'Maison') return;
 
-      let expenseDate: Date | null = null;
-      const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
-      for (const dateStr of datePriority) {
-          if(dateStr) {
-              const date = parseISO(dateStr);
-              if(isValid(date)) {
-                  expenseDate = date;
-                  break;
-              }
-          }
-      }
+      const expenseDate = getDocumentDate(doc);
 
       if (expenseDate && getYear(expenseDate) === currentYear) {
         try {
@@ -193,7 +202,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
-    const result: MonthlyExpense[] = monthOrder.slice(0, new Date().getMonth() + 1).map(monthName => {
+    const result: MonthlyExpense[] = monthOrder.slice(0, getMonth(new Date()) + 1).map(monthName => {
       const monthData: MonthlyExpense = { month: `${monthName}.` };
       const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Maison', 'Assurance', 'Contrat', 'Autre'];
       
@@ -205,13 +214,41 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
     
     return result;
-}, [documents]);
+  }, [documents]);
+
+  const consumptionData = useMemo(() => {
+        const dataByYearAndMonth: { [year: number]: { [month: string]: { [category: string]: number } } } = {};
+
+        documents.forEach(doc => {
+            if (!doc.consumptionQuantity || (doc.category !== 'STEG' && doc.category !== 'SONEDE')) return;
+
+            const docDate = getDocumentDate(doc);
+            if (!docDate) return;
+
+            const year = getYear(docDate);
+            const month = format(docDate, 'MMM', { locale: fr }).replace('.', '');
+            const quantity = parseFloat(doc.consumptionQuantity.replace(/[^0-9.,]/g, '').replace(',', '.'));
+
+            if (isNaN(quantity)) return;
+
+            if (!dataByYearAndMonth[year]) dataByYearAndMonth[year] = {};
+            if (!dataByYearAndMonth[year][month]) dataByYearAndMonth[year][month] = {};
+            if (!dataByYearAndMonth[year][month][doc.category]) dataByYearAndMonth[year][month][doc.category] = 0;
+            
+            dataByYearAndMonth[year][month][doc.category] += quantity;
+        });
+        
+        return { dataByYearAndMonth };
+  // We will process this raw data inside the stats components
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents]);
 
 
   const value = {
     documents,
     alerts,
     monthlyExpenses,
+    consumptionData: consumptionData as any, // Cast for simplicity, will be processed in components
     addDocument,
     updateDocument,
     deleteDocument,

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { LayoutDashboard, Files, History, Home, Settings, LogOut, User as UserIcon, LifeBuoy, Moon, Sun, Zap, Droplets, Wifi, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Files, History, Home, Settings, LogOut, User as UserIcon, LifeBuoy, Moon, Sun, Zap, Droplets, Wifi, BarChartHorizontal } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,7 @@ const mainNavItems = [
     { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/documents', label: 'Documents', icon: Files },
     { href: '/historique', label: 'Historique', icon: History },
+    { href: '/stats', label: 'Statistiques', icon: BarChartHorizontal },
     { href: '/maison', label: 'Espace Maison', icon: Home },
 ];
 
@@ -216,8 +217,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around z-50">
                 {mainNavItems.map(item => (
                      <Link key={`mobile-${item.href}`} href={item.href} className={cn(
-                        "flex flex-col items-center justify-center gap-0 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
-                        (pathname === item.href || (item.href === '/documents' && pathname.startsWith(item.href))) && "text-primary"
+                        "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground text-xs",
+                        (pathname.startsWith(item.href)) && "text-primary"
                     )}>
                         <item.icon className="h-6 w-6" />
                         <span className="sr-only">{item.label}</span>

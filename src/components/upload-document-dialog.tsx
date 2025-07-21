@@ -233,6 +233,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               billingStartDate: result.billingStartDate,
               billingEndDate: result.billingEndDate,
               consumptionPeriod: result.consumptionPeriod,
+              consumptionQuantity: result.consumptionQuantity,
           });
           setStep('form');
 
@@ -299,6 +300,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             billingStartDate: formData.billingStartDate,
             billingEndDate: formData.billingEndDate,
             consumptionPeriod: formData.consumptionPeriod,
+            consumptionQuantity: formData.consumptionQuantity,
             file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
@@ -448,9 +450,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                         <Input id="doc-due-date" type="text" placeholder="AAAA-MM-JJ" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="doc-invoice-number">Numéro de Facture/Référence</Label>
-                      <Input id="doc-invoice-number" value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="doc-invoice-number">N° Facture/Réf.</Label>
+                        <Input id="doc-invoice-number" value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="doc-consumption">Qté. Consommée</Label>
+                        <Input id="doc-consumption" value={formData.consumptionQuantity || ''} onChange={e => handleFormChange('consumptionQuantity', e.target.value)} placeholder="Ex: 150 kWh" />
+                    </div>
                   </div>
               </>
             </div>
