@@ -13,24 +13,24 @@ interface UserPreferences {
 }
 
 interface UserPreferencesContextType extends UserPreferences {
-  setIsp: (isp: ISP | null) => void;
-  setStegRef: (ref: string | null) => void;
-  setSonedeRef: (ref: string | null) => void;
+  setIsp: (isp: ISP) => void;
+  setStegRef: (ref: string) => void;
+  setSonedeRef: (ref: string) => void;
   savePreferences: () => Promise<void>;
   loading: boolean;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
 
+const getInitialState = (): UserPreferences => ({
+  isp: null,
+  stegRef: null,
+  sonedeRef: null,
+});
+
 export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { userId } = useAuth();
   
-  const getInitialState = (): UserPreferences => ({
-    isp: null,
-    stegRef: null,
-    sonedeRef: null,
-  });
-
   const [preferences, setPreferences] = useState<UserPreferences>(getInitialState());
   const [loading, setLoading] = useState(true);
 
@@ -55,21 +55,22 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
       } finally {
         setLoading(false);
       }
-    } else {
+    } else if (!userId) {
+        // Handle logout case
         setPreferences(getInitialState());
         setLoading(false);
     }
   }, [userId, getLocalStorageKey]);
   
-  const setIsp = (isp: ISP | null) => {
+  const setIsp = (isp: ISP) => {
     setPreferences(p => ({ ...p, isp }));
   };
 
-  const setStegRef = (ref: string | null) => {
+  const setStegRef = (ref: string) => {
     setPreferences(p => ({ ...p, stegRef: ref }));
   };
 
-  const setSonedeRef = (ref: string | null) => {
+  const setSonedeRef = (ref: string) => {
     setPreferences(p => ({ ...p, sonedeRef: ref }));
   };
   
