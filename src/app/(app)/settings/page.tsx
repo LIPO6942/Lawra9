@@ -11,21 +11,19 @@ import { useToast } from '@/hooks/use-toast';
 import { updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2, Settings, User } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { useUserPreferences, ISP } from '@/contexts/user-preferences-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
   const { isp, stegRef, sonedeRef, savePreferences, loading: prefsLoading } = useUserPreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingProviders, setIsSavingProviders] = useState(false);
 
-  // Local state for provider settings form
+  // Local state for provider settings form to avoid re-renders on every keystroke
   const [localIsp, setLocalIsp] = useState<ISP | null>(null);
   const [localStegRef, setLocalStegRef] = useState('');
   const [localSonedeRef, setLocalSonedeRef] = useState('');
@@ -37,6 +35,7 @@ export default function SettingsPage() {
   }, [user]);
 
   useEffect(() => {
+    // Sync local form state when context finishes loading or its values change
     if (!prefsLoading) {
       setLocalIsp(isp);
       setLocalStegRef(stegRef || '');
@@ -71,7 +70,6 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsSavingProviders(true);
     try {
-      // Pass the new values directly to the save function
       await savePreferences({
         isp: localIsp,
         stegRef: localStegRef,
