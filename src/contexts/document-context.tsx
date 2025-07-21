@@ -20,11 +20,6 @@ interface MonthlyExpense {
   [key: string]: number | string;
 }
 
-interface ConsumptionData {
-    month: string;
-    [key: string]: number | string; // e.g., STEG: 150, SONEDE: 75
-}
-
 interface DocumentContextType {
   documents: Document[];
   alerts: Alert[];
@@ -140,11 +135,18 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const db = await openDB(user.uid);
     const docToUpdate = documents.find(d => d.id === id);
     if (docToUpdate) {
+        // If the document has no issue date, set it to now to make sure it's counted in expenses
+        if (!docToUpdate.issueDate) {
+          docToUpdate.issueDate = new Date().toISOString();
+        }
+        // Remove due date to clear the alert
         docToUpdate.dueDate = undefined;
+
         await dbUpdateDocument(db, docToUpdate);
         await loadDocuments();
+        toast({ title: 'Document marqué comme payé' });
     }
-  }, [user, documents, loadDocuments]);
+  }, [user, documents, loadDocuments, toast]);
   
   const getDocumentById = useCallback((id: string) => {
     return documents.find(doc => doc.id === id);
