@@ -29,7 +29,6 @@ interface DocumentContextType {
   documents: Document[];
   alerts: Alert[];
   monthlyExpenses: MonthlyExpense[];
-  consumptionData: ConsumptionData[];
   addDocument: (doc: DocumentWithFile) => Promise<void>;
   updateDocument: (id: string, data: Partial<Document>, file?: File | null) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
@@ -63,7 +62,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const db = await openDB(user.uid);
         const docs = await dbGetAllDocuments(db);
         const docsWithUrls = docs.map(doc => {
-          if (doc.file instanceof Blob) {
+          if (doc.file instanceof Blob && (!doc.fileUrl || !doc.fileUrl.startsWith('blob:'))) {
             return { ...doc, fileUrl: URL.createObjectURL(doc.file) };
           }
           return doc;
@@ -112,8 +111,16 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // If a new file is provided (or removed), update it. Otherwise, keep the old one.
     if (file) {
       updatedData.file = file;
+       if (updatedData.fileUrl && updatedData.fileUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(updatedData.fileUrl);
+      }
+      delete updatedData.fileUrl; // It will be recreated on next load
     } else if (file === null) { // Explicitly removing file
       delete updatedData.file;
+       if (updatedData.fileUrl && updatedData.fileUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(updatedData.fileUrl);
+      }
+      delete updatedData.fileUrl;
     }
 
     await dbUpdateDocument(db, updatedData);
@@ -208,39 +215,11 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return result;
   }, [documents]);
 
-  const consumptionData = useMemo(() => {
-        const dataByYearAndMonth: { [year: number]: { [month: string]: { [category: string]: number } } } = {};
-
-        documents.forEach(doc => {
-            if (!doc.consumptionQuantity || (doc.category !== 'STEG' && doc.category !== 'SONEDE')) return;
-
-            const docDate = getDocumentDate(doc);
-            if (!docDate) return;
-
-            const year = getYear(docDate);
-            const month = format(docDate, 'MMM', { locale: fr }).replace('.', '');
-            const quantity = parseFloat(doc.consumptionQuantity.replace(/[^0-9.,]/g, '').replace(',', '.'));
-
-            if (isNaN(quantity)) return;
-
-            if (!dataByYearAndMonth[year]) dataByYearAndMonth[year] = {};
-            if (!dataByYearAndMonth[year][month]) dataByYearAndMonth[year][month] = {};
-            if (!dataByYearAndMonth[year][month][doc.category]) dataByYearAndMonth[year][month][doc.category] = 0;
-            
-            dataByYearAndMonth[year][month][doc.category] += quantity;
-        });
-        
-        return { dataByYearAndMonth };
-  // We will process this raw data inside the stats components
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documents]);
-
 
   const value = {
     documents,
     alerts,
     monthlyExpenses,
-    consumptionData: consumptionData as any, // Cast for simplicity, will be processed in components
     addDocument,
     updateDocument,
     deleteDocument,

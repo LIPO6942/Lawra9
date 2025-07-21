@@ -45,6 +45,9 @@ const StatsPage = () => {
         });
 
         const availableYears = Array.from(allYears).sort((a,b) => b.localeCompare(a));
+        if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+          setSelectedYear(availableYears[0]);
+        }
 
         const currentYearData = dataByYearAndMonth[selectedYear] || {};
         const processedData = monthOrder.map(monthName => {

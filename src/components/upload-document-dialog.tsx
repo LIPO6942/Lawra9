@@ -189,7 +189,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           setProcessingMessage('Analyse du document...');
           const documentDataUri = await fileToDataUrl(file);
           
-          const result: AnalysisResult = await extractInvoiceData({ invoiceDataUri: documentDataUri });
+          const result: AnalysisResult = await extractInvoiceData({ 
+              invoiceDataUri: documentDataUri,
+              mimeType: file.type,
+          });
 
           const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
           

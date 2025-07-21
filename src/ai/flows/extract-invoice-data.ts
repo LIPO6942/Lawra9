@@ -18,6 +18,7 @@ const ExtractInvoiceDataInputSchema = z.object({
     .describe(
       "A data URI of the invoice or receipt image/PDF, that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
+    mimeType: z.string().optional().describe('The MIME type of the document (e.g., "image/jpeg", "application/pdf").'),
 });
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
@@ -66,7 +67,7 @@ const prompt = ai.definePrompt({
   Retournez toutes les dates au format AAAA-MM-JJ.
 
   Voici le document :
-  {{media url=invoiceDataUri}}
+  {{media url=invoiceDataUri mimeType=mimeType}}
   `,
   config: {
     safetySettings: [
