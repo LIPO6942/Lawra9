@@ -48,32 +48,24 @@ function ProviderQuickLinks() {
     const sonedeLink = `http://www.sonede.com.tn/onl/facture/saisie_ident.php${sonedeRef ? `?id=${sonedeRef}` : ''}`;
     const ispProvider = isp ? providerDetails[isp] : null;
 
-    if (!stegRef && !sonedeRef && !ispProvider) {
-        return null;
-    }
-
     return (
         <div className="flex items-center gap-2">
-            {stegRef && (
-                 <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button asChild variant="outline" size="icon" className="h-9 w-9 border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 dark:text-yellow-400">
-                           <Link href={stegLink} target="_blank"><Zap className="h-5 w-5"/></Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Payer facture STEG</p></TooltipContent>
-                 </Tooltip>
-            )}
-             {sonedeRef && (
-                 <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button asChild variant="outline" size="icon" className="h-9 w-9 border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 dark:text-blue-400">
-                           <Link href={sonedeLink} target="_blank"><Droplets className="h-5 w-5"/></Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Payer facture SONEDE</p></TooltipContent>
-                 </Tooltip>
-            )}
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button asChild variant="outline" size="icon" className="h-9 w-9 border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 dark:text-yellow-400">
+                       <Link href={stegLink} target="_blank"><Zap className="h-5 w-5"/></Link>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Payer facture STEG</p></TooltipContent>
+            </Tooltip>
+             <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button asChild variant="outline" size="icon" className="h-9 w-9 border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 dark:text-blue-400">
+                       <Link href={sonedeLink} target="_blank"><Droplets className="h-5 w-5"/></Link>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Payer facture SONEDE</p></TooltipContent>
+             </Tooltip>
             {ispProvider && (
                  <Tooltip>
                     <TooltipTrigger asChild>
