@@ -29,9 +29,6 @@ const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const mainNavItems = [
     { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/documents', label: 'Documents', icon: Files },
-];
-
-const secondaryNavItems = [
     { href: '/historique', label: 'Historique', icon: History },
     { href: '/maison', label: 'Espace Maison', icon: Home },
 ];
@@ -169,20 +166,6 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 ))}
              </nav>
              <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-                 {secondaryNavItems.map(item => (
-                    <Tooltip key={item.href}>
-                        <TooltipTrigger asChild>
-                            <Link href={item.href} className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                                pathname.startsWith(item.href) && "bg-accent text-accent-foreground"
-                            )}>
-                                <item.icon className="h-5 w-5" />
-                                <span className="sr-only">{item.label}</span>
-                            </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">{item.label}</TooltipContent>
-                    </Tooltip>
-                 ))}
                  <Separator className="w-4/5 my-2"/>
                  <Tooltip>
                     <TooltipTrigger asChild>
@@ -231,27 +214,15 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               
               {/* Mobile Bottom Bar */}
                <nav className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex items-center justify-around z-50">
-                {[...mainNavItems, ...secondaryNavItems].map(item => (
+                {mainNavItems.map(item => (
                      <Link key={`mobile-${item.href}`} href={item.href} className={cn(
                         "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
-                        pathname === item.href && "text-primary"
+                        (pathname === item.href || (item.href === '/documents' && pathname.startsWith(item.href))) && "text-primary"
                     )}>
-                        <item.icon className="h-5 w-5" />
-                        <span className="text-xs font-medium">{item.label}</span>
+                        <item.icon className="h-6 w-6" />
+                        <span className="sr-only">{item.label}</span>
                     </Link>
                 ))}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className={cn(
-                            "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors hover:text-foreground",
-                             pathname.startsWith('/settings') && "text-primary"
-                        )}>
-                            <UserIcon className="h-5 w-5" />
-                            <span className="text-xs font-medium">Profil</span>
-                        </button>
-                    </DropdownMenuTrigger>
-                    <UserMenuContent onSignOut={handleSignOut} />
-                </DropdownMenu>
               </nav>
               <div className="sm:hidden h-16" /> {/* Spacer for bottom nav */}
           </div>
@@ -282,7 +253,6 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-    // Redirection en cours, ne rien afficher
     return null; 
   }
 
