@@ -6,10 +6,18 @@ import './globals.css';
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-provider";
 import React from "react";
-import { Inter, Lexend } from 'next/font/google';
+import { Poppins, PT_Sans } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const lexend = Lexend({ subsets: ['latin'], variable: '--font-lexend' });
+const poppins = Poppins({ 
+  subsets: ['latin'], 
+  weight: ['400', '600', '700'],
+  variable: '--font-poppins' 
+});
+const ptSans = PT_Sans({ 
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-pt-sans'
+});
 
 
 export default function RootLayout({
@@ -19,10 +27,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-      </head>
-      <body className={`${inter.variable} ${lexend.variable} font-body antialiased`}>
+      <head />
+      <body className={`${poppins.variable} ${ptSans.variable} font-body antialiased`}>
         <AuthProvider>
           <ThemeProvider
             attribute="class"

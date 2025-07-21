@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useTheme } from 'next-themes';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
         <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
         <polyline points="14 2 14 8 20 8" />
     </svg>
@@ -30,9 +30,9 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { setTheme } = useTheme();
 
-  useState(() => {
-    setTheme('dark');
-  });
+  useEffect(() => {
+    setTheme('light');
+  }, [setTheme]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +95,7 @@ export default function SignupPage() {
               <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
               <Input id="confirm-password" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading}>
+            <Button type="submit" className="w-full font-bold bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               S'inscrire
             </Button>
