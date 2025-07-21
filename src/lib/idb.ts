@@ -8,7 +8,7 @@ const DB_VERSION = 1;
 
 export async function openDB(userId: string): Promise<IDBPDatabase> {
   const dbName = `${DB_NAME_PREFIX}-${userId}`;
-  return open<Document>(dbName, DB_VERSION, {
+  return open(dbName, DB_VERSION, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -27,14 +27,14 @@ export async function getAllDocuments(db: IDBPDatabase): Promise<Document[]> {
   const tx = db.transaction(STORE_NAME, 'readonly');
   const docs = await tx.store.getAll();
   await tx.done;
-  return docs;
+  return docs as Document[];
 }
 
 export async function getDocument(db: IDBPDatabase, id: string): Promise<Document | undefined> {
   const tx = db.transaction(STORE_NAME, 'readonly');
   const doc = await tx.store.get(id);
   await tx.done;
-  return doc;
+  return doc as Document | undefined;
 }
 
 export async function updateDocument(db: IDBPDatabase, doc: Document): Promise<void> {
