@@ -233,8 +233,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               billingStartDate: result.billingStartDate,
               billingEndDate: result.billingEndDate,
               consumptionPeriod: result.consumptionPeriod,
-              taxAmount: result.taxAmount,
-              totalExclTax: result.totalExclTax,
           });
           setStep('form');
 
@@ -301,9 +299,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             billingStartDate: formData.billingStartDate,
             billingEndDate: formData.billingEndDate,
             consumptionPeriod: formData.consumptionPeriod,
-            summary: formData.summary,
-            taxAmount: formData.taxAmount,
-            totalExclTax: formData.totalExclTax,
             file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
@@ -453,25 +448,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                         <Input id="doc-due-date" type="text" placeholder="AAAA-MM-JJ" value={formData.dueDate || ''} onChange={e => handleFormChange('dueDate', e.target.value)} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="doc-total-excl-tax">Montant HT</Label>
-                        <Input id="doc-total-excl-tax" type="text" value={formData.totalExclTax || ''} onChange={e => handleFormChange('totalExclTax', e.target.value)} />
-                    </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="doc-tax-amount">Montant TVA</Label>
-                        <Input id="doc-tax-amount" type="text" value={formData.taxAmount || ''} onChange={e => handleFormChange('taxAmount', e.target.value)} />
-                    </div>
-                  </div>
                   <div className="space-y-2">
                       <Label htmlFor="doc-invoice-number">Numéro de Facture/Référence</Label>
                       <Input id="doc-invoice-number" value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
                   </div>
               </>
-              <div className="space-y-2">
-                  <Label htmlFor="doc-summary">Résumé / Notes</Label>
-                  <Textarea id="doc-summary" value={formData.summary || ''} onChange={e => handleFormChange('summary', e.target.value)} />
-              </div>
             </div>
             <DialogFooter className="pt-4">
                 {!isEditMode && <Button variant="ghost" onClick={resetDialog}>Retour</Button>}

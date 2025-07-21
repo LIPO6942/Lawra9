@@ -4,7 +4,6 @@ export type Document = {
   name: string;
   category: 'STEG' | 'SONEDE' | 'Reçu Bancaire' | 'Maison' | 'Internet' | 'Assurance' | 'Contrat' | 'Autre';
   createdAt: string; // ISO date string
-  summary?: string;
   amount?: string;
   supplier?: string;
   dueDate?: string; // ISO date string
@@ -13,8 +12,6 @@ export type Document = {
   billingStartDate?: string; // ISO date string
   billingEndDate?: string; // ISO date string
   consumptionPeriod?: string; // For special cases like SONEDE
-  taxAmount?: string;
-  totalExclTax?: string;
   file?: File | Blob; // Store the file object itself
   fileUrl?: string; // Temporary URL for display, generated from file object
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
