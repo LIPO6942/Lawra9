@@ -52,7 +52,7 @@ const prompt = ai.definePrompt({
 
   **Étape 2 : Extraction des données**
   Veuillez extraire les informations suivantes de l'image du document fournie et renseignez les autres champs :
-  - Nom du fournisseur ou de l'entité : Soyez précis. Pour l'électricité, c'est "STEG". Pour l'eau, "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna"). Pour un ticket de caisse, le nom du magasin.
+  - Nom du fournisseur ou de l'entité : Soyez précis. Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna"). Pour un ticket de caisse, le nom du magasin.
   - Montant : Le montant total.
   - Date d'échéance : La date limite de paiement.
   - Date d'émission : La date à laquelle le document a été créé.
