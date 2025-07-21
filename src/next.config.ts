@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedDevOrigins: [
+      allowedOrigins: [
           'http://localhost:3000',
           'http://127.0.0.1:3000',
           'https://*.cloudworkstations.dev' // Added for Firebase Studio environment
@@ -31,3 +31,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
