@@ -50,6 +50,15 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
   return <Badge variant="secondary" className="font-normal">Normal</Badge>;
 };
 
+const formatDateSafe = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = parseISO(dateString);
+    if (isValid(date)) {
+        return format(date, 'd MMM yyyy', { locale: fr });
+    }
+    return 'N/A';
+};
+
 
 interface DocumentsTableProps {
     documents: Document[];
@@ -133,7 +142,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                                     <div className="flex items-center gap-1 text-muted-foreground">
                                         <CalendarDays className="h-4 w-4" />
                                         <span>
-                                            { isMaison && doc.createdAt ? (format(parseISO(doc.createdAt), 'd MMM yyyy')) : (doc.issueDate ? format(parseISO(doc.issueDate), 'd MMM yyyy') : 'N/A') }
+                                            {formatDateSafe(isMaison ? doc.createdAt : doc.issueDate)}
                                         </span>
                                     </div>
                                 </div>
