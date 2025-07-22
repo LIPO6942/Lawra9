@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDocuments } from '@/contexts/document-context';
-import { BarChartHorizontal, Droplets, Zap, Wifi, TrendingUp, Info, Wind, Water } from 'lucide-react';
+import { BarChartHorizontal, Droplets, Zap, Wifi, TrendingUp, Info, Wind } from 'lucide-react';
 import { getYear, format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LineChart, Line } from 'recharts';
@@ -173,7 +173,7 @@ const StatsPage = () => {
                     <StatCard title="Dépense SONEDE / mois" value={expenseAverages['SONEDE']?.avg} unit="TND" icon={Droplets} />
                     <StatCard title="Conso. Élec / mois" value={consumptionAverages['Électricité']?.avg} unit="kWh" icon={Zap} />
                     <StatCard title="Conso. Gaz / mois" value={consumptionAverages['Gaz']?.avg} unit="m³" icon={Wind} />
-                    <StatCard title="Conso. Eau / mois" value={consumptionAverages['Eau']?.avg} unit="m³" icon={Water} />
+                    <StatCard title="Conso. Eau / mois" value={consumptionAverages['Eau']?.avg} unit="m³" icon={Droplets} />
                 </div>
                 
                 <div className="grid grid-cols-1 gap-6">
@@ -286,5 +286,3 @@ const CustomTooltip = ({ active, payload, label, unit }: any) => {
 };
 
 export default StatsPage;
-
-    
