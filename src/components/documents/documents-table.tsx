@@ -15,6 +15,7 @@ import { useDocuments } from '@/contexts/document-context';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
 import { Card } from '../ui/card';
 import { useRouter } from 'next/navigation';
+import { Checkbox } from '../ui/checkbox';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -65,17 +66,32 @@ interface DocumentsTableProps {
     onUpdate: (id: string, data: Partial<Document>) => void;
     onDelete: (id: string) => void;
     isMaison?: boolean;
+    onSelectionChange?: (selected: Document[]) => void;
 }
 
-export function DocumentsTable({ documents, isMaison = false }: DocumentsTableProps) {
+export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false, onSelectionChange }: DocumentsTableProps) {
     const router = useRouter();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
     const [docToDelete, setDocToDelete] = useState<Document | null>(null);
-    const { deleteDocument } = useDocuments();
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+
+    const handleSelect = (docId: string, isSelected: boolean) => {
+        const newSelectedIds = new Set(selectedIds);
+        if (isSelected) {
+            newSelectedIds.add(docId);
+        } else {
+            newSelectedIds.delete(docId);
+        }
+        setSelectedIds(newSelectedIds);
+        if (onSelectionChange) {
+            const selectedDocs = documents.filter(doc => newSelectedIds.has(doc.id));
+            onSelectionChange(selectedDocs);
+        }
+    };
 
     const openEditModal = (doc: Document) => {
         setSelectedDocument(doc);
@@ -96,7 +112,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
     const executeDelete = async () => {
         if (!docToDelete) return;
         setIsDeleting(docToDelete.id);
-        await deleteDocument(docToDelete.id);
+        await onDelete(docToDelete.id);
         setIsDeleting(null);
         setIsDeleteAlertOpen(false);
         setDocToDelete(null);
@@ -125,6 +141,14 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                     return (
                         <Card key={doc.id} className="p-4 transition-all hover:shadow-md">
                             <div className="flex items-center gap-4">
+                                {!isMaison && onSelectionChange && (
+                                    <Checkbox
+                                        id={`select-${doc.id}`}
+                                        checked={selectedIds.has(doc.id)}
+                                        onCheckedChange={(checked) => handleSelect(doc.id, !!checked)}
+                                        aria-label={`Sélectionner ${doc.name}`}
+                                    />
+                                )}
                                 <div className="hidden sm:block">
                                    <CategoryIcon category={doc.category} />
                                 </div>

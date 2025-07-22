@@ -155,7 +155,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [user, documents, loadDocuments, toast]);
   
-  const getDocumentById = useCallback((id: string) => {
+  const getDocumentById = useCallback((id: string): Document | undefined => {
     return documents.find(doc => doc.id === id);
   }, [documents]);
 

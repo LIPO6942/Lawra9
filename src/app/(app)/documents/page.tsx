@@ -3,17 +3,20 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, FilePlus2 } from 'lucide-react';
+import { Search, FilePlus2, GitCompareArrows } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { UploadDocumentDialog } from '@/components/upload-document-dialog';
 import { DocumentsTable } from '@/components/documents/documents-table';
 import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { CompareDialog } from '@/components/documents/compare-dialog';
 
 export default function DocumentsPage() {
-  const { documents, updateDocument, deleteDocument } = useDocuments();
+  const { documents } = useDocuments();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDocs, setSelectedDocs] = useState<Document[]>([]);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
 
   const filteredDocuments = useMemo(() => {
     return documents.filter(doc => 
@@ -23,6 +26,16 @@ export default function DocumentsPage() {
       (doc.supplier && doc.supplier.toLowerCase().includes(searchTerm.toLowerCase())))
     );
   }, [documents, searchTerm]);
+  
+  const handleSelectionChange = (selected: Document[]) => {
+    setSelectedDocs(selected);
+  }
+
+  const canCompare = useMemo(() => {
+    if (selectedDocs.length !== 2) return false;
+    // Optional: check if documents are of the same category
+    return selectedDocs[0].category === selectedDocs[1].category;
+  }, [selectedDocs]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,6 +54,10 @@ export default function DocumentsPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
               </div>
+              <Button onClick={() => setIsCompareOpen(true)} disabled={!canCompare}>
+                <GitCompareArrows className="mr-2 h-4 w-4" />
+                Comparer la sélection
+              </Button>
               <UploadDocumentDialog>
                 <Button className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
                     <FilePlus2 className="mr-2 h-4 w-4" />
@@ -52,9 +69,16 @@ export default function DocumentsPage() {
       
       <DocumentsTable 
         documents={filteredDocuments}
-        onUpdate={updateDocument}
-        onDelete={deleteDocument}
+        onSelectionChange={handleSelectionChange}
       />
+
+      {isCompareOpen && selectedDocs.length === 2 && (
+        <CompareDialog
+          open={isCompareOpen}
+          onOpenChange={setIsCompareOpen}
+          documentsToCompare={selectedDocs}
+        />
+      )}
     </div>
   );
 }
