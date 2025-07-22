@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useDocuments } from '@/contexts/document-context';
 import { Document, DocumentWithFile } from '@/lib/types';
+import { Checkbox } from './ui/checkbox';
 
 interface MaisonUploadDialogProps {
   open?: boolean;
@@ -43,6 +44,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [showPeriodFields, setShowPeriodFields] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Document>>({});
   const { toast } = useToast();
@@ -62,6 +64,9 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
       setFormData(documentToEdit);
+      if (documentToEdit.billingStartDate || documentToEdit.billingEndDate) {
+        setShowPeriodFields(true);
+      }
     } else if (isOpen && !isEditMode) {
       setFormData({ category: 'Maison' });
     }
@@ -82,6 +87,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
     setIsProcessing(false);
     setFileToUpload(null);
     setFormData({});
+    setShowPeriodFields(false);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,9 +114,15 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
     setIsProcessing(true);
     
     try {
+      const dataToSave = { ...formData };
+      if (!showPeriodFields) {
+        dataToSave.billingStartDate = undefined;
+        dataToSave.billingEndDate = undefined;
+      }
+
       if (isEditMode && documentToEdit) {
         // Pass fileToUpload which can be null if user didn't change the file
-        await updateDocument(documentToEdit.id, formData, fileToUpload);
+        await updateDocument(documentToEdit.id, dataToSave, fileToUpload);
         toast({ title: "Document modifié !", description: `Le document "${formData.name}" a été mis à jour.`});
       } else {
         const docToAdd: DocumentWithFile = {
@@ -119,8 +131,8 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
             subCategory: formData.subCategory,
             issueDate: formData.issueDate,
             notes: formData.notes,
-            billingStartDate: formData.billingStartDate,
-            billingEndDate: formData.billingEndDate,
+            billingStartDate: dataToSave.billingStartDate,
+            billingEndDate: dataToSave.billingEndDate,
             file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
@@ -214,19 +226,33 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
               </div>
             </div>
             
-            <div>
-                 <Label>Période du document (optionnel)</Label>
-                 <div className="grid grid-cols-2 gap-4 mt-2">
-                     <div className="space-y-2">
-                        <Label htmlFor="doc-start-date" className="text-xs text-muted-foreground">Début</Label>
-                        <Input id="doc-start-date" type="date" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
-                     </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="doc-end-date" className="text-xs text-muted-foreground">Fin</Label>
-                        <Input id="doc-end-date" type="date" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
-                     </div>
+             <div className="items-top flex space-x-2">
+                <Checkbox id="show-period" checked={showPeriodFields} onCheckedChange={(checked) => setShowPeriodFields(checked as boolean)} />
+                <div className="grid gap-1.5 leading-none">
+                    <label
+                    htmlFor="show-period"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                    Ajouter une période
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                    Pour les documents couvrant plusieurs mois (ex: assurance).
+                    </p>
                 </div>
             </div>
+            
+            {showPeriodFields && (
+                 <div className="grid grid-cols-2 gap-4 mt-2 animate-in fade-in-0 duration-300">
+                     <div className="space-y-2">
+                        <Label htmlFor="doc-start-date" className="text-xs text-muted-foreground">Début de période</Label>
+                        <Input id="doc-start-date" type="month" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
+                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="doc-end-date" className="text-xs text-muted-foreground">Fin de période</Label>
+                        <Input id="doc-end-date" type="month" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
+                     </div>
+                </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="doc-notes">Notes</Label>

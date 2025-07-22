@@ -52,7 +52,7 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
 
 const formatDateSafe = (dateString?: string, dateFormat = 'd MMM yyyy') => {
     if (!dateString) return null;
-    const date = parseISO(dateString);
+    const date = parseISO(dateString); // Works for 'YYYY-MM' as well, defaults to 1st day
     if (isValid(date)) {
         return format(date, dateFormat, { locale: fr });
     }
@@ -118,7 +118,7 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
         <>
             <div className="grid grid-cols-1 gap-4">
                 {documents.map(doc => {
-                    const docDate = formatDateSafe(isMaison ? doc.issueDate : doc.issueDate || doc.createdAt);
+                    const docDate = formatDateSafe(doc.issueDate || doc.createdAt);
                     const periodStart = formatDateSafe(doc.billingStartDate, 'MMM yyyy');
                     const periodEnd = formatDateSafe(doc.billingEndDate, 'MMM yyyy');
 
