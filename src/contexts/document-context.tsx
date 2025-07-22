@@ -62,7 +62,14 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
           return doc;
         });
-        setDocuments(docsWithUrls.sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()));
+        setDocuments(docsWithUrls.sort((a, b) => {
+            const dateA = getDocumentDate(a);
+            const dateB = getDocumentDate(b);
+            if (dateA && dateB) {
+                return dateB.getTime() - dateA.getTime();
+            }
+            return 0;
+        }));
       } catch (error) {
         console.error("Failed to load documents from IndexedDB", error);
         toast({ variant: 'destructive', title: 'Erreur de chargement', description: 'Impossible de charger vos documents.' });

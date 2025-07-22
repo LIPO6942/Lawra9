@@ -34,6 +34,7 @@ const maisonCategories = [
   "Plan de la maison",
   "Assurance habitation",
   "Taxe municipale",
+  "Frais de syndic",
   "Autre document maison"
 ];
 
@@ -115,6 +116,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
             name: formData.name || 'Nouveau document',
             category: 'Maison',
             subCategory: formData.subCategory,
+            issueDate: formData.issueDate,
             file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
@@ -190,16 +192,22 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
               <Input id="doc-name" value={formData.name || ''} onChange={e => handleFormChange('name', e.target.value)} />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="doc-maison-category">Catégorie du document</Label>
-              <Select value={formData.subCategory || ''} onValueChange={(value) => handleFormChange('subCategory', value)}>
-                <SelectTrigger id="doc-maison-category" className="w-full">
-                    <SelectValue placeholder="Sélectionnez une catégorie" />
-                </SelectTrigger>
-                <SelectContent>
-                      {maisonCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="doc-maison-category">Catégorie du document</Label>
+                <Select value={formData.subCategory || ''} onValueChange={(value) => handleFormChange('subCategory', value)}>
+                  <SelectTrigger id="doc-maison-category" className="w-full">
+                      <SelectValue placeholder="Sélectionnez une catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                        {maisonCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="doc-date">Date du document</Label>
+                <Input id="doc-date" type="date" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
+              </div>
             </div>
           </div>
         )}
