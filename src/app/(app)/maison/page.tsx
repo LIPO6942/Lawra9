@@ -4,24 +4,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MaisonUploadDialog } from '@/components/maison-upload-dialog';
 import { DocumentsTable } from '@/components/documents/documents-table';
-import { Home, FilePlus2, Image as ImageIcon, FileText } from 'lucide-react';
+import { Home, FilePlus2, FileText } from 'lucide-react';
 import { useDocuments } from '@/contexts/document-context';
 import { Button } from '@/components/ui/button';
-import { MaisonImageGallery } from '@/components/maison/image-gallery';
 import { useMemo } from 'react';
 
 export default function MaisonPage() {
   const { documents, updateDocument, deleteDocument } = useDocuments();
   
-  const { imageDocuments, otherDocuments } = useMemo(() => {
-    const maisonDocs = documents.filter(doc => doc.category === 'Maison');
-    const imageDocs = maisonDocs.filter(doc => 
-        doc.fileUrl && /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.fileUrl)
-    );
-    const otherDocs = maisonDocs.filter(doc => 
-        !doc.fileUrl || !/\.(jpg|jpeg|png|gif|webp)$/i.test(doc.fileUrl)
-    );
-    return { imageDocuments: imageDocs, otherDocuments: otherDocs };
+  const maisonDocuments = useMemo(() => {
+    return documents.filter(doc => doc.category === 'Maison');
   }, [documents]);
 
 
@@ -32,7 +24,7 @@ export default function MaisonPage() {
                <Home className="h-8 w-8 text-primary"/>
                <div>
                  <h1 className="text-3xl font-bold tracking-tight font-headline">Espace Maison</h1>
-                 <p className="text-muted-foreground">Retrouvez les documents et photos importants de votre logement.</p>
+                 <p className="text-muted-foreground">Retrouvez les documents importants de votre logement.</p>
                </div>
           </div>
            <MaisonUploadDialog>
@@ -46,19 +38,11 @@ export default function MaisonPage() {
       <div className="space-y-6">
         <div>
             <div className="flex items-center gap-2 mb-4">
-                <ImageIcon className="h-6 w-6 text-primary"/>
-                <h2 className="text-2xl font-semibold font-headline">Galerie Photos</h2>
-            </div>
-            <MaisonImageGallery images={imageDocuments} onUpdate={updateDocument} onDelete={deleteDocument} />
-        </div>
-        
-        <div>
-            <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-6 w-6 text-primary"/>
                 <h2 className="text-2xl font-semibold font-headline">Documents Archivés</h2>
             </div>
              <DocumentsTable
-                 documents={otherDocuments}
+                 documents={maisonDocuments}
                  onUpdate={updateDocument}
                  onDelete={deleteDocument}
                  isMaison={true}
