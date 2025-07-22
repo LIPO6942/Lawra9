@@ -32,7 +32,7 @@ const ExtractInvoiceDataOutputSchema = z.object({
   billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
-  consumptionQuantity: z.string().optional().describe("La quantité d'électricité consommée (ex: '150 KWh'). Inclure l'unité si possible. Laisser vide si non applicable."),
+  consumptionQuantity: z.string().optional().describe("La quantité d'électricité ou d'eau consommée (ex: '150 KWh', '75 m³'). Inclure l'unité si possible. Laisser vide si non applicable."),
   gasAmount: z.string().optional().describe('Uniquement pour STEG. Le montant total de la rubrique Gaz, si elle existe.'),
   gasConsumptionQuantity: z.string().optional().describe('Uniquement pour STEG. La quantité de gaz consommée (ex: "50 m³"), si elle existe.'),
   reference: z.string().optional().describe('Le numéro de référence de la facture ou de la transaction.'),
@@ -61,11 +61,11 @@ const prompt = ai.definePrompt({
 
   **Détails spécifiques par type :**
   1. **Factures STEG** :
-     - Cherchez la consommation d'**électricité**. Extrayez la quantité (ex: 150 KWh) dans "consumptionQuantity".
-     - **IMPORTANT** : Cherchez une rubrique distincte pour le **Gaz**. Si elle existe, extrayez le montant total du gaz dans "gasAmount" et la quantité de gaz consommée (ex: 50 m³) dans "gasConsumptionQuantity". Si la rubrique Gaz n'existe pas, laissez ces deux champs vides.
+     - Cherchez la consommation d'**électricité**. Repérez le libellé "Quantité" ou "الكمية" dans la rubrique électricité. Extrayez la valeur numérique et son unité (ex: 150 KWh) dans "consumptionQuantity". NE PAS confondre avec le montant en dinars.
+     - **IMPORTANT** : Cherchez une rubrique distincte pour le **Gaz**. Si elle existe, extrayez le montant total du gaz dans "gasAmount". Puis, repérez le libellé "Quantité" ou "الكمية" dans la rubrique gaz. Extrayez la valeur numérique et son unité (ex: 50 m³) dans "gasConsumptionQuantity". NE PAS confondre avec le montant en dinars. Si la rubrique Gaz n'existe pas, laissez ces deux champs vides.
   2. **Factures SONEDE** :
      - La consommation est trimestrielle (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans "consumptionPeriod" et laissez les dates de début/fin de facturation vides.
-     - Extrayez la quantité d'eau consommée (en m³) dans "consumptionQuantity".
+     - Extrayez la quantité d'eau consommée en m³ (champ "Quantité") dans "consumptionQuantity".
   3. **Reçus et tickets de caisse** : Les champs de consommation, période, etc., ne sont généralement pas applicables.
 
   Retournez toutes les dates au format AAAA-MM-JJ.
@@ -106,3 +106,4 @@ const extractInvoiceDataFlow = ai.defineFlow(
     return output!;
   }
 );
+

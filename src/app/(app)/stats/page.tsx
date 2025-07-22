@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDocuments } from '@/contexts/document-context';
 import { BarChartHorizontal, Droplets, Zap, Flame } from 'lucide-react';
-import { getYear, format } from 'date-fns';
+import { getYear, format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LineChart, Line } from 'recharts';
 
@@ -25,7 +25,7 @@ const StatsPage = () => {
             if (!docDateStr) return;
 
             const docDate = new Date(docDateStr);
-            if (isNaN(docDate.getTime())) return;
+            if (isNaN(docDate.getTime()) || !isValid(docDate)) return;
 
             const year = getYear(docDate).toString();
             const month = format(docDate, 'MMM', { locale: fr }).replace('.', '');
@@ -78,16 +78,16 @@ const StatsPage = () => {
             };
         });
 
-        const lastYear = (parseInt(selectedYear) - 1).toString();
-        const lastYearData = dataByYearAndMonth[lastYear] || {};
+        const lastYearVal = (parseInt(selectedYear) - 1).toString();
+        const lastYearData = dataByYearAndMonth[lastYearVal] || {};
         const comparisonData = monthOrder.map(monthName => ({
             month: `${monthName}.`,
             [`Électricité ${selectedYear}`]: currentYearData[monthName]?.['Électricité'] || 0,
-            [`Électricité ${lastYear}`]: lastYearData[monthName]?.['Électricité'] || 0,
+            [`Électricité ${lastYearVal}`]: lastYearData[monthName]?.['Électricité'] || 0,
             [`Gaz ${selectedYear}`]: currentYearData[monthName]?.['Gaz'] || 0,
-            [`Gaz ${lastYear}`]: lastYearData[monthName]?.['Gaz'] || 0,
+            [`Gaz ${lastYearVal}`]: lastYearData[monthName]?.['Gaz'] || 0,
             [`Eau ${selectedYear}`]: currentYearData[monthName]?.['Eau'] || 0,
-            [`Eau ${lastYear}`]: lastYearData[monthName]?.['Eau'] || 0,
+            [`Eau ${lastYearVal}`]: lastYearData[monthName]?.['Eau'] || 0,
         }));
         
         let totalElec = 0, countElec = 0;
@@ -106,7 +106,7 @@ const StatsPage = () => {
             eau: countEau > 0 ? totalEau / countEau : 0,
         };
 
-        return { availableYears, processedData, comparisonData, averages, lastYear };
+        return { availableYears, processedData, comparisonData, averages, lastYear: lastYearVal };
 
     }, [documents, selectedYear]);
 
