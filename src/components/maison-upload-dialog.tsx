@@ -119,6 +119,8 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
             subCategory: formData.subCategory,
             issueDate: formData.issueDate,
             notes: formData.notes,
+            billingStartDate: formData.billingStartDate,
+            billingEndDate: formData.billingEndDate,
             file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
@@ -210,6 +212,20 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
                 <Label htmlFor="doc-date">Date du document</Label>
                 <Input id="doc-date" type="date" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
               </div>
+            </div>
+            
+            <div>
+                 <Label>Période du document (optionnel)</Label>
+                 <div className="grid grid-cols-2 gap-4 mt-2">
+                     <div className="space-y-2">
+                        <Label htmlFor="doc-start-date" className="text-xs text-muted-foreground">Début</Label>
+                        <Input id="doc-start-date" type="date" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
+                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="doc-end-date" className="text-xs text-muted-foreground">Fin</Label>
+                        <Input id="doc-end-date" type="date" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
+                     </div>
+                </div>
             </div>
 
             <div className="space-y-2">

@@ -296,7 +296,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     : "Vérifiez les informations extraites par l'IA avant d'enregistrer.";
 
 
-  if (isEditMode && !isOpen) {
+  if (isEditMode && formData.category === 'Maison') {
     return <MaisonUploadDialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen} documentToEdit={documentToEdit} />;
   }
 
@@ -358,6 +358,12 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                         <Input value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
                     </div>
                      <div className="space-y-2">
+                        <Label>Période de facturation</Label>
+                        <Input value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.target.value)} placeholder="ex: 03-04-05-2025" />
+                    </div>
+                    <hr className="col-span-2 my-2 border-dashed" />
+                    <h4 className="col-span-2 text-sm font-medium text-muted-foreground">Rubrique Électricité</h4>
+                    <div className="space-y-2">
                         <Label>Consommation Électricité</Label>
                         <Input value={formData.consumptionQuantity || ''} onChange={e => handleFormChange('consumptionQuantity', e.target.value)} placeholder="ex: 123 KWh" />
                     </div>

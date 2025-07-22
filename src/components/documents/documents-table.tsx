@@ -50,13 +50,13 @@ const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
   return <Badge variant="secondary" className="font-normal">Normal</Badge>;
 };
 
-const formatDateSafe = (dateString?: string) => {
-    if (!dateString) return 'N/A';
+const formatDateSafe = (dateString?: string, dateFormat = 'd MMM yyyy') => {
+    if (!dateString) return null;
     const date = parseISO(dateString);
     if (isValid(date)) {
-        return format(date, 'd MMM yyyy', { locale: fr });
+        return format(date, dateFormat, { locale: fr });
     }
-    return 'N/A';
+    return null;
 };
 
 
@@ -117,75 +117,87 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
     return (
         <>
             <div className="grid grid-cols-1 gap-4">
-                {documents.map(doc => (
-                    <Card key={doc.id} className="p-4 transition-all hover:shadow-md">
-                        <div className="flex items-center gap-4">
-                            <div className="hidden sm:block">
-                               <CategoryIcon category={doc.category} />
-                            </div>
-                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id, doc.fileUrl)}>
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <p className="font-semibold pr-2 break-words">{doc.name}</p>
-                                        <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
-                                    </div>
-                                    {!isMaison && (
-                                        <div className="flex-shrink-0 ml-4">
-                                            <StatusBadge dueDate={doc.dueDate} />
+                {documents.map(doc => {
+                    const docDate = formatDateSafe(isMaison ? doc.issueDate : doc.issueDate || doc.createdAt);
+                    const periodStart = formatDateSafe(doc.billingStartDate, 'MMM yyyy');
+                    const periodEnd = formatDateSafe(doc.billingEndDate, 'MMM yyyy');
+
+                    return (
+                        <Card key={doc.id} className="p-4 transition-all hover:shadow-md">
+                            <div className="flex items-center gap-4">
+                                <div className="hidden sm:block">
+                                   <CategoryIcon category={doc.category} />
+                                </div>
+                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id, doc.fileUrl)}>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <p className="font-semibold pr-2 break-words">{doc.name}</p>
+                                            <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2">
-                                    {doc.amount && !isMaison && (
-                                        <span className="font-mono">{doc.amount} TND</span>
-                                    )}
-                                    <div className="flex items-center gap-1 text-muted-foreground">
-                                        <CalendarDays className="h-4 w-4" />
-                                        <span>
-                                            {formatDateSafe(isMaison ? doc.issueDate : doc.issueDate || doc.createdAt)}
-                                        </span>
-                                    </div>
-                                    {isMaison && doc.notes && (
-                                       <div className="flex items-center gap-1 text-muted-foreground">
-                                           <MessageSquare className="h-4 w-4" />
-                                       </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex-shrink-0">
-                                 {isDeleting === doc.id ? (
-                                    <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                                ) : (
-                                    <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Ouvrir le menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openEditModal(doc)}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Détails / Modifier
-                                        </DropdownMenuItem>
-                                        {doc.fileUrl && (
-                                            <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
-                                                <Eye className="mr-2 h-4 w-4" />
-                                                Consulter le fichier
-                                            </DropdownMenuItem>
+                                        {!isMaison && (
+                                            <div className="flex-shrink-0 ml-4">
+                                                <StatusBadge dueDate={doc.dueDate} />
+                                            </div>
                                         )}
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Supprimer
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                    </DropdownMenu>
-                                )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2 text-muted-foreground">
+                                        {doc.amount && !isMaison && (
+                                            <span className="font-mono text-foreground">{doc.amount} TND</span>
+                                        )}
+                                        {docDate && (
+                                            <div className="flex items-center gap-1">
+                                                <CalendarDays className="h-4 w-4" />
+                                                <span>{docDate}</span>
+                                            </div>
+                                        )}
+                                        {isMaison && periodStart && periodEnd && (
+                                            <div className="flex items-center gap-1">
+                                                <CalendarDays className="h-4 w-4 text-green-500" />
+                                                <span className="text-green-600">{`${periodStart} - ${periodEnd}`}</span>
+                                            </div>
+                                        )}
+                                        {isMaison && doc.notes && (
+                                           <div className="flex items-center gap-1">
+                                               <MessageSquare className="h-4 w-4" />
+                                           </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex-shrink-0">
+                                     {isDeleting === doc.id ? (
+                                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                                    ) : (
+                                        <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Ouvrir le menu</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openEditModal(doc)}>
+                                                <Edit className="mr-2 h-4 w-4" />
+                                                Détails / Modifier
+                                            </DropdownMenuItem>
+                                            {doc.fileUrl && (
+                                                <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Consulter le fichier
+                                                </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Supprimer
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </Card>
-                ))}
+                        </Card>
+                    );
+                })}
             </div>
             
             <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
