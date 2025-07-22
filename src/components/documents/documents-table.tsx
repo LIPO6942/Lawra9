@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -142,9 +142,14 @@ export function DocumentsTable({ documents, isMaison = false }: DocumentsTablePr
                                     <div className="flex items-center gap-1 text-muted-foreground">
                                         <CalendarDays className="h-4 w-4" />
                                         <span>
-                                            {formatDateSafe(isMaison ? doc.createdAt : doc.issueDate)}
+                                            {formatDateSafe(isMaison ? doc.issueDate : doc.issueDate || doc.createdAt)}
                                         </span>
                                     </div>
+                                    {isMaison && doc.notes && (
+                                       <div className="flex items-center gap-1 text-muted-foreground">
+                                           <MessageSquare className="h-4 w-4" />
+                                       </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex-shrink-0">

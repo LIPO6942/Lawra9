@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { PlusCircle, Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -117,6 +118,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
             category: 'Maison',
             subCategory: formData.subCategory,
             issueDate: formData.issueDate,
+            notes: formData.notes,
             file: fileToUpload || undefined,
         };
         await addDocument(docToAdd);
@@ -166,7 +168,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
                 <p className="font-semibold text-lg">Sauvegarde en cours...</p>
              </div>
         ) : (
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
             <div className="space-y-2">
                 <Label htmlFor="file-upload">Fichier</Label>
                 {fileToUpload || formData.fileUrl ? (
@@ -209,6 +211,18 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
                 <Input id="doc-date" type="date" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="doc-notes">Notes</Label>
+              <Textarea 
+                id="doc-notes" 
+                value={formData.notes || ''} 
+                onChange={e => handleFormChange('notes', e.target.value)}
+                placeholder="Ajoutez des notes ou des détails ici..."
+                rows={4}
+              />
+            </div>
+
           </div>
         )}
         

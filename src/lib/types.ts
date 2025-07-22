@@ -18,6 +18,7 @@ export type Document = {
   file?: File | Blob; // Store the file object itself
   fileUrl?: string; // Temporary URL for display, generated from file object
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
+  notes?: string; // Free text notes
 };
 
 export type DocumentWithFile = Omit<Document, 'id' | 'createdAt' | 'fileUrl'> & {
