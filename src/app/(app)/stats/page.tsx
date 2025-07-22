@@ -5,13 +5,12 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDocuments } from '@/contexts/document-context';
-import { BarChartHorizontal, Droplets, Zap, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { getYear, getMonth, format } from 'date-fns';
+import { BarChartHorizontal, Droplets, Zap, Flame } from 'lucide-react';
+import { getYear, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LineChart, Line } from 'recharts';
 
 const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
-const monthLabels = monthOrder.map(m => `${m}.`);
 
 const StatsPage = () => {
     const { documents } = useDocuments();
@@ -22,8 +21,6 @@ const StatsPage = () => {
         const allYears = new Set<string>();
 
         documents.forEach(doc => {
-            if (!doc.consumptionQuantity || (doc.category !== 'STEG' && doc.category !== 'SONEDE')) return;
-            
             const docDateStr = doc.issueDate || doc.billingEndDate || doc.createdAt;
             if (!docDateStr) return;
 
@@ -32,16 +29,37 @@ const StatsPage = () => {
 
             const year = getYear(docDate).toString();
             const month = format(docDate, 'MMM', { locale: fr }).replace('.', '');
-            const quantity = parseFloat(doc.consumptionQuantity.replace(/[^0-9.,]/g, '').replace(',', '.'));
-
-            if (isNaN(quantity)) return;
             allYears.add(year);
 
             if (!dataByYearAndMonth[year]) dataByYearAndMonth[year] = {};
             if (!dataByYearAndMonth[year][month]) dataByYearAndMonth[year][month] = {};
-            if (!dataByYearAndMonth[year][month][doc.category]) dataByYearAndMonth[year][month][doc.category] = 0;
+
+            // Electricity consumption
+            if (doc.category === 'STEG' && doc.consumptionQuantity) {
+                const quantity = parseFloat(doc.consumptionQuantity.replace(/[^0-9.,]/g, '').replace(',', '.'));
+                if (!isNaN(quantity)) {
+                    if (!dataByYearAndMonth[year][month]['Électricité']) dataByYearAndMonth[year][month]['Électricité'] = 0;
+                    dataByYearAndMonth[year][month]['Électricité'] += quantity;
+                }
+            }
             
-            dataByYearAndMonth[year][month][doc.category] += quantity;
+            // Gas consumption
+            if (doc.category === 'STEG' && doc.gasConsumptionQuantity) {
+                 const quantity = parseFloat(doc.gasConsumptionQuantity.replace(/[^0-9.,]/g, '').replace(',', '.'));
+                if (!isNaN(quantity)) {
+                    if (!dataByYearAndMonth[year][month]['Gaz']) dataByYearAndMonth[year][month]['Gaz'] = 0;
+                    dataByYearAndMonth[year][month]['Gaz'] += quantity;
+                }
+            }
+
+            // Water consumption
+            if (doc.category === 'SONEDE' && doc.consumptionQuantity) {
+                 const quantity = parseFloat(doc.consumptionQuantity.replace(/[^0-9.,]/g, '').replace(',', '.'));
+                if (!isNaN(quantity)) {
+                    if (!dataByYearAndMonth[year][month]['Eau']) dataByYearAndMonth[year][month]['Eau'] = 0;
+                    dataByYearAndMonth[year][month]['Eau'] += quantity;
+                }
+            }
         });
 
         const availableYears = Array.from(allYears).sort((a,b) => b.localeCompare(a));
@@ -54,8 +72,9 @@ const StatsPage = () => {
             const monthData = currentYearData[monthName] || {};
             return {
                 month: `${monthName}.`,
-                STEG: monthData['STEG'] || 0,
-                SONEDE: monthData['SONEDE'] || 0,
+                'Électricité': monthData['Électricité'] || 0,
+                'Gaz': monthData['Gaz'] || 0,
+                'Eau': monthData['Eau'] || 0,
             };
         });
 
@@ -63,22 +82,28 @@ const StatsPage = () => {
         const lastYearData = dataByYearAndMonth[lastYear] || {};
         const comparisonData = monthOrder.map(monthName => ({
             month: `${monthName}.`,
-            [`STEG ${selectedYear}`]: currentYearData[monthName]?.['STEG'] || 0,
-            [`STEG ${lastYear}`]: lastYearData[monthName]?.['STEG'] || 0,
-            [`SONEDE ${selectedYear}`]: currentYearData[monthName]?.['SONEDE'] || 0,
-            [`SONEDE ${lastYear}`]: lastYearData[monthName]?.['SONEDE'] || 0,
+            [`Électricité ${selectedYear}`]: currentYearData[monthName]?.['Électricité'] || 0,
+            [`Électricité ${lastYear}`]: lastYearData[monthName]?.['Électricité'] || 0,
+            [`Gaz ${selectedYear}`]: currentYearData[monthName]?.['Gaz'] || 0,
+            [`Gaz ${lastYear}`]: lastYearData[monthName]?.['Gaz'] || 0,
+            [`Eau ${selectedYear}`]: currentYearData[monthName]?.['Eau'] || 0,
+            [`Eau ${lastYear}`]: lastYearData[monthName]?.['Eau'] || 0,
         }));
         
-        let totalSteg = 0, countSteg = 0;
-        let totalSonede = 0, countSonede = 0;
+        let totalElec = 0, countElec = 0;
+        let totalGaz = 0, countGaz = 0;
+        let totalEau = 0, countEau = 0;
+
         processedData.forEach(d => {
-            if (d.STEG > 0) { totalSteg += d.STEG; countSteg++; }
-            if (d.SONEDE > 0) { totalSonede += d.SONEDE; countSonede++; }
+            if (d['Électricité'] > 0) { totalElec += d['Électricité']; countElec++; }
+            if (d['Gaz'] > 0) { totalGaz += d['Gaz']; countGaz++; }
+            if (d['Eau'] > 0) { totalEau += d['Eau']; countEau++; }
         });
 
         const averages = {
-            steg: countSteg > 0 ? totalSteg / countSteg : 0,
-            sonede: countSonede > 0 ? totalSonede / countSonede : 0,
+            elec: countElec > 0 ? totalElec / countElec : 0,
+            gaz: countGaz > 0 ? totalGaz / countGaz : 0,
+            eau: countEau > 0 ? totalEau / countEau : 0,
         };
 
         return { availableYears, processedData, comparisonData, averages };
@@ -92,7 +117,7 @@ const StatsPage = () => {
                     <BarChartHorizontal className="h-8 w-8 text-primary"/>
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight font-headline">Statistiques de Consommation</h1>
-                        <p className="text-muted-foreground">Analysez votre consommation d'eau et d'électricité.</p>
+                        <p className="text-muted-foreground">Analysez votre consommation d'eau, de gaz et d'électricité.</p>
                     </div>
                 </div>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -105,16 +130,22 @@ const StatsPage = () => {
                 </Select>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
                 <StatCard 
-                    title="Moyenne Mensuelle STEG"
-                    value={`${averages.steg.toFixed(0)} kWh`}
+                    title="Moy. Mensuelle Électricité"
+                    value={`${averages.elec.toFixed(0)} kWh`}
                     icon={Zap}
                     iconClass="text-yellow-400"
                 />
                  <StatCard 
-                    title="Moyenne Mensuelle SONEDE"
-                    value={`${averages.sonede.toFixed(0)} m³`}
+                    title="Moy. Mensuelle Gaz"
+                    value={`${averages.gaz.toFixed(0)} m³`}
+                    icon={Flame}
+                    iconClass="text-orange-500"
+                />
+                 <StatCard 
+                    title="Moy. Mensuelle Eau"
+                    value={`${averages.eau.toFixed(0)} m³`}
                     icon={Droplets}
                     iconClass="text-blue-400"
                 />
@@ -123,22 +154,22 @@ const StatsPage = () => {
             <Card className="rounded-xl shadow-sm">
                 <CardHeader>
                     <CardTitle className="font-headline text-xl">Consommation Annuelle ({selectedYear})</CardTitle>
-                    <CardDescription>Évolution de votre consommation mensuelle d'eau et d'électricité.</CardDescription>
+                    <CardDescription>Évolution de votre consommation mensuelle.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[350px] pr-8">
                      <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={processedData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="left" orientation="left" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'kWh', angle: -90, position: 'insideLeft', offset: 10, fill: '#888' }} />
-                            <YAxis yAxisId="right" orientation="right" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'm³', angle: -90, position: 'insideRight', offset: -10, fill: '#888' }} />
+                            <YAxis yAxisId="left" orientation="left" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'kWh / m³', angle: -90, position: 'insideLeft', offset: 10, fill: '#888' }} />
                             <Tooltip content={<CustomTooltip />} />
                             <Legend />
-                            <Bar yAxisId="left" dataKey="STEG" fill="var(--color-steg)" name="Électricité (kWh)" radius={[4, 4, 0, 0]} />
-                            <Bar yAxisId="right" dataKey="SONEDE" fill="var(--color-sonede)" name="Eau (m³)" radius={[4, 4, 0, 0]} />
+                            <Bar yAxisId="left" dataKey="Électricité" fill="var(--color-elec)" name="Électricité (kWh)" radius={[4, 4, 0, 0]} />
+                            <Bar yAxisId="left" dataKey="Gaz" fill="var(--color-gaz)" name="Gaz (m³)" radius={[4, 4, 0, 0]} />
+                            <Bar yAxisId="left" dataKey="Eau" fill="var(--color-eau)" name="Eau (m³)" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
-                    <style>{`:root { --color-steg: hsl(var(--chart-4)); --color-sonede: hsl(var(--chart-1)); }`}</style>
+                    <style>{`:root { --color-elec: hsl(var(--chart-4)); --color-gaz: hsl(var(--chart-3)); --color-eau: hsl(var(--chart-1)); }`}</style>
                 </CardContent>
             </Card>
 
@@ -152,13 +183,15 @@ const StatsPage = () => {
                         <LineChart data={comparisonData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'kWh / m³', angle: -90, position: 'insideLeft', offset: 10, fill: '#888' }} />
                             <Tooltip content={<CustomTooltip />} />
                             <Legend />
-                            <Line type="monotone" dataKey={`STEG ${selectedYear}`} stroke="var(--color-steg)" name={`STEG ${selectedYear}`} />
-                            <Line type="monotone" dataKey={`STEG ${(parseInt(selectedYear)-1)}`} stroke="var(--color-steg)" strokeDasharray="5 5" name={`STEG ${(parseInt(selectedYear)-1)}`} opacity={0.6} />
-                            <Line type="monotone" dataKey={`SONEDE ${selectedYear}`} stroke="var(--color-sonede)" name={`SONEDE ${selectedYear}`} />
-                            <Line type="monotone" dataKey={`SONEDE ${(parseInt(selectedYear)-1)}`} stroke="var(--color-sonede)" strokeDasharray="5 5" name={`SONEDE ${(parseInt(selectedYear)-1)}`} opacity={0.6} />
+                            <Line type="monotone" dataKey={`Électricité ${selectedYear}`} stroke="var(--color-elec)" name={`Élec. ${selectedYear}`} />
+                            <Line type="monotone" dataKey={`Électricité ${lastYear}`} stroke="var(--color-elec)" strokeDasharray="5 5" name={`Élec. ${lastYear}`} opacity={0.6} />
+                            <Line type="monotone" dataKey={`Gaz ${selectedYear}`} stroke="var(--color-gaz)" name={`Gaz ${selectedYear}`} />
+                            <Line type="monotone" dataKey={`Gaz ${lastYear}`} stroke="var(--color-gaz)" strokeDasharray="5 5" name={`Gaz ${lastYear}`} opacity={0.6} />
+                            <Line type="monotone" dataKey={`Eau ${selectedYear}`} stroke="var(--color-eau)" name={`Eau ${selectedYear}`} />
+                            <Line type="monotone" dataKey={`Eau ${lastYear}`} stroke="var(--color-eau)" strokeDasharray="5 5" name={`Eau ${lastYear}`} opacity={0.6} />
                         </LineChart>
                     </ResponsiveContainer>
                 </CardContent>
@@ -200,6 +233,5 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null;
 };
-
 
 export default StatsPage;

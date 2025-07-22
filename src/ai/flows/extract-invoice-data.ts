@@ -32,7 +32,9 @@ const ExtractInvoiceDataOutputSchema = z.object({
   billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
   consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
-  consumptionQuantity: z.string().optional().describe("La quantité consommée (ex: '150 KWh', '75 m³'). Inclure l'unité si possible. Laisser vide si non applicable."),
+  consumptionQuantity: z.string().optional().describe("La quantité d'électricité consommée (ex: '150 KWh'). Inclure l'unité si possible. Laisser vide si non applicable."),
+  gasAmount: z.string().optional().describe('Uniquement pour STEG. Le montant total de la rubrique Gaz, si elle existe.'),
+  gasConsumptionQuantity: z.string().optional().describe('Uniquement pour STEG. La quantité de gaz consommée (ex: "50 m³"), si elle existe.'),
   reference: z.string().optional().describe('Le numéro de référence de la facture ou de la transaction.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
@@ -48,21 +50,23 @@ const prompt = ai.definePrompt({
   prompt: `Vous êtes un expert dans l'analyse de documents et factures tunisiens. Votre tâche est de détecter le type de document ET d'en extraire les informations pertinentes.
 
   **Étape 1 : Détection du type de document**
-  Identifiez d'abord le type du document parmi les choix suivants : STEG (facture d'électricité), SONEDE (facture d'eau), Reçu Bancaire (reçu de retrait, de dépôt, etc.), Maison (contrat de location, titre de propriété), Internet (facture de fournisseur d'accès comme Orange, Ooredoo, Topnet), Assurance, Contrat, ou Autre. Renseignez le champ "documentType".
+  Identifiez d'abord le type du document parmi les choix suivants : STEG (facture d'électricité et gaz), SONEDE (facture d'eau), Reçu Bancaire, Maison (contrat, etc.), Internet (Orange, Ooredoo, etc.), Assurance, Contrat, ou Autre. Renseignez le champ "documentType".
 
   **Étape 2 : Extraction des données**
-  Veuillez extraire les informations suivantes de l'image du document fournie et renseignez les autres champs :
-  - Nom du fournisseur ou de l'entité : Soyez précis. Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna"). Pour un ticket de caisse, le nom du magasin.
+  Veuillez extraire les informations suivantes de l'image du document fournie.
+  - Nom du fournisseur : Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna").
   - Montant : Le montant total.
-  - Date d'échéance : La date limite de paiement.
-  - Date d'émission : La date à laquelle le document a été créé.
-  - Numéro de facture : Le numéro d'identification de la facture.
-  - Période de facturation (si applicable) : Dates de début et de fin.
-  - Quantité consommée (pour STEG/SONEDE) : Cherchez le mot "الكمية" et extrayez la valeur numérique et son unité (ex: KWh, m³).
+  - Dates : Date d'échéance, d'émission, et période de facturation si applicable.
+  - Numéros : Numéro de facture, référence.
 
-  **Détails spécifiques :**
-  1. Pour les factures SONEDE : La période de consommation est un trimestre (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans le champ "consumptionPeriod" et laissez "billingStartDate" et "billingEndDate" vides.
-  2. Pour les reçus et tickets de caisse : Les périodes de facturation et la quantité consommée ne sont généralement pas applicables. Laissez ces champs vides.
+  **Détails spécifiques par type :**
+  1. **Factures STEG** :
+     - Cherchez la consommation d'**électricité**. Extrayez la quantité (ex: 150 KWh) dans "consumptionQuantity".
+     - **IMPORTANT** : Cherchez une rubrique distincte pour le **Gaz**. Si elle existe, extrayez le montant total du gaz dans "gasAmount" et la quantité de gaz consommée (ex: 50 m³) dans "gasConsumptionQuantity". Si la rubrique Gaz n'existe pas, laissez ces deux champs vides.
+  2. **Factures SONEDE** :
+     - La consommation est trimestrielle (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans "consumptionPeriod" et laissez les dates de début/fin de facturation vides.
+     - Extrayez la quantité d'eau consommée (en m³) dans "consumptionQuantity".
+  3. **Reçus et tickets de caisse** : Les champs de consommation, période, etc., ne sont généralement pas applicables.
 
   Retournez toutes les dates au format AAAA-MM-JJ.
 
