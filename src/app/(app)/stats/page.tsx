@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDocuments } from '@/contexts/document-context';
-import { BarChartHorizontal, Droplets, Zap, Wifi, Landmark } from 'lucide-react';
+import { BarChartHorizontal, Droplets, Zap, Wifi, Landmark, TrendingUp, Info } from 'lucide-react';
 import { getYear, format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LineChart, Line } from 'recharts';
@@ -13,12 +13,18 @@ import { Document } from '@/lib/types';
 
 const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
 
-const categoryConfig = {
-    "STEG": { color: "hsl(var(--chart-4))", icon: Zap },
-    "SONEDE": { color: "hsl(var(--chart-1))", icon: Droplets },
-    "Internet": { color: "hsl(var(--chart-3))", icon: Wifi },
-    "Reçu Bancaire": { color: "hsl(var(--chart-2))", icon: Landmark },
-    "Autre": { color: "hsl(var(--chart-5))", icon: BarChartHorizontal },
+const expenseCategoryConfig = {
+    "STEG": { color: "hsl(var(--chart-4))" },
+    "SONEDE": { color: "hsl(var(--chart-1))" },
+    "Internet": { color: "hsl(var(--chart-3))" },
+    "Reçu Bancaire": { color: "hsl(var(--chart-2))" },
+    "Autre": { color: "hsl(var(--chart-5))" },
+};
+
+const consumptionConfig = {
+    "Électricité": { color: "var(--color-elec)", unit: "kWh" },
+    "Gaz": { color: "var(--color-gaz)", unit: "m³" },
+    "Eau": { color: "var(--color-eau)", unit: "m³" },
 };
 
 const getDocumentDate = (doc: Document): Date | null => {
@@ -34,89 +40,114 @@ const getDocumentDate = (doc: Document): Date | null => {
     return null;
 }
 
+const parseQuantity = (quantityStr: string | undefined): number => {
+    if (!quantityStr) return 0;
+    const match = quantityStr.match(/([\d,.]+)/);
+    return match ? parseFloat(match[1].replace(',', '.')) : 0;
+};
+
+
 const StatsPage = () => {
     const { documents } = useDocuments();
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
-    const { availableYears, processedData, comparisonData, averages, lastYear } = useMemo(() => {
-        const dataByYearAndMonth: { [year: string]: { [month: string]: { [category: string]: number } } } = {};
+    const { 
+        availableYears, 
+        expenseData, 
+        consumptionData, 
+        expenseAverages,
+        consumptionAverages
+    } = useMemo(() => {
+        const dataByYearAndMonth: { [year: string]: { [month: string]: { expenses: { [category: string]: number }, consumption: { [type: string]: number } } } } = {};
         const allYears = new Set<string>();
 
         documents.forEach(doc => {
             const docDate = getDocumentDate(doc);
-             if (!docDate || !doc.amount || doc.category === 'Maison' || doc.category === 'Assurance' || doc.category === 'Contrat') return;
+             if (!docDate || doc.category === 'Maison' || doc.category === 'Assurance' || doc.category === 'Contrat') return;
 
             const year = getYear(docDate).toString();
             const month = format(docDate, 'MMM', { locale: fr }).replace('.', '');
             allYears.add(year);
 
             if (!dataByYearAndMonth[year]) dataByYearAndMonth[year] = {};
-            if (!dataByYearAndMonth[year][month]) dataByYearAndMonth[year][month] = {};
+            if (!dataByYearAndMonth[year][month]) dataByYearAndMonth[year][month] = { expenses: {}, consumption: {} };
             
-            const categoryKey = doc.category || 'Autre';
-            const amount = parseFloat(String(doc.amount).replace(',', '.'));
-
-            if (!isNaN(amount)) {
-                if (!dataByYearAndMonth[year][month][categoryKey]) {
-                    dataByYearAndMonth[year][month][categoryKey] = 0;
+            // Process expenses
+            if (doc.amount) {
+                const categoryKey = doc.category || 'Autre';
+                const amount = parseFloat(String(doc.amount).replace(',', '.'));
+                if (!isNaN(amount)) {
+                    if (!dataByYearAndMonth[year][month].expenses[categoryKey]) dataByYearAndMonth[year][month].expenses[categoryKey] = 0;
+                    dataByYearAndMonth[year][month].expenses[categoryKey] += amount;
                 }
-                dataByYearAndMonth[year][month][categoryKey] += amount;
+            }
+
+            // Process consumption
+            if (doc.category === 'STEG') {
+                 if (doc.consumptionQuantity) dataByYearAndMonth[year][month].consumption['Électricité'] = (dataByYearAndMonth[year][month].consumption['Électricité'] || 0) + parseQuantity(doc.consumptionQuantity);
+                 if (doc.gasConsumptionQuantity) dataByYearAndMonth[year][month].consumption['Gaz'] = (dataByYearAndMonth[year][month].consumption['Gaz'] || 0) + parseQuantity(doc.gasConsumptionQuantity);
+            } else if (doc.category === 'SONEDE' && doc.consumptionQuantity) {
+                 dataByYearAndMonth[year][month].consumption['Eau'] = (dataByYearAndMonth[year][month].consumption['Eau'] || 0) + parseQuantity(doc.consumptionQuantity);
             }
         });
-
+        
         const availableYears = Array.from(allYears).sort((a,b) => b.localeCompare(a));
         if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
           setSelectedYear(availableYears[0]);
         }
-
-        const currentYearData = dataByYearAndMonth[selectedYear] || {};
-        const processedData = monthOrder.map(monthName => {
-            const monthData = currentYearData[monthName] || {};
-            const result: { month: string; [key: string]: string | number } = { month: `${monthName}.` };
-            Object.keys(categoryConfig).forEach(cat => {
-                result[cat] = monthData[cat] || 0;
-            });
-            return result;
-        });
-
-        const lastYearVal = (parseInt(selectedYear) - 1).toString();
-        const lastYearData = dataByYearAndMonth[lastYearVal] || {};
         
-        const comparisonData = monthOrder.map(monthName => {
-            const result: { month: string; [key: string]: string | number } = { month: `${monthName}.` };
-            Object.keys(categoryConfig).forEach(cat => {
-                 result[`${cat} ${selectedYear}`] = currentYearData[monthName]?.[cat] || 0;
-                 result[`${cat} ${lastYearVal}`] = lastYearData[monthName]?.[cat] || 0;
-            });
-            return result;
-        });
-        
-        const averages: { [key: string]: number } = {};
-        Object.keys(categoryConfig).forEach(cat => {
-            let total = 0, count = 0;
-            processedData.forEach(d => {
-                const amount = d[cat] as number;
-                if (amount > 0) {
-                    total += amount;
-                    count++;
-                }
-            });
-            averages[cat] = count > 0 ? total / count : 0;
-        });
+        const yearData = dataByYearAndMonth[selectedYear] || {};
 
+        const processChartData = (dataType: 'expenses' | 'consumption', config: any) => {
+            return monthOrder.map(monthName => {
+                const monthData = yearData[monthName]?.[dataType] || {};
+                const result: { month: string; [key: string]: string | number } = { month: `${monthName}.` };
+                Object.keys(config).forEach(cat => {
+                    result[cat] = monthData[cat] || 0;
+                });
+                return result;
+            });
+        };
 
-        return { availableYears, processedData, comparisonData, averages, lastYear: lastYearVal };
+        const expenseData = processChartData('expenses', expenseCategoryConfig);
+        const consumptionData = processChartData('consumption', consumptionConfig);
+
+        const calculateAverages = (data: any[], config: any) => {
+             const averages: { [key: string]: { total: number, count: number, avg: number } } = {};
+             Object.keys(config).forEach(cat => {
+                 averages[cat] = { total: 0, count: 0, avg: 0 };
+                 data.forEach(d => {
+                    const amount = d[cat] as number;
+                    if (amount > 0) {
+                        averages[cat].total += amount;
+                        averages[cat].count++;
+                    }
+                 });
+                 averages[cat].avg = averages[cat].count > 0 ? averages[cat].total / averages[cat].count : 0;
+             });
+            return averages;
+        }
+
+        return { 
+            availableYears, 
+            expenseData, 
+            consumptionData, 
+            expenseAverages: calculateAverages(expenseData, expenseCategoryConfig),
+            consumptionAverages: calculateAverages(consumptionData, consumptionConfig)
+        };
 
     }, [documents, selectedYear]);
+    
+    const hasData = useMemo(() => documents.some(d => getDocumentDate(d) && getYear(getDocumentDate(d)!) === parseInt(selectedYear)), [documents, selectedYear]);
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
             <div className="flex flex-col md:flex-row items-start justify-between space-y-4 md:space-y-0 md:items-center">
                 <div className="flex items-center space-x-3">
                     <BarChartHorizontal className="h-8 w-8 text-primary"/>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight font-headline">Statistiques de Dépenses</h1>
-                        <p className="text-muted-foreground">Analysez vos dépenses par catégorie.</p>
+                        <h1 className="text-3xl font-bold tracking-tight font-headline">Statistiques Annuelles</h1>
+                        <p className="text-muted-foreground">Analysez vos dépenses et consommations.</p>
                     </div>
                 </div>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -128,86 +159,72 @@ const StatsPage = () => {
                     </SelectContent>
                 </Select>
             </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-                {Object.entries(averages).filter(([, value]) => value > 0).map(([category, value]) => {
-                     const config = categoryConfig[category as keyof typeof categoryConfig];
-                     if (!config) return null;
-                     return (
-                        <StatCard 
-                            key={category}
-                            title={`Moy. Mensuelle ${category}`}
-                            value={`${value.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TND`}
-                            icon={config.icon}
-                            iconClass="text-muted-foreground"
-                        />
-                     )
-                })}
-            </div>
             
-            <Card className="rounded-xl shadow-sm">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl">Dépenses Annuelles ({selectedYear})</CardTitle>
-                    <CardDescription>Évolution de vos dépenses mensuelles par catégorie.</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[350px] pr-8">
-                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={processedData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="left" orientation="left" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'TND', angle: -90, position: 'insideLeft', offset: 10, fill: '#888' }} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
-                             {Object.entries(categoryConfig).map(([key, value]) => (
-                                <Bar key={key} yAxisId="left" dataKey={key} fill={value.color} name={key} radius={[4, 4, 0, 0]} stackId="a" />
-                             ))}
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
+            {!hasData ? (
+                 <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg bg-muted/50">
+                    <Info className="h-10 w-10 text-muted-foreground mb-4" />
+                    <p className="font-semibold text-muted-foreground">Aucune donnée pour l'année {selectedYear}.</p>
+                    <p className="text-sm text-muted-foreground/80 mt-1">Ajoutez des documents ou sélectionnez une autre année.</p>
+                </div>
+            ) : (
+                <>
+                <Card className="rounded-xl shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="font-headline text-xl flex items-center gap-2"><BarChartHorizontal className="h-5 w-5"/>Dépenses par Catégorie ({selectedYear})</CardTitle>
+                        <CardDescription>Évolution de vos dépenses mensuelles en TND.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[350px] pr-8">
+                         <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={expenseData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'TND', angle: -90, position: 'insideLeft', offset: 10, fill: '#888' }} />
+                                <Tooltip content={<CustomTooltip unit="TND" />} />
+                                <Legend />
+                                 {Object.entries(expenseCategoryConfig).map(([key, value]) => (
+                                    <Bar key={key} dataKey={key} fill={value.color} name={key} radius={[4, 4, 0, 0]} stackId="a" />
+                                 ))}
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
 
-            <Card className="rounded-xl shadow-sm">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl">Comparaison Annuelle</CardTitle>
-                    <CardDescription>Comparez vos dépenses avec l'année précédente.</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[350px] pr-8">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={comparisonData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'TND', angle: -90, position: 'insideLeft', offset: 10, fill: '#888' }} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
-                            {Object.entries(categoryConfig).map(([key, value]) => (
-                                <React.Fragment key={key}>
-                                    <Line type="monotone" dataKey={`${key} ${selectedYear}`} stroke={value.color} name={`${key} ${selectedYear}`} />
-                                    <Line type="monotone" dataKey={`${key} ${lastYear}`} stroke={value.color} strokeDasharray="5 5" name={`${key} ${lastYear}`} opacity={0.6} />
-                                </React.Fragment>
-                            ))}
-                        </LineChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
+                <Card className="rounded-xl shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="font-headline text-xl flex items-center gap-2"><TrendingUp className="h-5 w-5"/>Consommation par Ressource ({selectedYear})</CardTitle>
+                        <CardDescription>Évolution de votre consommation en kWh et m³.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[350px] pr-8">
+                        <style>{`
+                            :root {
+                                --color-elec: hsl(var(--chart-4));
+                                --color-gaz: hsl(var(--chart-2));
+                                --color-eau: hsl(var(--chart-1));
+                            }
+                        `}</style>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={consumptionData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend />
+                                {Object.entries(consumptionConfig).map(([key, value]) => (
+                                    <Line key={key} type="monotone" dataKey={key} stroke={value.color} name={key} unit={value.unit} />
+                                ))}
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+                </>
+            )}
+
         </div>
     );
 }
 
-const StatCard = ({ title, value, icon: Icon, iconClass }: { title: string, value: string, icon: React.ElementType, iconClass: string }) => {
-    return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <Icon className={`h-4 w-4 text-muted-foreground ${iconClass}`} />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{value}</div>
-            </CardContent>
-        </Card>
-    );
-};
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, unit }: any) => {
   if (active && payload && payload.length) {
     const total = payload.reduce((sum: number, p: any) => sum + p.value, 0);
 
@@ -221,7 +238,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                     <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: pld.stroke || pld.fill }}></div>
                     <span className="text-muted-foreground">{pld.name}:</span>
                 </div>
-                <span className="font-semibold ml-4">{pld.value.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TND</span>
+                <span className="font-semibold ml-4">{pld.value.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {pld.payload.unit || pld.unit || unit || ''}</span>
             </div>
             ))}
         </div>
@@ -230,7 +247,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                 <div className="my-2 h-px bg-border" />
                  <div className="flex items-center justify-between font-bold">
                     <span>Total:</span>
-                    <span className="ml-4">{total.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TND</span>
+                    <span className="ml-4">{total.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {unit || ''}</span>
                 </div>
             </>
         )}
@@ -241,5 +258,3 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default StatsPage;
-
-    
