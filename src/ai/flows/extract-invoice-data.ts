@@ -34,7 +34,7 @@ const ExtractInvoiceDataOutputSchema = z.object({
   consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
   consumptionQuantity: z.string().optional().describe("La quantité d'électricité ou d'eau consommée (ex: '150 KWh', '75 m³'). Inclure l'unité. Laisser vide si non applicable."),
   gasAmount: z.string().optional().describe('Uniquement pour STEG. Le montant total de la rubrique Gaz, si elle existe.'),
-  gasConsumptionQuantity: z.string().optional().describe('Uniquement pour STEG. La quantité de gaz consommée (ex: "50 m³"), si elle existe. Inclure l'unité.'),
+  gasConsumptionQuantity: z.string().optional().describe('Uniquement pour STEG. La quantité de gaz consommée (ex: "50 m³"), si elle existe. Inclure l\'unité.'),
   reference: z.string().optional().describe('Le numéro de référence de la facture ou de la transaction.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
