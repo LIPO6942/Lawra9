@@ -55,13 +55,7 @@ export function MaisonImageGallery({ images, onUpdate, onDelete }: MaisonImageGa
 
 
     if (images.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center text-center py-16 rounded-lg bg-muted/50 border-2 border-dashed">
-                <Info className="h-10 w-10 text-muted-foreground mb-4" />
-                <p className="font-semibold text-muted-foreground">Aucune image trouvée.</p>
-                <p className="text-sm text-muted-foreground/80 mt-1">Archivez une image (PNG, JPG...) pour la voir ici.</p>
-            </div>
-        );
+        return null;
     }
     
 
