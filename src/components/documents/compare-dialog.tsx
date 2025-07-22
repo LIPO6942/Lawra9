@@ -128,8 +128,6 @@ export function CompareDialog({ open, onOpenChange, documentsToCompare }: Compar
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <InfoCard icon={Wallet} title="Différence de Coût" value={result.costDifference} />
                         <InfoCard icon={BarChart2} title="Différence de Consommation" value={result.consumptionDifference} />
-                        <InfoCard icon={Calendar} title="Période Facture 1" value={result.period1} />
-                        <InfoCard icon={Calendar} title="Période Facture 2" value={result.period2} />
                     </div>
                 </div>
             )}
