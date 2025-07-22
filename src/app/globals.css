@@ -5,7 +5,7 @@
 
 @layer base {
   :root {
-    --background: 220 20% 98%;      /* Very Light Cool Gray */
+    --background: 195 20% 97%;      /* Light Cyan-Gray */
     --foreground: 220 15% 20%;      /* Dark Slate Gray */
     
     --card: 0 0% 100%;              /* White */
@@ -23,8 +23,8 @@
     --muted: 220 15% 94%;
     --muted-foreground: 220 10% 45%;
     
-    --accent: 45 93% 47%;           /* Vibrant Gold/Amber */
-    --accent-foreground: 35 90% 15%; /* Dark text for accent */
+    --accent: 25 95% 53%;           /* Vibrant Orange */
+    --accent-foreground: 25 85% 10%; /* Dark text for accent */
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -43,26 +43,26 @@
   }
 
   .dark {
-    --background: 222 47% 11%;      /* Dark Slate Blue */
+    --background: 222 80% 12%;      /* Deep Navy Blue */
     --foreground: 210 40% 98%;      /* Light Gray */
 
-    --card: 222 47% 15%;            /* Slightly Lighter Slate */
+    --card: 222 70% 16%;            /* Slightly Lighter Navy */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 11%;
+    --popover: 222 80% 12%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;         /* Vibrant Blue */
     --primary-foreground: 220 15% 10%;
 
-    --secondary: 222 47% 18%;       /* Darker Secondary */
+    --secondary: 222 70% 20%;       /* Darker Secondary */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 47% 18%;
+    --muted: 222 70% 20%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 45 93% 55%;           /* Brighter Gold */
-    --accent-foreground: 35 90% 15%;
+    --accent: 25 95% 58%;           /* Brighter Orange */
+    --accent-foreground: 25 85% 10%;
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
