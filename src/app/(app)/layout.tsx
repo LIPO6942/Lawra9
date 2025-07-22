@@ -43,7 +43,7 @@ const providerDetails: Record<ISP, { name: string; link: string; className: stri
 };
 
 function ProviderQuickLinks() {
-    const { isp } = useUserPreferences();
+    const { isp, adslNumber } = useUserPreferences();
     
     const stegLink = "https://espace.steg.com.tn/fr/espace/login.php";
     const sonedeLink = "https://portail.sonede.com.tn/login";
@@ -51,6 +51,11 @@ function ProviderQuickLinks() {
 
     return (
         <div className="flex items-center gap-2">
+            {adslNumber && (
+                <div className="hidden sm:flex items-center justify-center h-9 px-3 rounded-md border border-input bg-background text-sm font-semibold text-accent animate-in fade-in-0">
+                    {adslNumber}
+                </div>
+            )}
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Button asChild variant="outline" size="icon" className="h-9 w-9 border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 dark:text-yellow-400">

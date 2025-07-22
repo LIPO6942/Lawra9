@@ -10,6 +10,7 @@ interface UserPreferences {
   isp: ISP | null;
   stegRef: string | null;
   sonedeRef: string | null;
+  adslNumber: string | null;
 }
 
 interface UserPreferencesContextType extends UserPreferences {
@@ -23,6 +24,7 @@ const getInitialState = (): UserPreferences => ({
   isp: null,
   stegRef: null,
   sonedeRef: null,
+  adslNumber: null,
 });
 
 export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { isp, stegRef, sonedeRef, savePreferences, loading: prefsLoading } = useUserPreferences();
+  const { isp, stegRef, sonedeRef, adslNumber, savePreferences, loading: prefsLoading } = useUserPreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [localIsp, setLocalIsp] = useState<ISP | null>(null);
   const [localStegRef, setLocalStegRef] = useState('');
   const [localSonedeRef, setLocalSonedeRef] = useState('');
+  const [localAdslNumber, setLocalAdslNumber] = useState('');
 
   useEffect(() => {
     if (user?.displayName) {
@@ -40,8 +41,9 @@ export default function SettingsPage() {
       setLocalIsp(isp);
       setLocalStegRef(stegRef || '');
       setLocalSonedeRef(sonedeRef || '');
+      setLocalAdslNumber(adslNumber || '');
     }
-  }, [isp, stegRef, sonedeRef, prefsLoading]);
+  }, [isp, stegRef, sonedeRef, adslNumber, prefsLoading]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +75,8 @@ export default function SettingsPage() {
       await savePreferences({
         isp: localIsp,
         stegRef: localStegRef,
-        sonedeRef: localSonedeRef
+        sonedeRef: localSonedeRef,
+        adslNumber: localAdslNumber,
       });
       toast({
         title: 'Préférences enregistrées',
@@ -160,6 +163,10 @@ export default function SettingsPage() {
                               <SelectItem value="Hexabyte">Hexabyte</SelectItem>
                           </SelectContent>
                       </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="adsl-number">Numéro de ligne ADSL/Fibre</Label>
+                      <Input id="adsl-number" value={localAdslNumber} onChange={(e) => setLocalAdslNumber(e.target.value)} placeholder="Ex: 71... / 31..." />
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="steg-ref">Référence contrat STEG</Label>
