@@ -85,8 +85,6 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [processingMessage, setProcessingMessage] = useState('');
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -105,9 +103,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     if (isOpen) {
       if (documentToEdit) {
         setFormData(documentToEdit);
-        setIsEditModalOpen(true);
+        setFileToUpload(null);
       } else {
         setFormData({});
+        setFileToUpload(null);
       }
     } else {
       resetDialog();
@@ -202,6 +201,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               mimeType: file.type,
           });
           
+          setProcessingMessage('Sauvegarde en cours...');
           const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
            
           const newDocData: DocumentWithFile = {
@@ -220,17 +220,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               gasConsumptionQuantity: result.gasConsumptionQuantity,
               file: file,
           };
-          setFormData(newDocData);
-          setFileToUpload(file);
-          setProcessingMessage('');
-          setIsProcessing(false);
-          // Instead of saving directly, we now just populate the form for user confirmation.
+
+          await addDocument(newDocData);
+          toast({ title: "Document ajouté !", description: `"${newDocData.name}" a été sauvegardé avec succès.` });
+          handleOpenChange(false);
           
       } catch (error: any) {
-          console.error('L\'analyse du document a échoué :', error);
-          toast({ variant: 'destructive', title: "L'analyse a échoué", description: "Nous n'avons pas pu analyser votre document. Veuillez réessayer."});
+          console.error('L\'analyse ou la sauvegarde du document a échoué :', error);
+          toast({ variant: 'destructive', title: "L'opération a échoué", description: "Nous n'avons pas pu traiter votre document. Veuillez réessayer."});
           setIsProcessing(false);
-          // No need to close dialog on failure
       }
   };
 
@@ -262,21 +260,13 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   };
 
   const handleSave = async () => {
-      if (!isEditMode && !fileToUpload) {
-          toast({ variant: 'destructive', title: "Aucun fichier sélectionné", description: "Veuillez sélectionner un fichier à uploader." });
-          return;
-      }
+      // This function is now only for edit mode.
+      if (!isEditMode || !documentToEdit) return;
       
       setIsProcessing(true);
       try {
-          if (isEditMode && documentToEdit) {
-              await updateDocument(documentToEdit.id, formData, fileToUpload);
-              toast({ title: "Document modifié", description: "Les informations ont été mises à jour."});
-          } else {
-              const docToAdd = { ...formData, file: fileToUpload } as DocumentWithFile;
-              await addDocument(docToAdd);
-              toast({ title: "Document ajouté", description: `"${docToAdd.name}" a été sauvegardé.`});
-          }
+          await updateDocument(documentToEdit.id, formData, fileToUpload);
+          toast({ title: "Document modifié", description: "Les informations ont été mises à jour."});
           handleOpenChange(false);
       } catch (error: any) {
           console.error("Erreur de sauvegarde:", error);
@@ -290,18 +280,15 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setFormData(prev => ({ ...prev, [field]: value }));
   };
   
-  const dialogTitle = isEditMode ? "Modifier le document" : "Vérifier et Enregistrer";
+  const dialogTitle = isEditMode ? "Modifier le document" : "Ajouter un document";
   const dialogDescription = isEditMode 
     ? "Modifiez les informations de votre document." 
-    : "Vérifiez les informations extraites par l'IA avant d'enregistrer.";
+    : "Uploadez ou scannez une facture ou un reçu. L'analyse et la sauvegarde sont automatiques.";
 
 
   if (isEditMode && formData.category === 'Maison') {
-    return <MaisonUploadDialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen} documentToEdit={documentToEdit} />;
+    return <MaisonUploadDialog open={isOpen} onOpenChange={setIsOpen} documentToEdit={documentToEdit} />;
   }
-
-  // If a file has been processed, show the form. Otherwise, show upload options.
-  const showForm = Object.keys(formData).length > 0 || isEditMode;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -326,8 +313,26 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 <Loader2 className="h-16 w-16 animate-spin text-accent" />
                 <p className="font-semibold text-lg">{processingMessage || 'Traitement...'}</p>
              </div>
-        ) : showForm ? (
+        ) : isEditMode ? (
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="file-upload">Fichier (optionnel)</Label>
+                    {fileToUpload || formData.fileUrl ? (
+                        <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload?.name || formData.name}</span>
+                           <Button variant="ghost" size="sm" onClick={() => { setFileToUpload(null); setFormData(prev => ({...prev, fileUrl: undefined}))}}>Changer</Button>
+                        </div>
+                    ) : (
+                      <label htmlFor="file-upload-edit" className="cursor-pointer">
+                        <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-4 text-center transition hover:border-accent">
+                          <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                          <p className="font-semibold text-sm">Changer le fichier</p>
+                        </div>
+                      </label>
+                    )}
+                    <Input id="file-upload-edit" type="file" className="hidden" onChange={(e) => setFileToUpload(e.target.files?.[0] || null)} />
+                  </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2 col-span-2">
                         <Label htmlFor="doc-name">Nom du document</Label>
@@ -358,13 +363,17 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                         <Input value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
                     </div>
                      <div className="space-y-2">
-                        <Label>Période de facturation</Label>
-                        <Input value={formData.consumptionPeriod || ''} onChange={e => handleFormChange('consumptionPeriod', e.target.value)} placeholder="ex: 03-04-05-2025" />
+                        <Label>Période (Début)</Label>
+                        <Input type="month" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Période (Fin)</Label>
+                        <Input type="month" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
                     </div>
                     <hr className="col-span-2 my-2 border-dashed" />
-                    <h4 className="col-span-2 text-sm font-medium text-muted-foreground">Rubrique Électricité</h4>
-                    <div className="space-y-2">
-                        <Label>Consommation Électricité</Label>
+                    <h4 className="col-span-2 text-sm font-medium text-muted-foreground">Rubrique Électricité / Eau</h4>
+                    <div className="space-y-2 col-span-2">
+                        <Label>Consommation</Label>
                         <Input value={formData.consumptionQuantity || ''} onChange={e => handleFormChange('consumptionQuantity', e.target.value)} placeholder="ex: 123 KWh" />
                     </div>
                     <hr className="col-span-2 my-2 border-dashed" />
@@ -413,17 +422,17 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                   )}
                   <Button onClick={handleCapture} disabled={!hasCameraPermission} className="w-full">
                     <Camera className="mr-2 h-4 w-4" />
-                    Capturer et Analyser
+                    Capturer et Sauvegarder
                   </Button>
                 </div>
               </TabsContent>
             </Tabs>
         )}
         
-        {showForm && !isProcessing && (
+        {isEditMode && !isProcessing && (
             <DialogFooter>
                 <Button onClick={handleSave} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  {isEditMode ? "Enregistrer les modifications" : "Enregistrer le document"}
+                  Enregistrer les modifications
                 </Button>
             </DialogFooter>
         )}
