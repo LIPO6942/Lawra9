@@ -35,11 +35,11 @@ const mainNavItems = [
 ];
 
 const providerDetails: Record<ISP, { name: string; link: string; className: string; icon: React.ElementType }> = {
-    'Orange': { name: 'Orange', link: 'https://www.orange.tn/espace-client', className: 'border-orange-500/50 bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400', icon: Wifi },
-    'Ooredoo': { name: 'Ooredoo', link: 'https://my.ooredoo.tn/', className: 'border-red-500/50 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400', icon: Wifi },
-    'Topnet': { name: 'Topnet', link: 'https://www.topnet.tn/mon-compte', className: 'border-blue-600/50 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 dark:text-blue-400', icon: Wifi },
-    'TT': { name: 'Tunisie Telecom', link: 'https://www.tunisietelecom.tn/particulier/espace-client-fixe-jedidi/', className: 'border-gray-500/50 bg-gray-500/10 hover:bg-gray-500/20 text-gray-600 dark:text-gray-400', icon: Wifi },
-    'Hexabyte': { name: 'Hexabyte', link: 'https://client.hexabyte.tn/', className: 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400', icon: Wifi },
+    'Orange': { name: 'Orange', link: 'https://www.orange.tn/paiement-de-factures', className: 'border-orange-500/50 bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400', icon: Wifi },
+    'Ooredoo': { name: 'Ooredoo', link: 'https://www.ooredoo.tn/Personal/fr/content/367-facture-express', className: 'border-red-500/50 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400', icon: Wifi },
+    'Topnet': { name: 'Topnet', link: 'https://www.topnet.tn/paiement_express/paiement-express', className: 'border-blue-600/50 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 dark:text-blue-400', icon: Wifi },
+    'TT': { name: 'Tunisie Telecom', link: 'https://mytt.tunisietelecom.tn/anonymous/paiement-facture', className: 'border-gray-500/50 bg-gray-500/10 hover:bg-gray-500/20 text-gray-600 dark:text-gray-400', icon: Wifi },
+    'Hexabyte': { name: 'Hexabyte', link: 'https://espaceclient.hexabyte.tn/', className: 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400', icon: Wifi },
 };
 
 function ProviderQuickLinks() {
@@ -74,7 +74,7 @@ function ProviderQuickLinks() {
                            <Link href={ispProvider.link} target="_blank"><ispProvider.icon className="h-5 w-5"/></Link>
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent><p>Espace client {ispProvider.name}</p></TooltipContent>
+                    <TooltipContent><p>Paiement facture {ispProvider.name}</p></TooltipContent>
                  </Tooltip>
             )}
         </div>
