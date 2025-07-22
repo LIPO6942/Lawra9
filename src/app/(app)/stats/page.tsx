@@ -16,7 +16,7 @@ const StatsPage = () => {
     const { documents } = useDocuments();
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
-    const { availableYears, processedData, comparisonData, averages } = useMemo(() => {
+    const { availableYears, processedData, comparisonData, averages, lastYear } = useMemo(() => {
         const dataByYearAndMonth: { [year: string]: { [month: string]: { [category: string]: number } } } = {};
         const allYears = new Set<string>();
 
@@ -106,7 +106,7 @@ const StatsPage = () => {
             eau: countEau > 0 ? totalEau / countEau : 0,
         };
 
-        return { availableYears, processedData, comparisonData, averages };
+        return { availableYears, processedData, comparisonData, averages, lastYear };
 
     }, [documents, selectedYear]);
 
