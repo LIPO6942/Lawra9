@@ -8,7 +8,7 @@ import { Document } from '@/lib/types';
 import { useDocuments } from '@/contexts/document-context';
 import { useToast } from '@/hooks/use-toast';
 import { compareInvoices, CompareInvoicesOutput } from '@/ai/flows/compare-invoices-flow';
-import { Loader2, GitCompareArrows, ArrowRight, FileText, Calendar, Wallet, BarChart2 } from 'lucide-react';
+import { Loader2, GitCompareArrows, ArrowRight, FileText, Wallet, BarChart2, Zap, Wind } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 interface CompareDialogProps {
@@ -127,7 +127,7 @@ export function CompareDialog({ open, onOpenChange, documentsToCompare }: Compar
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <InfoCard icon={Wallet} title="Différence de Coût" value={result.costDifference} />
-                        <InfoCard icon={BarChart2} title="Différence de Consommation" value={result.consumptionDifference} />
+                        <ConsumptionCard title="Différence de Consommation" value={result.consumptionDifference} />
                     </div>
                 </div>
             )}
@@ -141,10 +141,8 @@ const InfoCard = ({ icon: Icon, title, value }: { icon: React.ElementType, title
     if (!value) return null;
     
     let colorClass = 'text-foreground';
-    if (title === "Différence de Coût" || title === "Différence de Consommation") {
-       if (value.startsWith('+')) colorClass = 'text-red-500';
-       if (value.startsWith('-')) colorClass = 'text-green-600';
-    }
+    if (value.startsWith('+')) colorClass = 'text-red-500';
+    if (value.startsWith('-')) colorClass = 'text-green-600';
 
     return (
         <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
@@ -152,6 +150,39 @@ const InfoCard = ({ icon: Icon, title, value }: { icon: React.ElementType, title
             <div>
                 <p className="font-semibold text-muted-foreground">{title}</p>
                 <p className={`text-xl font-bold ${colorClass}`}>{value}</p>
+            </div>
+        </div>
+    )
+}
+
+
+const ConsumptionCard = ({ title, value }: { title: string, value?: string }) => {
+    if (!value) return null;
+
+    const parts = value.split(',').map(p => p.trim());
+
+    return (
+        <div className="p-4 rounded-lg bg-muted/50">
+            <p className="font-semibold text-muted-foreground mb-3">{title}</p>
+            <div className="space-y-3">
+                {parts.map((part, index) => {
+                    const match = part.match(/([+-][\d,.]+)\s*(.+)/);
+                    if (!match) return null;
+
+                    const [, diff, name] = match;
+                    const colorClass = diff.startsWith('+') ? 'text-red-500' : 'text-green-600';
+                    const Icon = name.toLowerCase().includes('gaz') ? Wind : Zap;
+
+                    return (
+                         <div key={index} className="flex items-center gap-3">
+                            <Icon className={`h-5 w-5 shrink-0 ${colorClass}`} />
+                            <div className="flex-1">
+                                <span className="font-semibold">{name}</span>
+                            </div>
+                            <span className={`text-lg font-bold ${colorClass}`}>{diff}</span>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     )
