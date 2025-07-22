@@ -96,14 +96,14 @@ export function CompareDialog({ open, onOpenChange, documentsToCompare }: Compar
         
         <div className="py-4 px-1">
              <div className="flex items-center justify-center gap-4 text-sm font-semibold text-center">
-                <div className="flex-1 p-2 border rounded-md bg-muted/50">
+                <div className="flex-1 p-2 border rounded-md bg-muted/50 min-w-0">
                     <FileText className="mx-auto mb-1 h-5 w-5"/>
-                    <p className="truncate" title={doc1.name}>{doc1.name}</p>
+                    <p className="break-words" title={doc1.name}>{doc1.name}</p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0"/>
-                 <div className="flex-1 p-2 border rounded-md bg-muted/50">
+                 <div className="flex-1 p-2 border rounded-md bg-muted/50 min-w-0">
                     <FileText className="mx-auto mb-1 h-5 w-5"/>
-                    <p className="truncate" title={doc2.name}>{doc2.name}</p>
+                    <p className="break-words" title={doc2.name}>{doc2.name}</p>
                 </div>
              </div>
 
