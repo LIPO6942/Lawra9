@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare } from 'lucide-react';
@@ -11,9 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { UploadDocumentDialog } from '../upload-document-dialog';
-import { useDocuments } from '@/contexts/document-context';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
-import { Card } from '../ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
 
@@ -62,14 +61,16 @@ const formatDateSafe = (dateString?: string, dateFormat = 'd MMM yyyy') => {
 
 
 interface DocumentsTableProps {
+    title?: string;
     documents: Document[];
     onUpdate: (id: string, data: Partial<Document>) => void;
     onDelete: (id: string) => void;
     isMaison?: boolean;
     onSelectionChange?: (selected: Document[]) => void;
+    allDocumentIds?: string[];
 }
 
-export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false, onSelectionChange }: DocumentsTableProps) {
+export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison = false, onSelectionChange, allDocumentIds }: DocumentsTableProps) {
     const router = useRouter();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -77,6 +78,29 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
     const [docToDelete, setDocToDelete] = useState<Document | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    const docIds = useMemo(() => documents.map(d => d.id), [documents]);
+
+    // This effect ensures that selections are cleared if the underlying documents list changes (e.g., due to search)
+    // but preserves selections when only the parent list of all documents changes.
+    useMemo(() => {
+        const currentDocIds = new Set(docIds);
+        const newSelectedIds = new Set<string>();
+        selectedIds.forEach(id => {
+            if (currentDocIds.has(id)) {
+                newSelectedIds.add(id);
+            }
+        });
+        
+        if (newSelectedIds.size !== selectedIds.size) {
+            setSelectedIds(newSelectedIds);
+             if (onSelectionChange) {
+                const selectedDocs = documents.filter(doc => newSelectedIds.has(doc.id));
+                onSelectionChange(selectedDocs);
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [docIds]);
 
 
     const handleSelect = (docId: string, isSelected: boolean) => {
@@ -121,108 +145,120 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
     const EditDialogComponent = isMaison ? MaisonUploadDialog : UploadDocumentDialog;
 
     if (documents.length === 0) {
-        return (
+        return isMaison ? (
             <div className="flex flex-col items-center justify-center text-center py-16 rounded-lg bg-muted/50">
                 <Info className="h-10 w-10 text-muted-foreground mb-4" />
                 <p className="font-semibold text-muted-foreground">Aucun document trouvé.</p>
                 <p className="text-sm text-muted-foreground/80 mt-1">Ajoutez un nouveau document pour commencer.</p>
             </div>
-        );
+        ) : null;
     }
 
     return (
         <>
-            <div className="grid grid-cols-1 gap-4">
-                {documents.map(doc => {
-                    const docDate = formatDateSafe(doc.issueDate || doc.createdAt);
-                    const periodStart = formatDateSafe(doc.billingStartDate, 'MMM yyyy');
-                    const periodEnd = formatDateSafe(doc.billingEndDate, 'MMM yyyy');
+            <Card>
+                {title && (
+                    <CardHeader>
+                        <CardTitle className="font-headline text-lg flex items-center gap-3">
+                             <CategoryIcon category={documents[0].category} />
+                             {title}
+                        </CardTitle>
+                    </CardHeader>
+                )}
+                <CardContent className={title ? 'pt-0 p-4 sm:p-6' : 'p-4 sm:p-6'}>
+                    <div className="space-y-3">
+                        {documents.map(doc => {
+                            const docDate = formatDateSafe(doc.issueDate || doc.createdAt);
+                            const periodStart = formatDateSafe(doc.billingStartDate, 'MMM yyyy');
+                            const periodEnd = formatDateSafe(doc.billingEndDate, 'MMM yyyy');
 
-                    return (
-                        <Card key={doc.id} className="p-4 transition-all hover:shadow-md">
-                            <div className="flex items-center gap-4">
-                                {!isMaison && onSelectionChange && (
-                                    <Checkbox
-                                        id={`select-${doc.id}`}
-                                        checked={selectedIds.has(doc.id)}
-                                        onCheckedChange={(checked) => handleSelect(doc.id, !!checked)}
-                                        aria-label={`Sélectionner ${doc.name}`}
-                                    />
-                                )}
-                                <div className="hidden sm:block">
-                                   <CategoryIcon category={doc.category} />
-                                </div>
-                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id, doc.fileUrl)}>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <p className="font-semibold pr-2 break-words">{doc.name}</p>
-                                            <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
-                                        </div>
-                                        {!isMaison && (
-                                            <div className="flex-shrink-0 ml-4">
-                                                <StatusBadge dueDate={doc.dueDate} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2 text-muted-foreground">
-                                        {doc.amount && !isMaison && (
-                                            <span className="font-mono text-foreground">{doc.amount} TND</span>
-                                        )}
-                                        {docDate && (
-                                            <div className="flex items-center gap-1">
-                                                <CalendarDays className="h-4 w-4" />
-                                                <span>{docDate}</span>
-                                            </div>
-                                        )}
-                                        {isMaison && periodStart && periodEnd && (
-                                            <div className="flex items-center gap-1">
-                                                <CalendarDays className="h-4 w-4 text-green-500" />
-                                                <span className="text-green-600">{`${periodStart} - ${periodEnd}`}</span>
-                                            </div>
-                                        )}
-                                        {isMaison && doc.notes && (
-                                           <div className="flex items-center gap-1">
-                                               <MessageSquare className="h-4 w-4" />
-                                           </div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex-shrink-0">
-                                     {isDeleting === doc.id ? (
-                                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                                    ) : (
-                                        <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Ouvrir le menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => openEditModal(doc)}>
-                                                <Edit className="mr-2 h-4 w-4" />
-                                                Détails / Modifier
-                                            </DropdownMenuItem>
-                                            {doc.fileUrl && (
-                                                <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    Consulter le fichier
-                                                </DropdownMenuItem>
-                                            )}
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Supprimer
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                        </DropdownMenu>
+                            return (
+                                <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">
+                                    {!isMaison && onSelectionChange && (
+                                        <Checkbox
+                                            id={`select-${doc.id}`}
+                                            checked={selectedIds.has(doc.id)}
+                                            onCheckedChange={(checked) => handleSelect(doc.id, !!checked)}
+                                            aria-label={`Sélectionner ${doc.name}`}
+                                        />
                                     )}
+                                    {isMaison && (
+                                        <div className="hidden sm:block">
+                                            <CategoryIcon category={doc.category} />
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id, doc.fileUrl)}>
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <p className="font-semibold pr-2 break-words">{doc.name}</p>
+                                                <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
+                                            </div>
+                                            {!isMaison && (
+                                                <div className="flex-shrink-0 ml-4">
+                                                    <StatusBadge dueDate={doc.dueDate} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2 text-muted-foreground">
+                                            {doc.amount && !isMaison && (
+                                                <span className="font-mono text-foreground">{doc.amount} TND</span>
+                                            )}
+                                            {docDate && (
+                                                <div className="flex items-center gap-1">
+                                                    <CalendarDays className="h-4 w-4" />
+                                                    <span>{docDate}</span>
+                                                </div>
+                                            )}
+                                            {isMaison && periodStart && periodEnd && (
+                                                <div className="flex items-center gap-1">
+                                                    <CalendarDays className="h-4 w-4 text-green-500" />
+                                                    <span className="text-green-600">{`${periodStart} - ${periodEnd}`}</span>
+                                                </div>
+                                            )}
+                                            {isMaison && doc.notes && (
+                                            <div className="flex items-center gap-1">
+                                                <MessageSquare className="h-4 w-4" />
+                                            </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-shrink-0">
+                                        {isDeleting === doc.id ? (
+                                            <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                                        ) : (
+                                            <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                <span className="sr-only">Ouvrir le menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => openEditModal(doc)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Détails / Modifier
+                                                </DropdownMenuItem>
+                                                {doc.fileUrl && (
+                                                    <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        Consulter le fichier
+                                                    </DropdownMenuItem>
+                                                )}
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Supprimer
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        </Card>
-                    );
-                })}
-            </div>
+                            );
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
             
             <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
                 <AlertDialogContent>
