@@ -56,7 +56,8 @@ const prompt = ai.definePrompt({
   Veuillez extraire les informations suivantes de l'image du document fournie.
   - Nom du fournisseur : Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna").
   - Montant : Le **montant total à payer**. C'est l'information la plus importante. Pour la STEG, c'est le montant global (électricité + gaz).
-  - Dates : Date d'échéance, d'émission, et période de facturation si applicable.
+  - **Date d'échéance (prioritaire)** : Cherchez activement une date d'échéance, de dernier délai de paiement, ou "آخر أجل للدفع". C'est une information cruciale pour les alertes. Si vous la trouvez, remplissez le champ 'dueDate'.
+  - Dates : Date d'émission et période de facturation si applicable.
   - Numéros : Numéro de facture, référence.
 
   **Détails spécifiques par type :**

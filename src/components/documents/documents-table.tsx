@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { UploadDocumentDialog } from '../upload-document-dialog';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
 import { MaisonDetailsDialog } from '../maison/maison-details-dialog';
+import { DocumentDetailsDialog } from './document-details-dialog';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
@@ -150,6 +151,8 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
     };
     
     const EditDialogComponent = isMaison ? MaisonUploadDialog : UploadDocumentDialog;
+    const DetailsDialogComponent = isMaison ? MaisonDetailsDialog : DocumentDetailsDialog;
+
 
     if (documents.length === 0) {
         return isMaison ? (
@@ -247,11 +250,9 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                                             <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                                         ) : (
                                             <div className="flex items-center">
-                                                {isMaison && (
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openDetailsModal(doc)}>
-                                                        <Info className="h-4 w-4" />
-                                                    </Button>
-                                                )}
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openDetailsModal(doc)}>
+                                                    <Info className="h-4 w-4" />
+                                                </Button>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -313,8 +314,8 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                 />
             )}
 
-            {selectedDocument && isMaison && (
-                <MaisonDetailsDialog
+            {selectedDocument && (
+                <DetailsDialogComponent
                     open={isDetailsModalOpen}
                     onOpenChange={setIsDetailsModalOpen}
                     document={selectedDocument}
