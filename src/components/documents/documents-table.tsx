@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -17,6 +17,7 @@ import { DocumentDetailsDialog } from './document-details-dialog';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
+import { cn } from '@/lib/utils';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
   switch (category) {
@@ -179,9 +180,12 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                     <div className="space-y-3">
                         {documents.map(doc => {
                             const docDate = formatDateSafe(doc.issueDate || doc.createdAt);
+                            const dueDate = formatDateSafe(doc.dueDate);
                             const periodStart = formatDateSafe(doc.billingStartDate, 'MMM yyyy');
                             const periodEnd = formatDateSafe(doc.billingEndDate, 'MMM yyyy');
                             const fileCount = doc.files?.length || 0;
+                            const daysDiff = doc.dueDate && isValid(parseISO(doc.dueDate)) ? differenceInDays(parseISO(doc.dueDate), new Date()) : null;
+
 
                             return (
                                 <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">
@@ -220,8 +224,17 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                                                     <span>{doc.amount} TND</span>
                                                 </div>
                                             )}
-                                            {docDate && (
-                                                <div className="flex items-center gap-1.5">
+                                            {dueDate && !isMaison ? (
+                                                <div className={cn("flex items-center gap-1.5 font-semibold", 
+                                                    daysDiff !== null && daysDiff < 0 && "text-destructive",
+                                                    daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
+                                                    daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
+                                                )}>
+                                                    <AlertTriangle className="h-4 w-4" />
+                                                    <span>Échéance: {dueDate}</span>
+                                                </div>
+                                            ) : docDate && (
+                                                 <div className="flex items-center gap-1.5">
                                                     <CalendarDays className="h-4 w-4" />
                                                     <span>{docDate}</span>
                                                 </div>
@@ -324,3 +337,5 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
         </>
     );
 }
+
+    
