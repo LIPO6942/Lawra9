@@ -52,11 +52,11 @@ export function MaisonDetailsDialog({ open, onOpenChange, document }: MaisonDeta
                 const response = await fetch(fileUrl);
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
+                const a = window.document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
                 a.download = fileName;
-                document.body.appendChild(a);
+                window.document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
                 a.remove();
