@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle, FileText } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
