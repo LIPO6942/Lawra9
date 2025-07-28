@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -215,9 +215,6 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                                             )}
                                         </div>
                                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2 text-muted-foreground">
-                                            {doc.amount && !isMaison && (
-                                                <span className="font-mono text-foreground">{doc.amount} TND</span>
-                                            )}
                                              {doc.amount && isMaison && (
                                                 <div className="flex items-center gap-1.5 font-mono text-foreground">
                                                     <CircleDollarSign className="h-4 w-4" />
