@@ -265,7 +265,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       
       setIsProcessing(true);
       try {
-          await updateDocument(documentToEdit.id, formData, fileToUpload);
+          const dataToSave = { ...formData };
+          if (fileToUpload) {
+            dataToSave.file = fileToUpload;
+          }
+          await updateDocument(documentToEdit.id, dataToSave);
           toast({ title: "Document modifié", description: "Les informations ont été mises à jour."});
           handleOpenChange(false);
       } catch (error: any) {

@@ -156,6 +156,11 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             delete updatedData.file;
         }
     }
+
+    // If a new single file is passed in data (for regular invoices), handle it
+    if (data.file && data.file instanceof Blob) {
+      updatedData.file = data.file;
+    }
     
     // Clear legacy fileUrl properties, they will be recreated on load
     delete updatedData.fileUrl;
