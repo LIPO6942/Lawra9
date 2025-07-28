@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare } from 'lucide-react';
+import { FileText, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { UploadDocumentDialog } from '../upload-document-dialog';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
+import { MaisonDetailsDialog } from '../maison/maison-details-dialog';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
@@ -73,6 +74,7 @@ interface DocumentsTableProps {
 export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison = false, onSelectionChange, allDocumentIds }: DocumentsTableProps) {
     const router = useRouter();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -120,6 +122,11 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
     const openEditModal = (doc: Document) => {
         setSelectedDocument(doc);
         setIsEditModalOpen(true);
+    }
+
+    const openDetailsModal = (doc: Document) => {
+        setSelectedDocument(doc);
+        setIsDetailsModalOpen(true);
     }
     
     const handleViewFile = (docId: string, fileUrl?: string) => {
@@ -204,6 +211,12 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                                             {doc.amount && !isMaison && (
                                                 <span className="font-mono text-foreground">{doc.amount} TND</span>
                                             )}
+                                             {doc.amount && isMaison && (
+                                                <div className="flex items-center gap-1.5 font-mono text-foreground">
+                                                    <CircleDollarSign className="h-4 w-4" />
+                                                    <span>{doc.amount} TND</span>
+                                                </div>
+                                            )}
                                             {docDate && (
                                                 <div className="flex items-center gap-1.5">
                                                     <CalendarDays className="h-4 w-4" />
@@ -233,31 +246,38 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                                         {isDeleting === doc.id ? (
                                             <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                                         ) : (
-                                            <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                <span className="sr-only">Ouvrir le menu</span>
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => openEditModal(doc)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Détails / Modifier
-                                                </DropdownMenuItem>
-                                                {doc.fileUrl && (
-                                                    <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        Consulter le fichier
-                                                    </DropdownMenuItem>
+                                            <div className="flex items-center">
+                                                {isMaison && (
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openDetailsModal(doc)}>
+                                                        <Info className="h-4 w-4" />
+                                                    </Button>
                                                 )}
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Supprimer
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                            </DropdownMenu>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <span className="sr-only">Ouvrir le menu</span>
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => openEditModal(doc)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Détails / Modifier
+                                                        </DropdownMenuItem>
+                                                        {doc.fileUrl && (
+                                                            <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
+                                                                <Eye className="mr-2 h-4 w-4" />
+                                                                Consulter le fichier
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Supprimer
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -290,6 +310,14 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                     open={isEditModalOpen}
                     onOpenChange={setIsEditModalOpen}
                     documentToEdit={selectedDocument}
+                />
+            )}
+
+            {selectedDocument && isMaison && (
+                <MaisonDetailsDialog
+                    open={isDetailsModalOpen}
+                    onOpenChange={setIsDetailsModalOpen}
+                    document={selectedDocument}
                 />
             )}
         </>

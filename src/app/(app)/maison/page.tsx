@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MaisonUploadDialog } from '@/components/maison-upload-dialog';
 import { DocumentsTable } from '@/components/documents/documents-table';
-import { Home, FilePlus2, FileText } from 'lucide-react';
+import { Home, FilePlus2, FileText, Info } from 'lucide-react';
 import { useDocuments } from '@/contexts/document-context';
 import { Button } from '@/components/ui/button';
 import { useMemo } from 'react';
@@ -39,14 +39,22 @@ export default function MaisonPage() {
         <div>
             <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-6 w-6 text-primary"/>
-                <h2 className="text-2xl font-semibold font-headline">Documents Archivés</h2>
+                <h2 className="text-2xl font-semibold font-headline">Dossiers Archivés</h2>
             </div>
-             <DocumentsTable
-                 documents={maisonDocuments}
-                 onUpdate={updateDocument}
-                 onDelete={deleteDocument}
-                 isMaison={true}
-              />
+             {maisonDocuments.length > 0 ? (
+                <DocumentsTable
+                    documents={maisonDocuments}
+                    onUpdate={updateDocument}
+                    onDelete={deleteDocument}
+                    isMaison={true}
+                />
+             ) : (
+                <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg bg-muted/50">
+                    <Info className="h-10 w-10 text-muted-foreground mb-4" />
+                    <p className="font-semibold text-muted-foreground">Aucun dossier archivé pour le moment.</p>
+                    <p className="text-sm text-muted-foreground/80 mt-1">Cliquez sur "Archiver un document" pour commencer.</p>
+                </div>
+             )}
         </div>
       </div>
     </div>

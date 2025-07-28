@@ -44,6 +44,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPeriodFields, setShowPeriodFields] = useState(false);
+  const [showAmountField, setShowAmountField] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Document>>({ files: [] });
   const { toast } = useToast();
@@ -69,6 +70,9 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
       if (documentToEdit.billingStartDate || documentToEdit.billingEndDate) {
         setShowPeriodFields(true);
       }
+      if (documentToEdit.amount) {
+        setShowAmountField(true);
+      }
     } else if (isOpen && !isEditMode) {
       setFormData({ category: 'Maison', files: [] });
     }
@@ -89,6 +93,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
     setIsProcessing(false);
     setFormData({ files: [] });
     setShowPeriodFields(false);
+    setShowAmountField(false);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,6 +150,9 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
         dataToSave.billingStartDate = undefined;
         dataToSave.billingEndDate = undefined;
       }
+      if (!showAmountField) {
+        dataToSave.amount = undefined;
+      }
 
       if (isEditMode && documentToEdit) {
         await updateDocument(documentToEdit.id, dataToSave);
@@ -156,6 +164,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
             subCategory: formData.subCategory,
             issueDate: formData.issueDate,
             notes: formData.notes,
+            amount: dataToSave.amount,
             billingStartDate: dataToSave.billingStartDate,
             billingEndDate: dataToSave.billingEndDate,
             files: formData.files,
@@ -216,7 +225,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
             <div className="space-y-2">
               <Label>Fichiers</Label>
               <div className="space-y-2">
-                {formData.files?.map((subFile, index) => (
+                {formData.files?.map((subFile) => (
                   <div key={subFile.id} className="flex items-center space-x-2 rounded-md bg-muted p-2">
                     <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                     <span className="text-sm text-muted-foreground flex-1 truncate" title={subFile.name}>{subFile.name}</span>
@@ -282,7 +291,30 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
                 </div>
             )}
 
-            <div className="space-y-2">
+            <div className="items-top flex space-x-2 mt-4">
+                <Checkbox id="show-amount" checked={showAmountField} onCheckedChange={(checked) => setShowAmountField(checked as boolean)} />
+                <div className="grid gap-1.5 leading-none">
+                    <label
+                    htmlFor="show-amount"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                    Ajouter un montant
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                    Pour les taxes, frais de syndic, etc.
+                    </p>
+                </div>
+            </div>
+
+            {showAmountField && (
+                 <div className="space-y-2 mt-2 animate-in fade-in-0 duration-300">
+                    <Label htmlFor="doc-amount" className="text-xs text-muted-foreground">Montant</Label>
+                    <Input id="doc-amount" type="text" value={formData.amount || ''} onChange={e => handleFormChange('amount', e.target.value)} placeholder="Ex: 150,000" />
+                 </div>
+            )}
+
+
+            <div className="space-y-2 pt-2">
               <Label htmlFor="doc-notes">Notes</Label>
               <Textarea 
                 id="doc-notes" 
