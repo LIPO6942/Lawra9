@@ -206,7 +206,7 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
                                                 <p className="font-semibold pr-2 break-words">{doc.name}</p>
-                                                <p className="text-sm text-muted-foreground">{isMaison ? doc.subCategory : (doc.supplier || doc.category)}</p>
+                                                
                                             </div>
                                             {!isMaison && (
                                                 <div className="flex-shrink-0 ml-4">
