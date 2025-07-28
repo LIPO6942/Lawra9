@@ -3,7 +3,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useDocuments } from '@/contexts/document-context';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useMemo } from 'react';
 import { Document, SubFile } from '@/lib/types';
 import { Loader2, FileQuestion, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
