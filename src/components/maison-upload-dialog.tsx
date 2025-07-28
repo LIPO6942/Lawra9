@@ -15,11 +15,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { PlusCircle, Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
+import { PlusCircle, Upload, Loader2, FileText, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useDocuments } from '@/contexts/document-context';
-import { Document, DocumentWithFile } from '@/lib/types';
+import { Document, SubFile, DocumentWithFile } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 
 interface MaisonUploadDialogProps {
@@ -43,10 +43,9 @@ const maisonCategories = [
 export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, children }: MaisonUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [showPeriodFields, setShowPeriodFields] = useState(false);
   
-  const [formData, setFormData] = useState<Partial<Document>>({});
+  const [formData, setFormData] = useState<Partial<Document>>({ files: [] });
   const { toast } = useToast();
   const { addDocument, updateDocument } = useDocuments();
   
@@ -63,12 +62,15 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
   
   useEffect(() => {
     if (isOpen && isEditMode && documentToEdit) {
-      setFormData(documentToEdit);
+      setFormData({
+          ...documentToEdit,
+          files: documentToEdit.files ? [...documentToEdit.files] : []
+      });
       if (documentToEdit.billingStartDate || documentToEdit.billingEndDate) {
         setShowPeriodFields(true);
       }
     } else if (isOpen && !isEditMode) {
-      setFormData({ category: 'Maison' });
+      setFormData({ category: 'Maison', files: [] });
     }
   }, [isOpen, isEditMode, documentToEdit]);
 
@@ -85,21 +87,41 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
 
   const resetDialog = () => {
     setIsProcessing(false);
-    setFileToUpload(null);
-    setFormData({});
+    setFormData({ files: [] });
     setShowPeriodFields(false);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      setFileToUpload(selectedFile);
-      setFormData(prev => ({
-        ...prev,
-        name: selectedFile.name.split('.').slice(0, -1).join('.') || selectedFile.name,
+    const selectedFiles = event.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      const newSubFiles: SubFile[] = Array.from(selectedFiles).map(file => ({
+        id: `file-${Date.now()}-${Math.random()}`,
+        name: file.name.split('.').slice(0, -1).join('.') || file.name,
+        file: file,
       }));
+      
+      setFormData(prev => {
+        const updatedFiles = [...(prev.files || []), ...newSubFiles];
+        // If this is the first file, set the dossier name to the file's name
+        const newName = prev.name || (newSubFiles.length > 0 ? newSubFiles[0].name : '');
+        return {
+          ...prev,
+          name: newName,
+          files: updatedFiles,
+        }
+      });
+
+      // Clear the input value to allow selecting the same file again
+      event.target.value = '';
     }
   };
+  
+  const removeFile = (fileId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      files: prev.files?.filter(f => f.id !== fileId)
+    }))
+  }
 
   const handleFormChange = (field: keyof Document, value: string | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -107,8 +129,12 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
 
   const handleSave = async () => {
     if (!formData.name) {
-      toast({ variant: 'destructive', title: "Le nom du document est requis" });
+      toast({ variant: 'destructive', title: "Le nom du dossier est requis" });
       return;
+    }
+    if (!formData.files || formData.files.length === 0) {
+       toast({ variant: 'destructive', title: "Au moins un fichier est requis" });
+       return;
     }
 
     setIsProcessing(true);
@@ -121,22 +147,21 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
       }
 
       if (isEditMode && documentToEdit) {
-        // Pass fileToUpload which can be null if user didn't change the file
-        await updateDocument(documentToEdit.id, dataToSave, fileToUpload);
-        toast({ title: "Document modifié !", description: `Le document "${formData.name}" a été mis à jour.`});
+        await updateDocument(documentToEdit.id, dataToSave);
+        toast({ title: "Dossier modifié !", description: `Le dossier "${formData.name}" a été mis à jour.`});
       } else {
         const docToAdd: DocumentWithFile = {
-            name: formData.name || 'Nouveau document',
+            name: formData.name || 'Nouveau dossier',
             category: 'Maison',
             subCategory: formData.subCategory,
             issueDate: formData.issueDate,
             notes: formData.notes,
             billingStartDate: dataToSave.billingStartDate,
             billingEndDate: dataToSave.billingEndDate,
-            file: fileToUpload || undefined,
+            files: formData.files,
         };
         await addDocument(docToAdd);
-        toast({ title: "Document archivé !", description: `"${docToAdd.name}" a été ajouté à votre espace Maison.` });
+        toast({ title: "Dossier archivé !", description: `"${docToAdd.name}" a été ajouté à votre espace Maison.` });
       }
         
       handleOpenChange(false);
@@ -155,8 +180,8 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
     }
   };
 
-  const dialogTitle = isEditMode ? "Modifier le document" : "Archiver un document";
-  const dialogDescription = isEditMode ? "Modifiez les informations de votre document." : "Donnez un nom et une catégorie à votre document.";
+  const dialogTitle = isEditMode ? "Modifier le dossier" : "Archiver un dossier";
+  const dialogDescription = isEditMode ? "Modifiez les informations de votre dossier." : "Ajoutez un ou plusieurs fichiers et donnez un nom à votre dossier.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -168,7 +193,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-headline">{dialogTitle}</DialogTitle>
           <DialogDescription>
@@ -182,35 +207,38 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
                 <p className="font-semibold text-lg">Sauvegarde en cours...</p>
              </div>
         ) : (
-          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4 -mr-4">
             <div className="space-y-2">
-                <Label htmlFor="file-upload">Fichier</Label>
-                {fileToUpload || formData.fileUrl ? (
-                    <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload?.name || formData.name}</span>
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                ) : (
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-8 text-center transition hover:border-accent">
-                      <Upload className="h-10 w-10 text-muted-foreground" />
-                      <p className="font-semibold">Choisissez un fichier</p>
-                      <p className="text-xs text-muted-foreground">Nommera le document automatiquement</p>
-                    </div>
-                  </label>
-                )}
-                <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} />
+                <Label htmlFor="dossier-name">Nom du dossier</Label>
+                <Input id="dossier-name" value={formData.name || ''} onChange={e => handleFormChange('name', e.target.value)} placeholder="Ex: Contrat d'achat appartement"/>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fichiers</Label>
+              <div className="space-y-2">
+                {formData.files?.map((subFile, index) => (
+                  <div key={subFile.id} className="flex items-center space-x-2 rounded-md bg-muted p-2">
+                    <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground flex-1 truncate" title={subFile.name}>{subFile.name}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(subFile.id)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="doc-name">Nom du document</Label>
-              <Input id="doc-name" value={formData.name || ''} onChange={e => handleFormChange('name', e.target.value)} />
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-6 text-center transition hover:border-accent mt-2">
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <p className="font-semibold text-sm">Ajouter des fichiers</p>
+                  <p className="text-xs text-muted-foreground">Vous pouvez en sélectionner plusieurs</p>
+                </div>
+              </label>
+              <Input id="file-upload" type="file" multiple className="hidden" onChange={handleFileChange} />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="doc-maison-category">Catégorie du document</Label>
+                <Label htmlFor="doc-maison-category">Catégorie du dossier</Label>
                 <Select value={formData.subCategory || ''} onValueChange={(value) => handleFormChange('subCategory', value)}>
                   <SelectTrigger id="doc-maison-category" className="w-full">
                       <SelectValue placeholder="Sélectionnez une catégorie" />
@@ -221,7 +249,7 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
                 </Select>
               </div>
                <div className="space-y-2">
-                <Label htmlFor="doc-date">Date du document</Label>
+                <Label htmlFor="doc-date">Date du dossier</Label>
                 <Input id="doc-date" type="date" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
               </div>
             </div>

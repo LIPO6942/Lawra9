@@ -1,4 +1,11 @@
 
+export type SubFile = {
+  id: string; // Can be a timestamp or a random string
+  name: string;
+  file: File | Blob;
+  fileUrl?: string;
+};
+
 export type Document = {
   id: string;
   name: string;
@@ -15,14 +22,18 @@ export type Document = {
   consumptionQuantity?: string; // e.g., "150 kWh" or "75 m³"
   gasAmount?: string; // For STEG gas part
   gasConsumptionQuantity?: string; // e.g., "50 m³"
-  file?: File | Blob; // Store the file object itself
+  // Legacy single file support
+  file?: File | Blob;
   fileUrl?: string; // Temporary URL for display, generated from file object
+  // Multi-file support for Maison
+  files?: SubFile[];
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
   notes?: string; // Free text notes
 };
 
 export type DocumentWithFile = Omit<Document, 'id' | 'createdAt' | 'fileUrl'> & {
   file?: File | Blob;
+  files?: SubFile[];
 }
 
 export type Alert = {

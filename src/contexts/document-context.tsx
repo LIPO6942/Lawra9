@@ -25,7 +25,7 @@ interface DocumentContextType {
   alerts: Alert[];
   monthlyExpenses: MonthlyExpense[];
   addDocument: (doc: DocumentWithFile) => Promise<void>;
-  updateDocument: (id: string, data: Partial<Document>, file?: File | null) => Promise<void>;
+  updateDocument: (id: string, data: Partial<Document>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   markAsPaid: (id: string) => void;
   getDocumentById: (id: string) => Document | undefined;
@@ -55,13 +55,24 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (user) {
       try {
         const db = await openDB(user.uid);
-        const docs = await dbGetAllDocuments(db);
-        const docsWithUrls = docs.map(doc => {
-          if (doc.file instanceof Blob && (!doc.fileUrl || !doc.fileUrl.startsWith('blob:'))) {
-            return { ...doc, fileUrl: URL.createObjectURL(doc.file) };
+        const docsFromDb = await dbGetAllDocuments(db);
+
+        const docsWithUrls = docsFromDb.map(doc => {
+          let mainFileUrl = doc.fileUrl;
+          if (doc.file instanceof Blob && (!mainFileUrl || !mainFileUrl.startsWith('blob:'))) {
+            mainFileUrl = URL.createObjectURL(doc.file);
           }
-          return doc;
+
+          const filesWithUrls = doc.files?.map(subFile => {
+            if (subFile.file instanceof Blob && (!subFile.fileUrl || !subFile.fileUrl.startsWith('blob:'))) {
+              return { ...subFile, fileUrl: URL.createObjectURL(subFile.file) };
+            }
+            return subFile;
+          });
+
+          return { ...doc, fileUrl: mainFileUrl, files: filesWithUrls };
         });
+
         setDocuments(docsWithUrls.sort((a, b) => {
             const dateA = getDocumentDate(a);
             const dateB = getDocumentDate(b);
@@ -88,6 +99,11 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (doc.fileUrl && doc.fileUrl.startsWith('blob:')) {
           URL.revokeObjectURL(doc.fileUrl);
         }
+        doc.files?.forEach(subFile => {
+          if (subFile.fileUrl && subFile.fileUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(subFile.fileUrl);
+          }
+        });
       });
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,32 +113,58 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addDocument = async (doc: DocumentWithFile) => {
     if (!user) return;
     const db = await openDB(user.uid);
-    const newDoc = { ...doc, id: `doc-${Date.now()}`, createdAt: new Date().toISOString() };
+    const newDoc: Document = { 
+        ...doc, 
+        id: `doc-${Date.now()}`, 
+        createdAt: new Date().toISOString() 
+    };
+
+    // For "Maison" documents, the first file in the array becomes the primary `file` for thumbnail/preview purposes
+    if (newDoc.category === 'Maison' && newDoc.files && newDoc.files.length > 0) {
+        newDoc.file = newDoc.files[0].file;
+    }
+
     await dbAddDocument(db, newDoc);
     await loadDocuments(); // Refresh state from DB
   };
 
-  const updateDocument = async (id: string, data: Partial<Document>, file?: File | null) => {
+  const updateDocument = async (id: string, data: Partial<Document>) => {
     if (!user) return;
     const db = await openDB(user.uid);
     const docToUpdate = documents.find(d => d.id === id);
     if (!docToUpdate) return;
     
-    const updatedData = { ...docToUpdate, ...data };
+    // Create a mutable copy of data
+    let updatedData: Document = { ...docToUpdate, ...data };
+
+    // Revoke old URLs before updating
+    if (docToUpdate.fileUrl && docToUpdate.fileUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(docToUpdate.fileUrl);
+    }
+    docToUpdate.files?.forEach(subFile => {
+        if (subFile.fileUrl && subFile.fileUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(subFile.fileUrl);
+        }
+    });
+
+    // If it's a "Maison" document, ensure the main 'file' property is synced with the first file in the 'files' array.
+    if (updatedData.category === 'Maison') {
+        if (updatedData.files && updatedData.files.length > 0) {
+            updatedData.file = updatedData.files[0].file;
+        } else {
+            // If all files are removed, clear the main file property
+            delete updatedData.file;
+        }
+    }
     
-    // If a new file is provided (or removed), update it. Otherwise, keep the old one.
-    if (file) {
-      updatedData.file = file;
-       if (updatedData.fileUrl && updatedData.fileUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(updatedData.fileUrl);
-      }
-      delete updatedData.fileUrl; // It will be recreated on next load
-    } else if (file === null) { // Explicitly removing file
-      delete updatedData.file;
-       if (updatedData.fileUrl && updatedData.fileUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(updatedData.fileUrl);
-      }
-      delete updatedData.fileUrl;
+    // Clear legacy fileUrl properties, they will be recreated on load
+    delete updatedData.fileUrl;
+    if (updatedData.files) {
+        updatedData.files = updatedData.files.map(sf => {
+            const newSf = {...sf};
+            delete newSf.fileUrl;
+            return newSf;
+        });
     }
 
     await dbUpdateDocument(db, updatedData);
