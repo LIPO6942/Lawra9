@@ -56,7 +56,7 @@ const prompt = ai.definePrompt({
   Veuillez extraire les informations suivantes de l'image du document fournie.
   - Nom du fournisseur : Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna").
   - Montant : Le **montant total à payer**. C'est l'information la plus importante. Pour la STEG, c'est le montant global (électricité + gaz).
-  - **Date d'échéance (prioritaire)** : Cherchez activement une date d'échéance, de dernier délai de paiement, ou "آخر أجل للدفع". C'est une information cruciale pour les alertes. Si vous la trouvez, remplissez le champ 'dueDate'.
+  - **Date d'échéance (prioritaire)** : Cherchez activement une date d'échéance, de dernier délai de paiement, ou "آخر أجل للدفع" ou "الرجاء الدفع قبل هذا التاريخ". C'est une information cruciale pour les alertes. Si vous la trouvez, remplissez le champ 'dueDate'.
   - Dates : Date d'émission et période de facturation si applicable.
   - Numéros : Numéro de facture, référence.
 
@@ -66,6 +66,7 @@ const prompt = ai.definePrompt({
      - Cherchez la consommation d'**électricité**. Repérez le libellé "Quantité" ou "الكمية" dans la rubrique électricité. Extrayez la valeur numérique ET son unité (ex: 150 KWh) dans "consumptionQuantity". NE PAS confondre avec le montant en dinars.
      - **IMPORTANT** : Cherchez une rubrique distincte pour le **Gaz**. Si elle existe, extrayez le montant total du gaz dans "gasAmount". Puis, repérez le libellé "Quantité" ou "الكمية" dans la rubrique gaz. Extrayez la valeur numérique et son unité (ex: 50 m³) dans "gasConsumptionQuantity". NE PAS confondre avec le montant en dinars. Si la rubrique Gaz n'existe pas, laissez ces deux champs vides.
   2. **Factures SONEDE** :
+     - La date à côté de "الرجاء الدفع قبل هذا التاريخ" est la **date d'échéance (dueDate)**. Le champ "issueDate" doit rester vide.
      - La consommation est trimestrielle (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans "consumptionPeriod".
      - Extrayez la quantité d'eau consommée en m³ (champ "Quantité") dans "consumptionQuantity".
   3. **Reçus et tickets de caisse** : Les champs de consommation, période, etc., ne sont généralement pas applicables.
@@ -108,3 +109,5 @@ const extractInvoiceDataFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    
