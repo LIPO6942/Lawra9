@@ -171,6 +171,7 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                             const docDate = formatDateSafe(doc.issueDate || doc.createdAt);
                             const periodStart = formatDateSafe(doc.billingStartDate, 'MMM yyyy');
                             const periodEnd = formatDateSafe(doc.billingEndDate, 'MMM yyyy');
+                            const fileCount = doc.files?.length || 0;
 
                             return (
                                 <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">
@@ -204,19 +205,25 @@ export function DocumentsTable({ title, documents, onUpdate, onDelete, isMaison 
                                                 <span className="font-mono text-foreground">{doc.amount} TND</span>
                                             )}
                                             {docDate && (
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1.5">
                                                     <CalendarDays className="h-4 w-4" />
                                                     <span>{docDate}</span>
                                                 </div>
                                             )}
+                                            {isMaison && fileCount > 0 && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <FileText className="h-4 w-4" />
+                                                    <span>{fileCount} fichier{fileCount > 1 ? 's' : ''}</span>
+                                                </div>
+                                            )}
                                             {isMaison && periodStart && periodEnd && (
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1.5">
                                                     <CalendarDays className="h-4 w-4 text-green-500" />
-                                                    <span className="text-green-600">{`${periodStart} - ${periodEnd}`}</span>
+                                                    <span className="text-green-600 font-medium">{`${periodStart} - ${periodEnd}`}</span>
                                                 </div>
                                             )}
                                             {isMaison && doc.notes && (
-                                            <div className="flex items-center gap-1">
+                                            <div className="flex items-center gap-1.5">
                                                 <MessageSquare className="h-4 w-4" />
                                             </div>
                                             )}
