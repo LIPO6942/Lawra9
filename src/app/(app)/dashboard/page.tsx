@@ -14,8 +14,15 @@ import { parseISO, getMonth, getYear, isValid } from 'date-fns';
 import { Document } from '@/lib/types';
 
 
-const getDocumentDate = (doc: Document): Date | null => {
-    const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
+const getDocumentDateForExpense = (doc: Document): Date | null => {
+    // For paid invoices, issueDate is updated to payment date. We prioritize it.
+    // If dueDate is present, it's not paid yet. The expense should be counted in its period, not now.
+    // So we use billingEndDate or issueDate. If dueDate is NOT present, it means it's paid or doesn't have an expiry.
+    // In that case, issueDate (which could be the payment date) is the one we want.
+    const datePriority = doc.dueDate 
+        ? [doc.billingEndDate, doc.issueDate, doc.createdAt]
+        : [doc.issueDate, doc.billingEndDate, doc.createdAt];
+
     for (const dateStr of datePriority) {
         if (dateStr) {
             const date = parseISO(dateStr);
@@ -39,7 +46,8 @@ export default function DashboardPage() {
     const currentYear = getYear(now);
 
     return documents.reduce((total, doc) => {
-        const docDate = getDocumentDate(doc);
+        // Use a dedicated date logic for this widget to ensure accuracy
+        const docDate = getDocumentDateForExpense(doc);
         if (doc.amount && docDate && getMonth(docDate) === currentMonth && getYear(docDate) === currentYear) {
             const amount = parseFloat(doc.amount.replace(',', '.'));
             if (!isNaN(amount)) {
