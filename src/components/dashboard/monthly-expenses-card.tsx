@@ -11,10 +11,9 @@ import { fr } from 'date-fns/locale';
 import { LineChart, Info } from 'lucide-react';
 
 const getDocumentDateForExpense = (doc: Document): Date | null => {
-    const datePriority = doc.dueDate 
-        ? [doc.billingEndDate, doc.issueDate, doc.createdAt]
-        : [doc.issueDate, doc.billingEndDate, doc.createdAt];
-
+    // For paid invoices, issueDate is updated to payment date. Prioritize this.
+    // For unpaid, use issue or billing end date.
+    const datePriority = [doc.issueDate, doc.billingEndDate, doc.createdAt];
     for (const dateStr of datePriority) {
         if (dateStr) {
             const date = parseISO(dateStr);
@@ -41,6 +40,7 @@ export function MonthlyExpensesCard() {
     const currentYear = getYear(new Date());
 
     documents.forEach(doc => {
+      // Ignore documents from 'Maison' category and those without an amount
       if (doc.category === 'Maison' || !doc.amount) return;
 
       const docDate = getDocumentDateForExpense(doc);
@@ -68,8 +68,7 @@ export function MonthlyExpensesCard() {
 
   const currentMonthTotal = useMemo(() => {
     const now = new Date();
-    const currentMonthKey = format(now, 'yyyy-MM').split('-')[1];
-    const currentMonthData = monthlyTotals.find(m => m.monthIndex === parseInt(currentMonthKey)-1);
+    const currentMonthData = monthlyTotals.find(m => m.monthIndex === getMonth(now));
     return currentMonthData?.total || 0;
   }, [monthlyTotals]);
 
