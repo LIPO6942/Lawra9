@@ -11,6 +11,7 @@ import { useDocuments } from '@/contexts/document-context';
 import { Document } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { CompareDialog } from '@/components/documents/compare-dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function DocumentsPage() {
   const { documents, updateDocument, deleteDocument } = useDocuments();
@@ -50,6 +51,9 @@ export default function DocumentsPage() {
 
   const allDocumentIds = useMemo(() => filteredDocuments.map(d => d.id), [filteredDocuments]);
 
+  // Create an array of default open accordion items
+  const defaultAccordionValues = useMemo(() => Object.keys(groupedDocuments), [groupedDocuments]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -81,24 +85,33 @@ export default function DocumentsPage() {
       </div>
       
       {Object.keys(groupedDocuments).length > 0 ? (
-        <div className="space-y-6">
+        <Accordion type="multiple" defaultValue={defaultAccordionValues} className="space-y-4">
             {Object.entries(groupedDocuments).sort(([a], [b]) => a.localeCompare(b)).map(([groupTitle, docs]) => (
-                <DocumentsTable
-                    key={groupTitle}
-                    title={groupTitle}
-                    documents={docs}
-                    onUpdate={updateDocument}
-                    onDelete={deleteDocument}
-                    onSelectionChange={handleSelectionChange}
-                    allDocumentIds={allDocumentIds}
-                />
+                <AccordionItem key={groupTitle} value={groupTitle} className="border-none">
+                     <Card>
+                        <AccordionTrigger className="p-4 sm:p-6 text-lg font-headline hover:no-underline">
+                             {groupTitle} ({docs.length})
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-0">
+                            <DocumentsTable
+                                documents={docs}
+                                onUpdate={updateDocument}
+                                onDelete={deleteDocument}
+                                onSelectionChange={handleSelectionChange}
+                                allDocumentIds={allDocumentIds}
+                            />
+                        </AccordionContent>
+                    </Card>
+                </AccordionItem>
             ))}
-        </div>
+        </Accordion>
       ) : (
         <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg bg-muted/50">
             <Info className="h-10 w-10 text-muted-foreground mb-4" />
-            <p className="font-semibold text-muted-foreground">Aucun document ne correspond à votre recherche.</p>
-            <p className="text-sm text-muted-foreground/80 mt-1">Essayez de modifier vos termes de recherche.</p>
+            <p className="font-semibold text-muted-foreground">Aucun document trouvé.</p>
+            <p className="text-sm text-muted-foreground/80 mt-1">
+                {searchTerm ? "Essayez de modifier vos termes de recherche." : "Cliquez sur 'Ajouter' pour commencer."}
+            </p>
         </div>
       )}
 
