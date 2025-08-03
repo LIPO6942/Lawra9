@@ -14,7 +14,6 @@ import { UploadDocumentDialog } from '../upload-document-dialog';
 import { MaisonUploadDialog } from '../maison-upload-dialog';
 import { MaisonDetailsDialog } from '../maison/maison-details-dialog';
 import { DocumentDetailsDialog } from './document-details-dialog';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -130,10 +129,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
         setIsDetailsModalOpen(true);
     }
     
-    const handleViewFile = (docId: string, fileUrl?: string) => {
-        if (fileUrl) {
-            router.push(`/view?id=${docId}`);
-        }
+    const handleViewFile = (docId: string) => {
+        router.push(`/view?id=${docId}`);
     }
 
     const confirmDelete = (doc: Document) => {
@@ -192,7 +189,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         <CategoryIcon category={doc.category} />
                                     </div>
                                 )}
-                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id, doc.fileUrl)}>
+                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id)}>
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <p className="font-semibold pr-2 break-words">{doc.name}</p>
@@ -265,12 +262,12 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         Détails / Modifier
                                                     </DropdownMenuItem>
-                                                    {doc.fileUrl && (
-                                                        <DropdownMenuItem onClick={() => handleViewFile(doc.id, doc.fileUrl!)}>
-                                                            <Eye className="mr-2 h-4 w-4" />
-                                                            Consulter le fichier
-                                                        </DropdownMenuItem>
-                                                    )}
+                                                    
+                                                    <DropdownMenuItem onClick={() => handleViewFile(doc.id)}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        Consulter le fichier
+                                                    </DropdownMenuItem>
+                                                    
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
                                                         <Trash2 className="mr-2 h-4 w-4" />

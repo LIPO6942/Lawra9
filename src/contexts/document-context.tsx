@@ -57,23 +57,9 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const db = await openDB(user.uid);
         const docsFromDb = await dbGetAllDocuments(db);
 
-        const docsWithUrls = docsFromDb.map(doc => {
-          let mainFileUrl = doc.fileUrl;
-          if (doc.file instanceof Blob && (!mainFileUrl || !mainFileUrl.startsWith('blob:'))) {
-            mainFileUrl = URL.createObjectURL(doc.file);
-          }
-
-          const filesWithUrls = doc.files?.map(subFile => {
-            if (subFile.file instanceof Blob && (!subFile.fileUrl || !subFile.fileUrl.startsWith('blob:'))) {
-              return { ...subFile, fileUrl: URL.createObjectURL(subFile.file) };
-            }
-            return subFile;
-          });
-
-          return { ...doc, fileUrl: mainFileUrl, files: filesWithUrls };
-        });
-
-        setDocuments(docsWithUrls.sort((a, b) => {
+        // We no longer create object URLs here to prevent them from becoming stale.
+        // They will be created on-demand in the component that needs them (e.g., DocumentView).
+        setDocuments(docsFromDb.sort((a, b) => {
             const dateA = getDocumentDate(a);
             const dateB = getDocumentDate(b);
             if (dateA && dateB) {
@@ -92,22 +78,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     loadDocuments();
-
-    // Cleanup object URLs on unmount
-    return () => {
-      documents.forEach(doc => {
-        if (doc.fileUrl && doc.fileUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(doc.fileUrl);
-        }
-        doc.files?.forEach(subFile => {
-          if (subFile.fileUrl && subFile.fileUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(subFile.fileUrl);
-          }
-        });
-      });
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, loadDocuments]);
 
 
   const addDocument = async (doc: DocumentWithFile) => {
@@ -135,16 +106,6 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     let updatedData: Document = { ...docToUpdate, ...data };
     
-    // Revoke old URLs before updating
-    if (docToUpdate.fileUrl && docToUpdate.fileUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(docToUpdate.fileUrl);
-    }
-    docToUpdate.files?.forEach(subFile => {
-        if (subFile.fileUrl && subFile.fileUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(subFile.fileUrl);
-        }
-    });
-
     if (updatedData.category === 'Maison') {
         if (updatedData.files && updatedData.files.length > 0) {
             updatedData.file = updatedData.files[0].file;
@@ -153,16 +114,6 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     } else if (data.file) { // For non-maison docs, handle single file update
         updatedData.file = data.file;
-    }
-    
-    // Clear legacy fileUrl properties, they will be recreated on load
-    delete updatedData.fileUrl;
-    if (updatedData.files) {
-        updatedData.files = updatedData.files.map(sf => {
-            const newSf = {...sf};
-            delete newSf.fileUrl;
-            return newSf;
-        });
     }
 
     await dbUpdateDocument(db, updatedData);

@@ -15,8 +15,10 @@ function DocumentView() {
   const { getDocumentById } = useDocuments();
   const [document, setDocument] = useState<Document | null | undefined>(undefined);
   const [activeFileIndex, setActiveFileIndex] = useState(0);
+  const [activeFileUrl, setActiveFileUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    // This effect finds the document from context when the ID changes
     if (id) {
       const doc = getDocumentById(id);
       setDocument(doc);
@@ -25,28 +27,37 @@ function DocumentView() {
     }
   }, [id, getDocumentById]);
 
-  const activeFile = useMemo((): SubFile | { fileUrl?: string, name: string, file?: Blob | File } | undefined => {
+  const activeFile = useMemo((): SubFile | { file?: Blob | File, name: string } | undefined => {
     if (!document) return undefined;
     if (document.category === 'Maison' && document.files && document.files.length > 0) {
       return document.files[activeFileIndex];
     }
     // Fallback for single-file documents
-    return { fileUrl: document.fileUrl, name: document.name, file: document.file };
+    return { file: document.file, name: document.name };
   }, [document, activeFileIndex]);
+
+  useEffect(() => {
+    // This effect creates/revokes the object URL when the active file changes
+    let fileUrl: string | null = null;
+    if (activeFile?.file) {
+      fileUrl = URL.createObjectURL(activeFile.file);
+      setActiveFileUrl(fileUrl);
+    } else {
+      setActiveFileUrl(null);
+    }
+
+    return () => {
+      // Cleanup by revoking the object URL when the component unmounts or the file changes
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
+    };
+  }, [activeFile]);
   
   const isImage = useMemo(() => {
     if (!activeFile?.file) return false;
-    
-    // Check file type from the Blob/File if available
-    if (activeFile.file && activeFile.file.type) {
-        return activeFile.file.type.startsWith('image/');
-    }
-    
-    // Fallback to checking URL, though less reliable as fileUrl might not have extension
-    const url = activeFile.fileUrl || '';
-    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.startsWith('data:image');
+    return activeFile.file.type.startsWith('image/');
   }, [activeFile]);
-
 
   if (document === undefined) {
     return (
@@ -59,12 +70,12 @@ function DocumentView() {
   
   const hasMultipleFiles = document?.category === 'Maison' && document.files && document.files.length > 1;
 
-  if (!document || !activeFile?.fileUrl) {
+  if (!document || !activeFileUrl) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted text-center p-4">
         <FileQuestion className="h-16 w-16 text-destructive" />
         <h1 className="mt-6 text-2xl font-bold">Document non trouvé</h1>
-        <p className="mt-2 text-muted-foreground">L'identifiant du document est manquant, invalide, ou le dossier ne contient aucun fichier.</p>
+        <p className="mt-2 text-muted-foreground">Le document est introuvable ou le fichier est corrompu/manquant.</p>
         <Button asChild className="mt-6">
           <Link href="/documents">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -92,7 +103,7 @@ function DocumentView() {
       <header className="flex h-14 items-center justify-between border-b bg-background px-4 sm:px-6 sticky top-0 z-10">
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-semibold truncate pr-4" title={document.name}>{document.name}</h1>
-          {hasMultipleFiles && <p className="text-xs text-muted-foreground">{`Fichier ${activeFileIndex + 1} / ${document.files!.length} - ${activeFile.name}`}</p>}
+          {hasMultipleFiles && activeFile && <p className="text-xs text-muted-foreground">{`Fichier ${activeFileIndex + 1} / ${document.files!.length} - ${activeFile.name}`}</p>}
         </div>
         <Button asChild variant="outline">
           <Link href={document.category === 'Maison' ? '/maison' : '/documents'}>
@@ -105,10 +116,10 @@ function DocumentView() {
         {isImage ? (
             <div className="w-full h-full p-4 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={activeFile.fileUrl} alt={activeFile.name} className="max-w-full max-h-full object-contain" />
+                <img src={activeFileUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
             </div>
         ) : (
-          <embed src={activeFile.fileUrl} type={activeFile.file?.type || 'application/pdf'} className="h-full w-full" />
+          <embed src={activeFileUrl} type={activeFile?.file?.type || 'application/pdf'} className="h-full w-full" />
         )}
         
         {hasMultipleFiles && (
