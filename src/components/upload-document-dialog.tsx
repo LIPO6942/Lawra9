@@ -321,11 +321,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
                  <div className="space-y-2">
                     <Label htmlFor="file-upload">Fichier (optionnel)</Label>
-                    {fileToUpload || formData.fileUrl ? (
+                    {fileToUpload || formData.file ? (
                         <div className="flex items-center space-x-2 rounded-md bg-muted p-2">
                           <FileText className="h-5 w-5 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground flex-1 truncate">{fileToUpload?.name || formData.name}</span>
-                           <Button variant="ghost" size="sm" onClick={() => { setFileToUpload(null); setFormData(prev => ({...prev, fileUrl: undefined}))}}>Changer</Button>
+                           <Button variant="ghost" size="sm" onClick={() => { setFileToUpload(null); setFormData(prev => ({...prev, file: undefined}))}}>Changer</Button>
                         </div>
                     ) : (
                       <label htmlFor="file-upload-edit" className="cursor-pointer">
