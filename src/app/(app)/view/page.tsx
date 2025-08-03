@@ -35,13 +35,14 @@ function DocumentView() {
   }, [document, activeFileIndex]);
   
   const isImage = useMemo(() => {
-    if (!activeFile) return false;
+    if (!activeFile?.file) return false;
     
     // Check file type from the Blob/File if available
     if (activeFile.file && activeFile.file.type) {
         return activeFile.file.type.startsWith('image/');
     }
-    // Fallback to checking URL
+    
+    // Fallback to checking URL, though less reliable as fileUrl might not have extension
     const url = activeFile.fileUrl || '';
     return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.startsWith('data:image');
   }, [activeFile]);

@@ -25,7 +25,7 @@ interface DocumentContextType {
   alerts: Alert[];
   monthlyExpenses: MonthlyExpense[];
   addDocument: (doc: DocumentWithFile) => Promise<void>;
-  updateDocument: (id: string, data: Partial<Document>) => Promise<void>;
+  updateDocument: (id: string, data: Partial<DocumentWithFile>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   markAsPaid: (id: string) => void;
   getDocumentById: (id: string) => Document | undefined;
@@ -119,24 +119,22 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         createdAt: new Date().toISOString() 
     };
 
-    // For "Maison" documents, the first file in the array becomes the primary `file` for thumbnail/preview purposes
     if (newDoc.category === 'Maison' && newDoc.files && newDoc.files.length > 0) {
         newDoc.file = newDoc.files[0].file;
     }
 
     await dbAddDocument(db, newDoc);
-    await loadDocuments(); // Refresh state from DB
+    await loadDocuments(); 
   };
 
-  const updateDocument = async (id: string, data: Partial<Document>) => {
+  const updateDocument = async (id: string, data: Partial<DocumentWithFile>) => {
     if (!user) return;
     const db = await openDB(user.uid);
     const docToUpdate = documents.find(d => d.id === id);
     if (!docToUpdate) return;
     
-    // Create a mutable copy of data
     let updatedData: Document = { ...docToUpdate, ...data };
-
+    
     // Revoke old URLs before updating
     if (docToUpdate.fileUrl && docToUpdate.fileUrl.startsWith('blob:')) {
         URL.revokeObjectURL(docToUpdate.fileUrl);
@@ -147,19 +145,14 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     });
 
-    // If it's a "Maison" document, ensure the main 'file' property is synced with the first file in the 'files' array.
     if (updatedData.category === 'Maison') {
         if (updatedData.files && updatedData.files.length > 0) {
             updatedData.file = updatedData.files[0].file;
         } else {
-            // If all files are removed, clear the main file property
             delete updatedData.file;
         }
-    }
-
-    // If a new single file is passed in data (for regular invoices), handle it
-    if (data.file && data.file instanceof Blob) {
-      updatedData.file = data.file;
+    } else if (data.file) { // For non-maison docs, handle single file update
+        updatedData.file = data.file;
     }
     
     // Clear legacy fileUrl properties, they will be recreated on load
@@ -173,14 +166,14 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     await dbUpdateDocument(db, updatedData);
-    await loadDocuments(); // Refresh state from DB
+    await loadDocuments(); 
   };
 
   const deleteDocument = async (id: string) => {
     if (!user) return;
     const db = await openDB(user.uid);
     await dbDeleteDocument(db, id);
-    await loadDocuments(); // Refresh state from DB
+    await loadDocuments(); 
     toast({ title: 'Document supprimé' });
   };
   
@@ -189,14 +182,12 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const db = await openDB(user.uid);
     const docToUpdate = documents.find(d => d.id === id);
     if (docToUpdate) {
-        // Always set the issueDate to now to correctly anchor the expense to the payment date.
-        // This ensures it is included in the current month's expenses.
-        docToUpdate.issueDate = new Date().toISOString();
-        
-        // Remove due date to clear the alert.
-        docToUpdate.dueDate = undefined;
-
-        await dbUpdateDocument(db, docToUpdate);
+        const updatedDoc = {
+            ...docToUpdate,
+            issueDate: new Date().toISOString(),
+            dueDate: undefined
+        };
+        await dbUpdateDocument(db, updatedDoc);
         await loadDocuments();
         toast({ title: 'Document marqué comme payé' });
     }
