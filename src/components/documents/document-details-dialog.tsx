@@ -88,7 +88,7 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
 
         <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>Fermer</Button>
-            {document.fileUrl && (
+            {document.id && (
                 <Button onClick={handleViewFile}>
                     <Eye className="mr-2 h-4 w-4" />
                     Consulter le fichier
