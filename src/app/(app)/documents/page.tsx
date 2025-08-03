@@ -51,9 +51,6 @@ export default function DocumentsPage() {
 
   const allDocumentIds = useMemo(() => filteredDocuments.map(d => d.id), [filteredDocuments]);
 
-  // Create an array of default open accordion items
-  const defaultAccordionValues = useMemo(() => Object.keys(groupedDocuments), [groupedDocuments]);
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -85,11 +82,11 @@ export default function DocumentsPage() {
       </div>
       
       {Object.keys(groupedDocuments).length > 0 ? (
-        <Accordion type="multiple" defaultValue={defaultAccordionValues} className="space-y-4">
+        <Accordion type="multiple" className="space-y-4">
             {Object.entries(groupedDocuments).sort(([a], [b]) => a.localeCompare(b)).map(([groupTitle, docs]) => (
                 <AccordionItem key={groupTitle} value={groupTitle} className="border-none">
                      <Card>
-                        <AccordionTrigger className="p-4 sm:p-6 text-lg font-headline hover:no-underline">
+                        <AccordionTrigger className="p-4 sm:p-6 text-lg font-headline font-bold hover:no-underline">
                              {groupTitle} ({docs.length})
                         </AccordionTrigger>
                         <AccordionContent className="pt-0">
