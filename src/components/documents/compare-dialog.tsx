@@ -8,8 +8,11 @@ import { Document } from '@/lib/types';
 import { useDocuments } from '@/contexts/document-context';
 import { useToast } from '@/hooks/use-toast';
 import { compareInvoices, CompareInvoicesOutput } from '@/ai/flows/compare-invoices-flow';
-import { Loader2, GitCompareArrows, ArrowRight, FileText, Wallet, BarChart2, Zap, Wind } from 'lucide-react';
+import { Loader2, GitCompareArrows, ArrowRight, FileText, Wallet, BarChart2, Zap, Wind, Lightbulb, TrendingUp, TrendingDown, CircleCheck, Info, Droplets } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 interface CompareDialogProps {
   open: boolean;
@@ -87,23 +90,23 @@ export function CompareDialog({ open, onOpenChange, documentsToCompare }: Compar
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-headline text-xl">
             <GitCompareArrows className="h-6 w-6 text-primary"/>
-            Comparaison de Factures
+            Analyse Comparative
           </DialogTitle>
           <DialogDescription>
              Analyse des différences entre les deux documents sélectionnés.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4 px-1">
-             <div className="flex items-center justify-center gap-4 text-sm font-semibold text-center">
+        <div className="py-4 px-1 max-h-[70vh] overflow-y-auto pr-4 -mr-4">
+             <div className="flex items-center justify-center gap-4 text-sm font-semibold text-center mb-6">
                 <div className="flex-1 p-2 border rounded-md bg-muted/50 min-w-0">
-                    <FileText className="mx-auto mb-1 h-5 w-5"/>
-                    <p className="break-words" title={doc1.name}>{doc1.name}</p>
+                    <p className="text-xs text-muted-foreground">{result?.period1 || 'Ancienne facture'}</p>
+                    <p className="break-words font-bold" title={doc1.name}>{doc1.name}</p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0"/>
                  <div className="flex-1 p-2 border rounded-md bg-muted/50 min-w-0">
-                    <FileText className="mx-auto mb-1 h-5 w-5"/>
-                    <p className="break-words" title={doc2.name}>{doc2.name}</p>
+                    <p className="text-xs text-muted-foreground">{result?.period2 || 'Nouvelle facture'}</p>
+                    <p className="break-words font-bold" title={doc2.name}>{doc2.name}</p>
                 </div>
              </div>
 
@@ -115,20 +118,47 @@ export function CompareDialog({ open, onOpenChange, documentsToCompare }: Compar
             )}
 
             {result && (
-                <div className="mt-6 space-y-4 animate-in fade-in-50">
-                    <Card>
-                       <CardHeader>
-                         <CardTitle className="text-base">Résumé de l'analyse</CardTitle>
-                       </CardHeader>
-                       <CardContent>
-                          <p className="text-lg font-semibold text-center leading-relaxed">"{result.summary}"</p>
-                       </CardContent>
-                    </Card>
+                <div className="space-y-4 animate-in fade-in-50">
+                    <Alert className="bg-primary/5 border-primary/20">
+                      <Info className="h-4 w-4" />
+                      <AlertTitle className="font-bold text-base">Synthèse</AlertTitle>
+                      <AlertDescription className="text-base text-foreground/90">
+                        {result.summary}
+                      </AlertDescription>
+                    </Alert>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InfoCard icon={Wallet} title="Différence de Coût" value={result.costDifference} />
-                        <ConsumptionCard title="Différence de Consommation" value={result.consumptionDifference} />
+                      <CostCard difference={result.costDifference} percentage={result.costPercentageChange} />
+                      <ConsumptionCard differences={result.consumptionDifferences} />
                     </div>
+
+                     {result.insights && result.insights.length > 0 && (
+                        <Card>
+                            <CardHeader className="flex-row items-center gap-3 space-y-0 p-4">
+                                <Lightbulb className="h-5 w-5 text-yellow-400"/>
+                                <CardTitle className="text-base">Observations Clés</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0">
+                                <ul className="space-y-2 text-sm list-disc pl-5">
+                                    {result.insights.map((insight, i) => <li key={i}>{insight}</li>)}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    )}
+                    
+                     {result.recommendations && result.recommendations.length > 0 && (
+                        <Card>
+                            <CardHeader className="flex-row items-center gap-3 space-y-0 p-4">
+                                <CircleCheck className="h-5 w-5 text-green-500"/>
+                                <CardTitle className="text-base">Recommandations</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0">
+                               <ul className="space-y-2 text-sm list-disc pl-5">
+                                    {result.recommendations.map((rec, i) => <li key={i}>{rec}</li>)}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             )}
         </div>
@@ -137,53 +167,75 @@ export function CompareDialog({ open, onOpenChange, documentsToCompare }: Compar
   );
 }
 
-const InfoCard = ({ icon: Icon, title, value }: { icon: React.ElementType, title: string, value?: string }) => {
-    if (!value) return null;
+
+const CostCard = ({ difference, percentage }: { difference?: string, percentage?: string }) => {
+    if (!difference) return null;
+
+    const isPositive = difference.startsWith('+');
+    const colorClass = isPositive ? 'text-red-500' : 'text-green-600';
+    const Icon = isPositive ? TrendingUp : TrendingDown;
     
-    let colorClass = 'text-foreground';
-    if (value.startsWith('+')) colorClass = 'text-red-500';
-    if (value.startsWith('-')) colorClass = 'text-green-600';
-
     return (
-        <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-            <Icon className="h-6 w-6 text-muted-foreground mt-1 shrink-0" />
-            <div>
-                <p className="font-semibold text-muted-foreground">{title}</p>
-                <p className={`text-xl font-bold ${colorClass}`}>{value}</p>
-            </div>
-        </div>
-    )
-}
+         <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Variation du Coût</CardTitle>
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className={cn("text-2xl font-bold", colorClass)}>{difference}</div>
+                {percentage && (
+                    <p className={cn("text-xs", colorClass, "flex items-center gap-1")}>
+                        <Icon className="h-4 w-4" /> {percentage}
+                    </p>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
 
+const ConsumptionCard = ({ differences }: { differences?: { type: string, difference: string }[] }) => {
+    if (!differences || differences.length === 0) {
+       return (
+         <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Variation de Consommation</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-center h-20">
+                <p className="text-sm text-muted-foreground">Aucune donnée de consommation</p>
+            </CardContent>
+        </Card>
+       );
+    }
 
-const ConsumptionCard = ({ title, value }: { title: string, value?: string }) => {
-    if (!value) return null;
-
-    const parts = value.split(',').map(p => p.trim());
-
+    const getIcon = (type: string) => {
+        if (type.toLowerCase().includes('gaz')) return Wind;
+        if (type.toLowerCase().includes('eau')) return Droplets;
+        return Zap; // Default to electricity
+    }
+    
     return (
-        <div className="p-4 rounded-lg bg-muted/50">
-            <p className="font-semibold text-muted-foreground mb-3">{title}</p>
-            <div className="space-y-3">
-                {parts.map((part, index) => {
-                    const match = part.match(/([+-][\d,.]+)\s*(.+)/);
-                    if (!match) return null;
-
-                    const [, diff, name] = match;
-                    const colorClass = diff.startsWith('+') ? 'text-red-500' : 'text-green-600';
-                    const Icon = name.toLowerCase().includes('gaz') ? Wind : Zap;
-
+        <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Variation de Consommation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {differences.map((item, index) => {
+                    const isPositive = item.difference.startsWith('+');
+                    const colorClass = isPositive ? 'text-red-500' : 'text-green-600';
+                    const Icon = getIcon(item.type);
                     return (
-                         <div key={index} className="flex items-center gap-3">
-                            <Icon className={`h-5 w-5 shrink-0 ${colorClass}`} />
-                            <div className="flex-1">
-                                <span className="font-semibold">{name}</span>
+                         <div key={index} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                                <Icon className={cn("h-4 w-4", colorClass)} />
+                                <span className="font-medium">{item.type}</span>
                             </div>
-                            <span className={`text-lg font-bold ${colorClass}`}>{diff}</span>
+                            <Badge variant={isPositive ? "destructive" : "secondary"} className={cn(isPositive ? "bg-red-500/10 text-red-600" : "bg-green-500/10 text-green-600", "font-mono border-none")}>
+                                {item.difference}
+                            </Badge>
                         </div>
-                    );
+                    )
                 })}
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     )
 }
