@@ -249,7 +249,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex items-center justify-center min-h-screen bg-card">
              <div className="flex flex-col items-center gap-2">
                 <PaperworkIcon className="h-8 w-8 text-primary animate-pulse"/>
                 <p className="text-muted-foreground text-sm mt-2">Chargement de la session...</p>
