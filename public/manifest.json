@@ -1,11 +1,11 @@
 {
   "name": "Lawra9",
   "short_name": "Lawra9",
-  "description": "Gérez toute votre paperasse tunisienne en un seul endroit.",
+  "description": "Votre centre de commande de documents.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F0F8FF",
-  "theme_color": "#ADD8E6",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
