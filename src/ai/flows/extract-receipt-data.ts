@@ -7,6 +7,7 @@ const ReceiptLineSchema = z.object({
   id: z.string().describe('ID unique de la ligne'),
   rawLabel: z.string().describe('Libellé tel que sur le reçu'),
   normalizedLabel: z.string().optional().describe('Libellé normalisé'),
+  category: z.string().optional().describe('Catégorie produit (taxonomie définie)'),
   quantity: z.number().optional().describe('Quantité achetée'),
   unit: z.string().optional().describe('Unité (ex: pcs, kg, L)'),
   unitPrice: z.number().optional().describe('Prix unitaire'),
@@ -60,6 +61,13 @@ Règles:
 - Vérifier la cohérence: somme des lignes ≈ total (tolérance 2%).
 - Mettre confidence entre 0 et 1 selon votre certitude globale.
 - Inclure dans ocrText un résumé texte si utile.
+
+Catégorisation:
+- Assigner à chaque ligne une catégorie parmi: "Epicerie", "Frais", "Boucherie", "Boulangerie", "Boissons", "Hygiène", "Entretien", "Bébé", "Animaux", "Maison", "Électronique", "Autres".
+- Si ambigu, choisissez la mieux adaptée et restez cohérent.
+
+Quantité/Unité:
+- Renseigner "quantity" et "unit" si repérables (ex: 2 pcs, 500 g, 1 L). Si absents, quantity=1, unit="pcs".
 
 Retourner les dates au format ISO AAAA-MM-JJ ou AAAA-MM-JJTHH:mm si heure trouvée.
 

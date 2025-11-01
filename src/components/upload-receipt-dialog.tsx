@@ -8,6 +8,7 @@ import { Camera, Loader2, PlusCircle, UploadCloud } from 'lucide-react';
 import { useReceipts } from '@/contexts/receipt-context';
 import { extractReceiptData } from '@/ai/flows/extract-receipt-data';
 import { Receipt } from '@/lib/types';
+import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice } from '@/lib/utils';
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -40,6 +41,29 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
     const res = await extractReceiptData({ receiptDataUri: dataUri, mimeType: file.type });
 
     setProcessingMessage('Sauvegarde...');
+    const enhancedLines = (res.lines || []).map((l, idx) => {
+      const label = l.normalizedLabel || l.rawLabel;
+      const heurCat = mapCategoryHeuristic(label || '');
+      const norm = normalizeUnit(l.quantity, l.unit, label);
+      const line = {
+        id: l.id || `ln-${idx}`,
+        rawLabel: l.rawLabel,
+        normalizedLabel: l.normalizedLabel,
+        category: l.category || heurCat,
+        quantity: l.quantity ?? 1,
+        unit: l.unit ?? 'pcs',
+        unitPrice: l.unitPrice,
+        lineTotal: l.lineTotal,
+        vatRate: l.vatRate,
+        barcode: l.barcode,
+        stdUnit: norm.stdUnit,
+        stdQty: norm.stdQty,
+        standardUnitPrice: undefined as number | undefined,
+      };
+      line.standardUnitPrice = computeStandardUnitPrice(line as any);
+      return line as any;
+    });
+
     const receipt: Omit<Receipt, 'id'> = {
       storeName: res.storeName,
       storeId: res.storeId,
@@ -52,17 +76,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       file,
       status: 'parsed',
       confidence: res.confidence ?? 0.7,
-      lines: (res.lines || []).map((l, idx) => ({
-        id: l.id || `ln-${idx}`,
-        rawLabel: l.rawLabel,
-        normalizedLabel: l.normalizedLabel,
-        quantity: l.quantity,
-        unit: l.unit,
-        unitPrice: l.unitPrice,
-        lineTotal: l.lineTotal,
-        vatRate: l.vatRate,
-        barcode: l.barcode,
-      })),
+      lines: enhancedLines,
     };
 
     await addReceipt(receipt);

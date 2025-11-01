@@ -50,12 +50,17 @@ export type ReceiptLine = {
   id: string;
   rawLabel: string;
   normalizedLabel?: string;
+  category?: string; // e.g., Epicerie, Frais, Boissons, etc.
   quantity?: number;
   unit?: string;
   unitPrice?: number;
   lineTotal?: number;
   vatRate?: number;
   barcode?: string;
+  // normalized unit fields
+  stdUnit?: 'kg' | 'L' | 'pcs';
+  stdQty?: number; // quantity in stdUnit (e.g., 0.5 kg, 1.5 L, 2 pcs)
+  standardUnitPrice?: number; // price per stdUnit
 };
 
 export type Receipt = {

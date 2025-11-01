@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Receipt } from 'lucide-react';
 
 export default function ReceiptsPage() {
   const { receipts } = useReceipts();
@@ -14,7 +15,10 @@ export default function ReceiptsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Reçus</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Receipt className="h-6 w-6 text-primary" />
+          Reçus
+        </h1>
         <UploadReceiptDialog />
       </div>
       <Separator />
