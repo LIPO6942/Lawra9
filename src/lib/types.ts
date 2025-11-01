@@ -41,3 +41,42 @@ export type Alert = {
   dueDate: string; // ISO date string
   type: 'Paiement' | 'Expiration' | 'Renouvellement';
 };
+
+// ==========================
+// Receipts & Items (MVP)
+// ==========================
+
+export type ReceiptLine = {
+  id: string;
+  rawLabel: string;
+  normalizedLabel?: string;
+  quantity?: number;
+  unit?: string;
+  unitPrice?: number;
+  lineTotal?: number;
+  vatRate?: number;
+  barcode?: string;
+};
+
+export type Receipt = {
+  id: string;
+  storeName?: string;
+  storeId?: string;
+  purchaseAt?: string; // ISO datetime
+  currency?: string; // e.g., TND, EUR
+  total?: number;
+  subtotal?: number;
+  taxTotal?: number;
+  ocrText?: string;
+  file?: File | Blob; // original image/PDF (client-side IndexedDB)
+  status?: 'parsed' | 'needs_review' | 'confirmed';
+  confidence?: number; // 0..1
+  lines: ReceiptLine[];
+};
+
+export type ProductSummary = {
+  productKey: string; // normalized label key
+  lastPurchasedAt?: string;
+  lastUnitPrice?: number;
+  lastStoreName?: string;
+};

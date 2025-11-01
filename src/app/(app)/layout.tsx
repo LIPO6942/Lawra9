@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { UserPreferencesProvider, useUserPreferences, ISP } from '@/contexts/user-preferences-context';
 import { DocumentProvider } from '@/contexts/document-context';
+import { ReceiptProvider } from '@/contexts/receipt-context';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -29,6 +30,7 @@ const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const mainNavItems = [
     { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/documents', label: 'Documents', icon: Files },
+    { href: '/receipts', label: 'Reçus', icon: Files },
     { href: '/historique', label: 'Historique', icon: History },
     { href: '/stats', label: 'Statistiques', icon: BarChartHorizontal },
     { href: '/maison', label: 'Espace Maison', icon: Home },
@@ -269,7 +271,9 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
     return (
         <UserPreferencesProvider>
             <DocumentProvider>
-                <ProtectedLayout>{children}</ProtectedLayout>
+                <ReceiptProvider>
+                    <ProtectedLayout>{children}</ProtectedLayout>
+                </ReceiptProvider>
             </DocumentProvider>
         </UserPreferencesProvider>
     )
