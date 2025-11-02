@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
-import { computeKpis, monthlyTrend, spendByCategory, spendByStore } from '@/lib/utils';
+import { computeKpis, monthlyTrend, spendByCategory, spendByStore, aggregateCategoryStats, computeProductInsights } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format as formatDate, parseISO, isValid as isValidDate } from 'date-fns';
 
 function useFilteredReceipts(store: string, months: number) {
   const { receipts } = useReceipts();
@@ -42,6 +44,13 @@ export default function ReceiptStatsPage() {
   const byCat = useMemo(() => Object.entries(spendByCategory(data)).map(([name, total]) => ({ name, total })), [data]);
   const byStore = useMemo(() => Object.entries(spendByStore(data)).map(([name, total]) => ({ name, total })), [data]);
   const trend = useMemo(() => monthlyTrend(data), [data]);
+  const catStats = useMemo(() => aggregateCategoryStats(data), [data]);
+  // Product insights over the last 3 months, but respect selected store filter
+  const storeFilteredReceipts = useMemo(() => {
+    if (store === 'ALL') return data; // already time-filtered for the selected months
+    return data.filter(r => r.storeName === store);
+  }, [data, store]);
+  const productInsights = useMemo(() => computeProductInsights(storeFilteredReceipts, 3), [storeFilteredReceipts]);
 
   return (
     <div className="space-y-6">
@@ -130,6 +139,72 @@ export default function ReceiptStatsPage() {
           </ChartContainer>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Détails par catégorie</CardTitle></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Catégorie</TableHead>
+                    <TableHead className="text-right">Dépense</TableHead>
+                    <TableHead className="text-right">Quantité</TableHead>
+                    <TableHead className="text-right">Articles</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {catStats.map((c) => (
+                    <TableRow key={c.category}>
+                      <TableCell className="font-medium">{c.category}</TableCell>
+                      <TableCell className="text-right">{(c.totalSpend || 0).toFixed(3)} TND</TableCell>
+                      <TableCell className="text-right">{c.totalQty}</TableCell>
+                      <TableCell className="text-right">{c.itemsCount}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Produits (3 derniers mois)</CardTitle></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produit</TableHead>
+                    <TableHead className="text-right">Dernier prix</TableHead>
+                    <TableHead className="text-right">Dernier achat</TableHead>
+                    <TableHead className="text-right">Fréquence (3m)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productInsights.map((p) => {
+                    const dateStr = p.lastPurchasedAt;
+                    let dateDisp = '-';
+                    if (dateStr) {
+                      const d = parseISO(dateStr);
+                      dateDisp = isValidDate(d) ? formatDate(d, 'dd/MM/yyyy') : dateStr;
+                    }
+                    return (
+                      <TableRow key={p.productKey}>
+                        <TableCell className="font-medium">{p.normalizedLabel || p.rawLabel || p.productKey}</TableCell>
+                        <TableCell className="text-right">{p.lastUnitPrice != null ? `${p.lastUnitPrice.toFixed(3)} TND` : '-'}</TableCell>
+                        <TableCell className="text-right">{dateDisp}</TableCell>
+                        <TableCell className="text-right">{p.frequencyCount}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

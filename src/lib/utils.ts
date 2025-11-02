@@ -177,7 +177,7 @@ export function spendByCategory(receipts: Receipt[]) {
   for (const r of receipts) {
     for (const l of (r.lines || [])) {
       const cat = l.category || mapCategoryHeuristic(l.normalizedLabel || l.rawLabel || '');
-      const val = l.lineTotal ?? (l.unitPrice && l.quantity ? l.unitPrice * l.quantity : 0) ?? 0;
+      const val = l.lineTotal != null ? l.lineTotal : (l.unitPrice && l.quantity ? l.unitPrice * l.quantity : 0);
       map[cat] = (map[cat] || 0) + (val || 0);
     }
   }
@@ -203,4 +203,72 @@ export function monthlyTrend(receipts: Receipt[]) {
     map[key] = (map[key] || 0) + (r.total || 0);
   }
   return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([month,total])=>({ month, total }));
+}
+
+// -------------------------------
+// Advanced aggregations for receipts
+// -------------------------------
+
+export type CategoryStats = {
+  category: string;
+  totalSpend: number;
+  totalQty: number;
+  itemsCount: number;
+};
+
+export function aggregateCategoryStats(receipts: Receipt[]): CategoryStats[] {
+  const map: Record<string, { spend: number; qty: number; count: number; }> = {};
+  for (const r of receipts) {
+    for (const l of (r.lines || [])) {
+      const cat = l.category || mapCategoryHeuristic(l.normalizedLabel || l.rawLabel || '');
+      const spend = l.lineTotal ?? (l.unitPrice && l.quantity ? l.unitPrice * l.quantity : 0) ?? 0;
+      const qty = l.quantity && l.quantity > 0 ? l.quantity : 1;
+      if (!map[cat]) map[cat] = { spend: 0, qty: 0, count: 0 };
+      map[cat].spend += spend || 0;
+      map[cat].qty += qty;
+      map[cat].count += 1;
+    }
+  }
+  return Object.entries(map)
+    .map(([category, v]) => ({ category, totalSpend: v.spend, totalQty: v.qty, itemsCount: v.count }))
+    .sort((a, b) => b.totalSpend - a.totalSpend);
+}
+
+export type ProductInsight = {
+  productKey: string;
+  rawLabel?: string;
+  normalizedLabel?: string;
+  lastPurchasedAt?: string;
+  lastUnitPrice?: number;
+  frequencyCount: number;
+};
+
+export function computeProductInsights(receipts: Receipt[], lookbackMonths = 3): ProductInsight[] {
+  const purchases = flattenPurchasesFromReceipts(receipts);
+  const now = new Date();
+  const start = new Date(now);
+  start.setMonth(start.getMonth() - lookbackMonths);
+  const inWindow = purchases.filter(p => {
+    if (!p.purchaseAt) return false;
+    const d = new Date(p.purchaseAt);
+    return d >= start && d <= now;
+  });
+  const lastByProduct = computeLastPurchaseByProduct(purchases);
+  const freqMap: Record<string, { count: number; rawLabel?: string; normalizedLabel?: string; }> = {};
+  for (const p of inWindow) {
+    if (!freqMap[p.productKey]) freqMap[p.productKey] = { count: 0, rawLabel: p.rawLabel, normalizedLabel: p.normalizedLabel };
+    freqMap[p.productKey].count += 1;
+    if (!freqMap[p.productKey].rawLabel && p.rawLabel) freqMap[p.productKey].rawLabel = p.rawLabel;
+    if (!freqMap[p.productKey].normalizedLabel && p.normalizedLabel) freqMap[p.productKey].normalizedLabel = p.normalizedLabel;
+  }
+  const insights: ProductInsight[] = Object.entries(freqMap).map(([key, v]) => ({
+    productKey: key,
+    rawLabel: v.rawLabel,
+    normalizedLabel: v.normalizedLabel,
+    lastPurchasedAt: lastByProduct[key]?.lastPurchasedAt,
+    lastUnitPrice: lastByProduct[key]?.lastUnitPrice,
+    frequencyCount: v.count,
+  }));
+  insights.sort((a, b) => (b.frequencyCount - a.frequencyCount) || ((b.lastPurchasedAt ? new Date(b.lastPurchasedAt).getTime() : 0) - (a.lastPurchasedAt ? new Date(a.lastPurchasedAt).getTime() : 0)));
+  return insights;
 }
