@@ -67,7 +67,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
     const receipt: Omit<Receipt, 'id'> = {
       storeName: res.storeName,
       storeId: res.storeId,
-      purchaseAt: res.purchaseAt,
+      purchaseAt: res.purchaseAt || new Date().toISOString(),
       currency: res.currency,
       total: res.total,
       subtotal: res.subtotal,
