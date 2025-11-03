@@ -8,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Pencil, Save, X, Receipt, Trash2 } from 'lucide-react';
+import { Pencil, Save, X, Receipt, Trash2, ListChecks } from 'lucide-react';
 import { useState } from 'react';
 import { inferQuantityFromLabel, learnPackQty, normalizeProductKey } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
-type ProposedChange = { receiptId: string; storeName?: string; linesUpdated: number; newLines: any[]; details: { label: string; beforeQty?: number; afterQty?: number; }[] };
+type ProposedChange = { receiptId: string; storeName?: string; linesUpdated: number; newLines: any[]; indicesToDelete: number[]; details: { index: number; label: string; beforeQty?: number; afterQty?: number; }[] };
 
 export default function ReceiptsPage() {
   const { receipts, updateReceipt, deleteReceipt } = useReceipts();
@@ -37,6 +37,12 @@ export default function ReceiptsPage() {
     setLineEditorStoreName(rcpt.storeName);
     setLineDrafts((rcpt.lines || []).map(l => ({ ...l })));
     setLineEditorOpen(true);
+  }
+
+  function deleteDraftLine(i: number) {
+    const ok = typeof window !== 'undefined' ? window.confirm('Supprimer cette ligne ?') : true;
+    if (!ok) return;
+    setLineDrafts(prev => prev.filter((_, idx) => idx !== i));
   }
 
   function setField(i: number, key: 'quantity'|'unitPrice'|'lineTotal', val: string) {
@@ -93,12 +99,12 @@ export default function ReceiptsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Receipt className="h-6 w-6 text-primary" />
           Reçus
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <Button asChild variant="outline">
             <Link href="/stats/receipts">Voir stats reçus</Link>
           </Button>
@@ -107,8 +113,8 @@ export default function ReceiptsPage() {
             const changes: ProposedChange[] = [];
             for (const rcpt of receipts) {
               let linesUpdated = 0;
-              const details: { label: string; beforeQty?: number; afterQty?: number }[] = [];
-              const newLines = (rcpt.lines || []).map((ln) => {
+              const details: { index: number; label: string; beforeQty?: number; afterQty?: number }[] = [];
+              const newLines = (rcpt.lines || []).map((ln, idx) => {
                 const before = { quantity: ln.quantity, unit: ln.unit, unitPrice: ln.unitPrice, lineTotal: ln.lineTotal };
                 const inferred = inferQuantityFromLabel(ln.normalizedLabel || ln.rawLabel, before);
                 const changed = (
@@ -119,13 +125,13 @@ export default function ReceiptsPage() {
                 );
                 if (changed) {
                   linesUpdated += (inferred.quantity !== before.quantity) ? 1 : 0;
-                  details.push({ label: ln.normalizedLabel || ln.rawLabel || '', beforeQty: before.quantity, afterQty: inferred.quantity });
+                  details.push({ index: idx, label: ln.normalizedLabel || ln.rawLabel || '', beforeQty: before.quantity, afterQty: inferred.quantity });
                   return { ...ln, ...inferred } as typeof ln;
                 }
                 return ln;
               });
               if (linesUpdated > 0) {
-                changes.push({ receiptId: rcpt.id, storeName: rcpt.storeName, linesUpdated, newLines, details });
+                changes.push({ receiptId: rcpt.id, storeName: rcpt.storeName, linesUpdated, newLines, details, indicesToDelete: [] });
               }
             }
             setProposed(changes);
@@ -184,7 +190,7 @@ export default function ReceiptsPage() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => openLineEditor(rcpt.id)} title="Modifier les lignes">
-                        <Pencil className="h-4 w-4" />
+                        <ListChecks className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={async () => {
                         const ok = typeof window !== 'undefined' ? window.confirm('Supprimer ce reçu ?') : true;
@@ -215,7 +221,7 @@ export default function ReceiptsPage() {
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-full sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Aperçu des changements</DialogTitle>
             <DialogDescription>
@@ -229,10 +235,37 @@ export default function ReceiptsPage() {
                   <CardTitle className="text-sm">Reçu {p.storeName || 'Magasin'} – {p.linesUpdated} ligne(s) impactée(s)</CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs text-muted-foreground space-y-1">
-                  {p.details.slice(0, 5).map((d, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="truncate max-w-[60%]" title={d.label}>{d.label}</span>
-                      <span>{d.beforeQty ?? '-'} → <span className="text-foreground font-medium">{d.afterQty ?? '-'}</span></span>
+                  {p.details.slice(0, 8).map((d, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2">
+                      <label className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={p.indicesToDelete.includes(d.index)}
+                          onChange={(e) => {
+                            setProposed(prev => prev.map(pp => {
+                              if (pp.receiptId !== p.receiptId) return pp;
+                              const set = new Set(pp.indicesToDelete);
+                              if (e.target.checked) set.add(d.index); else set.delete(d.index);
+                              return { ...pp, indicesToDelete: Array.from(set).sort((a,b)=>a-b) };
+                            }));
+                          }}
+                          className="h-4 w-4"
+                        />
+                        <span className="truncate" title={d.label}>{d.label}</span>
+                      </label>
+                      <span className="shrink-0">{d.beforeQty ?? '-'} → <span className="text-foreground font-medium">{d.afterQty ?? '-'}</span></span>
+                      <button
+                        className="text-destructive text-xs underline shrink-0"
+                        onClick={() => {
+                          setProposed(prev => prev.map(pp => {
+                            if (pp.receiptId !== p.receiptId) return pp;
+                            const set = new Set(pp.indicesToDelete);
+                            set.add(d.index);
+                            return { ...pp, indicesToDelete: Array.from(set).sort((a,b)=>a-b) };
+                          }));
+                        }}
+                        title="Marquer pour suppression"
+                      >Supprimer</button>
                     </div>
                   ))}
                   {p.details.length > 5 && <div className="text-right">… et {p.details.length - 5} de plus</div>}
@@ -242,29 +275,28 @@ export default function ReceiptsPage() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Annuler</Button>
-            <Button
-              onClick={async () => {
-                let total = 0;
-                for (const change of proposed) {
-                  // learn per store while applying
-                  const rcpt = receipts.find(r => r.id === change.receiptId);
-                  if (rcpt) {
-                    for (let i = 0; i < rcpt.lines.length; i++) {
-                      const newL = change.newLines[i];
-                      if (!newL) continue;
-                      const pk = normalizeProductKey(newL.normalizedLabel || newL.rawLabel || '');
-                      if (pk && newL.quantity && newL.quantity > 1) {
-                        learnPackQty(pk, newL.quantity, rcpt.storeName);
-                      }
+            <Button onClick={async () => {
+              let total = 0;
+              for (const change of proposed) {
+                // learn per store while applying
+                const rcpt = receipts.find(r => r.id === change.receiptId);
+                const toDelete = new Set(change.indicesToDelete);
+                const filtered = change.newLines.filter((_, idx) => !toDelete.has(idx));
+                if (rcpt) {
+                  filtered.forEach((newL, idx) => {
+                    const pk = normalizeProductKey(newL.normalizedLabel || newL.rawLabel || '');
+                    if (pk && newL.quantity && newL.quantity > 1) {
+                      learnPackQty(pk, newL.quantity, rcpt.storeName);
                     }
-                  }
-                  await updateReceipt(change.receiptId, { lines: change.newLines });
-                  total += change.linesUpdated;
+                  });
                 }
-                setPreviewOpen(false);
-                setProposed([]);
-                toast({ title: 'Recalcul terminé', description: `${total} ligne(s) mise(s) à jour.` });
-              }}
+                await updateReceipt(change.receiptId, { lines: filtered });
+                total += change.linesUpdated + change.indicesToDelete.length;
+              }
+              setPreviewOpen(false);
+              setProposed([]);
+              toast({ title: 'Recalcul terminé', description: `${total} ligne(s) mise(s) à jour (y compris suppressions).` });
+            }}
               disabled={proposed.length === 0}
             >
               Appliquer les changements
@@ -275,19 +307,35 @@ export default function ReceiptsPage() {
 
       {/* Line Editor Dialog */}
       <Dialog open={lineEditorOpen} onOpenChange={setLineEditorOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-full sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Modifier les lignes</DialogTitle>
             <DialogDescription>Quantité, Prix unitaire, Total ligne. Deux champs remplis recalculent le troisième.</DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-auto">
-            <table className="w-full text-sm">
+          {(() => {
+            const rcpt = receipts.find(r => r.id === lineEditorReceiptId);
+            const curr = (lineDrafts || []).reduce((sum, ln) => {
+              const lt = typeof ln.lineTotal === 'number' ? ln.lineTotal : (Number(ln.quantity) && Number(ln.unitPrice) ? Number(ln.quantity) * Number(ln.unitPrice) : 0);
+              return sum + (Number.isFinite(lt) ? lt : 0);
+            }, 0);
+            const orig = rcpt ? (typeof rcpt.total === 'number' ? rcpt.total : (rcpt.lines || []).reduce((s, ln) => s + (ln.lineTotal || 0), 0)) : 0;
+            const currency = rcpt?.currency || 'TND';
+            return (
+              <div className="mb-2 text-sm flex items-center justify-between">
+                <div className="text-muted-foreground">Total original: <span className="text-foreground font-medium">{orig.toFixed(3)} {currency}</span></div>
+                <div className="text-muted-foreground">Total actuel: <span className="text-foreground font-medium">{curr.toFixed(3)} {currency}</span></div>
+              </div>
+            );
+          })()}
+          <div className="max-h-[60vh] overflow-auto overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="text-left">
                   <th className="py-2 pr-2">Libellé</th>
                   <th className="py-2 pr-2 w-24">Qté</th>
                   <th className="py-2 pr-2 w-28">PU</th>
                   <th className="py-2 pr-2 w-28">Total</th>
+                  <th className="py-2 pr-2 w-16 text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -314,6 +362,11 @@ export default function ReceiptsPage() {
                         onChange={(e) => setField(i, 'lineTotal', e.target.value)}
                         onBlur={() => autoRecalc(i)}
                       />
+                    </td>
+                    <td className="py-2 pr-2 text-right">
+                      <Button variant="ghost" size="sm" onClick={() => deleteDraftLine(i)} title="Supprimer la ligne">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
