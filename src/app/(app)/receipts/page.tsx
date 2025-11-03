@@ -24,6 +24,58 @@ export default function ReceiptsPage() {
   const [proposed, setProposed] = useState<ProposedChange[]>([]);
   const { toast } = useToast();
 
+  // Per-receipt line editor state
+  const [lineEditorOpen, setLineEditorOpen] = useState(false);
+  const [lineEditorReceiptId, setLineEditorReceiptId] = useState<string | null>(null);
+  const [lineEditorStoreName, setLineEditorStoreName] = useState<string | undefined>(undefined);
+  const [lineDrafts, setLineDrafts] = useState<any[]>([]);
+
+  function openLineEditor(rcptId: string) {
+    const rcpt = receipts.find(r => r.id === rcptId);
+    if (!rcpt) return;
+    setLineEditorReceiptId(rcpt.id);
+    setLineEditorStoreName(rcpt.storeName);
+    setLineDrafts((rcpt.lines || []).map(l => ({ ...l })));
+    setLineEditorOpen(true);
+  }
+
+  function setField(i: number, key: 'quantity'|'unitPrice'|'lineTotal', val: string) {
+    setLineDrafts(prev => {
+      const next = [...prev];
+      const row = { ...next[i] };
+      const num = val === '' ? undefined : Number(val);
+      row[key] = Number.isFinite(num) ? Number(val) : undefined;
+      next[i] = row;
+      return next;
+    });
+  }
+
+  function autoRecalc(i: number) {
+    setLineDrafts(prev => {
+      const next = [...prev];
+      const row = { ...next[i] };
+      const q = Number(row.quantity);
+      const up = Number(row.unitPrice);
+      const lt = Number(row.lineTotal);
+      const hasQ = Number.isFinite(q) && q > 0;
+      const hasUP = Number.isFinite(up) && up > 0;
+      const hasLT = Number.isFinite(lt) && lt >= 0;
+      if (hasQ && hasUP && !hasLT) {
+        row.lineTotal = parseFloat((q * up).toFixed(3));
+      } else if (hasQ && hasLT && !hasUP && q !== 0) {
+        row.unitPrice = parseFloat((lt / q).toFixed(3));
+      } else if (hasUP && hasLT && !hasQ && up !== 0) {
+        const qf = lt / up;
+        const qi = Math.round(qf);
+        if (Math.abs(qf - qi) < 0.05 && qi > 0 && qi <= 200) {
+          row.quantity = qi;
+        }
+      }
+      next[i] = row;
+      return next;
+    });
+  }
+
   function toLocalInputValue(iso?: string) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -131,6 +183,9 @@ export default function ReceiptsPage() {
                       <Button size="sm" variant="ghost" onClick={() => { setEditingId(rcpt.id); setEditingValue(toLocalInputValue(rcpt.purchaseAt) || toLocalInputValue(new Date().toISOString())); }} title="Modifier la date">
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => openLineEditor(rcpt.id)} title="Modifier les lignes">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={async () => {
                         const ok = typeof window !== 'undefined' ? window.confirm('Supprimer ce reçu ?') : true;
                         if (!ok) return;
@@ -140,6 +195,23 @@ export default function ReceiptsPage() {
                       </Button>
                     </>
                   )}
+
+                </div>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <div>
+                    {rcpt.lines?.length || 0} article(s)
+                  </div>
+                  <div className="font-semibold text-foreground">
+                    {rcpt.total != null ? `${rcpt.total.toFixed(3)} ${rcpt.currency || 'TND'}` : 'Total inconnu'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
@@ -178,7 +250,6 @@ export default function ReceiptsPage() {
                   const rcpt = receipts.find(r => r.id === change.receiptId);
                   if (rcpt) {
                     for (let i = 0; i < rcpt.lines.length; i++) {
-                      const oldL = rcpt.lines[i];
                       const newL = change.newLines[i];
                       if (!newL) continue;
                       const pk = normalizeProductKey(newL.normalizedLabel || newL.rawLabel || '');
@@ -201,22 +272,85 @@ export default function ReceiptsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-                </div>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                <div className="flex items-center justify-between">
-                  <div>
-                    {rcpt.lines?.length || 0} article(s)
-                  </div>
-                  <div className="font-semibold text-foreground">
-                    {rcpt.total != null ? `${rcpt.total.toFixed(3)} ${rcpt.currency || 'TND'}` : 'Total inconnu'}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+
+      {/* Line Editor Dialog */}
+      <Dialog open={lineEditorOpen} onOpenChange={setLineEditorOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Modifier les lignes</DialogTitle>
+            <DialogDescription>Quantité, Prix unitaire, Total ligne. Deux champs remplis recalculent le troisième.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="py-2 pr-2">Libellé</th>
+                  <th className="py-2 pr-2 w-24">Qté</th>
+                  <th className="py-2 pr-2 w-28">PU</th>
+                  <th className="py-2 pr-2 w-28">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineDrafts.map((ln, i) => (
+                  <tr key={ln.id || i} className="border-t">
+                    <td className="py-2 pr-2 truncate" title={ln.normalizedLabel || ln.rawLabel}>{ln.normalizedLabel || ln.rawLabel}</td>
+                    <td className="py-2 pr-2">
+                      <input className="h-8 w-20 rounded-md border bg-background px-2"
+                        type="number" step="1" min="0" value={ln.quantity ?? ''}
+                        onChange={(e) => setField(i, 'quantity', e.target.value)}
+                        onBlur={() => autoRecalc(i)}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input className="h-8 w-24 rounded-md border bg-background px-2"
+                        type="number" step="0.001" min="0" value={ln.unitPrice ?? ''}
+                        onChange={(e) => setField(i, 'unitPrice', e.target.value)}
+                        onBlur={() => autoRecalc(i)}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input className="h-8 w-24 rounded-md border bg-background px-2"
+                        type="number" step="0.001" min="0" value={ln.lineTotal ?? ''}
+                        onChange={(e) => setField(i, 'lineTotal', e.target.value)}
+                        onBlur={() => autoRecalc(i)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLineEditorOpen(false)}>Annuler</Button>
+            <Button onClick={async () => {
+              if (!lineEditorReceiptId) return;
+              // Apply learning per line where quantity > 1
+              let changed = 0;
+              const rcpt = receipts.find(r => r.id === lineEditorReceiptId);
+              const originalLines = rcpt?.lines || [];
+              const newLines = lineDrafts.map((ln, idx) => {
+                const before = originalLines[idx];
+                if (!before) return ln;
+                if (
+                  ln.quantity !== before.quantity ||
+                  ln.unitPrice !== before.unitPrice ||
+                  ln.lineTotal !== before.lineTotal
+                ) {
+                  changed += 1;
+                }
+                const pk = normalizeProductKey(ln.normalizedLabel || ln.rawLabel || '');
+                if (pk && ln.quantity && ln.quantity > 1) {
+                  learnPackQty(pk, ln.quantity, lineEditorStoreName);
+                }
+                return ln;
+              });
+              await updateReceipt(lineEditorReceiptId, { lines: newLines });
+              setLineEditorOpen(false);
+              toast({ title: 'Modifications enregistrées', description: `${changed} ligne(s) mise(s) à jour.` });
+            }}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

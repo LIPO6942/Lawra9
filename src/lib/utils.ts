@@ -94,6 +94,7 @@ export function groupHistoryByProduct(purchases: ProductPurchase[]) {
 // -------------------------------
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Eau': ['eau', 'pristine', 'prestine', 'jannet', 'dima', 'marwa', 'safia'],
   'Pâtes': ['pâtes', 'pates', 'spaghetti', 'macaroni', 'penne', 'coquille', 'coquillage', 'randa', 'twist', 'fell'],
   'Frais': ['lait', 'yaourt', 'fromage', 'beurre', 'oeuf', 'crème'],
   'Boucherie': ['viande', 'poulet', 'dinde', 'boeuf', 'steak', 'escalope', 'hache'],
