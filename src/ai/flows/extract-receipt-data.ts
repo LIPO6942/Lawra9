@@ -59,6 +59,12 @@ Règles:
 - Normaliser les nombres (virgule -> point). Retourner les valeurs numériques.
 - Si un code-barres/PLU apparait, le retourner dans barcode.
 - Vérifier la cohérence: somme des lignes ≈ total (tolérance 2%).
+- Cas des packs/multiplicateurs: si un motif du type "6 x 0.790 = 4.740", "12x0.950=11.400" ou une ligne séparée indique la quantité, alors:
+  - quantity = 6 (ou 12, etc.)
+  - unitPrice = 0.790
+  - lineTotal = 4.740 (recalculer si nécessaire avec arrondi normal commercial à 3 décimales)
+  - Si la quantité apparaît sans unité explicite, utiliser unit="pcs".
+  - Si des nombres sont séparés sur des lignes adjacentes (ex: "6 x" et plus bas "0.790 11.400"), inférer la quantité à partir du contexte et rendre les champs cohérents.
 - Mettre confidence entre 0 et 1 selon votre certitude globale.
 - Inclure dans ocrText un résumé texte si utile.
 
@@ -68,6 +74,7 @@ Catégorisation:
 
 Quantité/Unité:
 - Renseigner "quantity" et "unit" si repérables (ex: 2 pcs, 500 g, 1 L). Si absents, quantity=1, unit="pcs".
+ - Si "unitPrice" et "lineTotal" sont présents mais pas "quantity", déduire quantity=round(lineTotal/unitPrice) si plausible (1..100).
 
 Retourner les dates au format ISO AAAA-MM-JJ ou AAAA-MM-JJTHH:mm si heure trouvée.
 

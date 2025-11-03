@@ -10,11 +10,19 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Pencil, Save, X, Receipt, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { inferQuantityFromLabel, learnPackQty, normalizeProductKey } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+
+type ProposedChange = { receiptId: string; storeName?: string; linesUpdated: number; newLines: any[]; details: { label: string; beforeQty?: number; afterQty?: number; }[] };
 
 export default function ReceiptsPage() {
   const { receipts, updateReceipt, deleteReceipt } = useReceipts();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [proposed, setProposed] = useState<ProposedChange[]>([]);
+  const { toast } = useToast();
 
   function toLocalInputValue(iso?: string) {
     if (!iso) return '';
@@ -41,6 +49,37 @@ export default function ReceiptsPage() {
         <div className="flex items-center gap-2">
           <Button asChild variant="outline">
             <Link href="/stats/receipts">Voir stats reçus</Link>
+          </Button>
+          <Button variant="secondary" onClick={async () => {
+            // Build preview of changes first
+            const changes: ProposedChange[] = [];
+            for (const rcpt of receipts) {
+              let linesUpdated = 0;
+              const details: { label: string; beforeQty?: number; afterQty?: number }[] = [];
+              const newLines = (rcpt.lines || []).map((ln) => {
+                const before = { quantity: ln.quantity, unit: ln.unit, unitPrice: ln.unitPrice, lineTotal: ln.lineTotal };
+                const inferred = inferQuantityFromLabel(ln.normalizedLabel || ln.rawLabel, before);
+                const changed = (
+                  inferred.quantity !== before.quantity ||
+                  inferred.unit !== before.unit ||
+                  inferred.unitPrice !== before.unitPrice ||
+                  inferred.lineTotal !== before.lineTotal
+                );
+                if (changed) {
+                  linesUpdated += (inferred.quantity !== before.quantity) ? 1 : 0;
+                  details.push({ label: ln.normalizedLabel || ln.rawLabel || '', beforeQty: before.quantity, afterQty: inferred.quantity });
+                  return { ...ln, ...inferred } as typeof ln;
+                }
+                return ln;
+              });
+              if (linesUpdated > 0) {
+                changes.push({ receiptId: rcpt.id, storeName: rcpt.storeName, linesUpdated, newLines, details });
+              }
+            }
+            setProposed(changes);
+            setPreviewOpen(true);
+          }}>
+            Recalculer quantités
           </Button>
           <UploadReceiptDialog />
         </div>
@@ -101,6 +140,67 @@ export default function ReceiptsPage() {
                       </Button>
                     </>
                   )}
+
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aperçu des changements</DialogTitle>
+            <DialogDescription>
+              {proposed.length === 0 ? 'Aucun changement proposé.' : `Des corrections de quantités sont proposées pour ${proposed.length} reçu(x).`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 overflow-auto space-y-3">
+            {proposed.map(p => (
+              <Card key={p.receiptId} className="border-dashed">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm">Reçu {p.storeName || 'Magasin'} – {p.linesUpdated} ligne(s) impactée(s)</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground space-y-1">
+                  {p.details.slice(0, 5).map((d, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <span className="truncate max-w-[60%]" title={d.label}>{d.label}</span>
+                      <span>{d.beforeQty ?? '-'} → <span className="text-foreground font-medium">{d.afterQty ?? '-'}</span></span>
+                    </div>
+                  ))}
+                  {p.details.length > 5 && <div className="text-right">… et {p.details.length - 5} de plus</div>}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Annuler</Button>
+            <Button
+              onClick={async () => {
+                let total = 0;
+                for (const change of proposed) {
+                  // learn per store while applying
+                  const rcpt = receipts.find(r => r.id === change.receiptId);
+                  if (rcpt) {
+                    for (let i = 0; i < rcpt.lines.length; i++) {
+                      const oldL = rcpt.lines[i];
+                      const newL = change.newLines[i];
+                      if (!newL) continue;
+                      const pk = normalizeProductKey(newL.normalizedLabel || newL.rawLabel || '');
+                      if (pk && newL.quantity && newL.quantity > 1) {
+                        learnPackQty(pk, newL.quantity, rcpt.storeName);
+                      }
+                    }
+                  }
+                  await updateReceipt(change.receiptId, { lines: change.newLines });
+                  total += change.linesUpdated;
+                }
+                setPreviewOpen(false);
+                setProposed([]);
+                toast({ title: 'Recalcul terminé', description: `${total} ligne(s) mise(s) à jour.` });
+              }}
+              disabled={proposed.length === 0}
+            >
+              Appliquer les changements
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
                 </div>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">

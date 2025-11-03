@@ -8,7 +8,7 @@ import { Camera, Loader2, PlusCircle, UploadCloud } from 'lucide-react';
 import { useReceipts } from '@/contexts/receipt-context';
 import { extractReceiptData } from '@/ai/flows/extract-receipt-data';
 import { Receipt } from '@/lib/types';
-import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice } from '@/lib/utils';
+import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normalizeProductKey, getLearnedPackQty } from '@/lib/utils';
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -60,6 +60,44 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         stdQty: norm.stdQty,
         standardUnitPrice: undefined as number | undefined,
       };
+
+      // --- Post-processing inference for packs (e.g., "6 x 0.790 = 4.740", "12x0.950=11.400") ---
+      const text = (label || '').toLowerCase().replace(',', '.');
+      const packMatch = text.match(/(\d{1,3})\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*=\s*(\d+(?:\.\d+)?))?/);
+      if (packMatch) {
+        const qty = parseInt(packMatch[1]);
+        const unitP = parseFloat(packMatch[2]);
+        const totalP = packMatch[3] ? parseFloat(packMatch[3]) : (isFinite(qty * unitP) ? qty * unitP : undefined);
+        if (!isNaN(qty) && qty > 0 && qty <= 200) {
+          line.quantity = line.quantity && line.quantity > 1 ? line.quantity : qty;
+          line.unit = line.unit || 'pcs';
+        }
+        if (!isNaN(unitP)) {
+          line.unitPrice = line.unitPrice ?? unitP;
+        }
+        if (totalP != null && !isNaN(totalP)) {
+          line.lineTotal = line.lineTotal ?? parseFloat(totalP.toFixed(3));
+        }
+      }
+
+      // If unitPrice & lineTotal present but quantity missing/1, infer quantity = round(lineTotal/unitPrice)
+      if ((line.quantity == null || line.quantity === 1) && line.unitPrice != null && line.lineTotal != null && line.unitPrice > 0) {
+        const q = Math.round((line.lineTotal / line.unitPrice) * 1000) / 1000; // keep some precision
+        const qi = Math.round(q);
+        if (Number.isFinite(qi) && qi >= 1 && qi <= 200 && Math.abs(q - qi) < 0.05) {
+          line.quantity = qi;
+          line.unit = line.unit || 'pcs';
+        }
+      }
+
+      // Apply learned pack quantity if available
+      const productKey = normalizeProductKey(label || '');
+      const learned = productKey ? getLearnedPackQty(productKey, res.storeName) : undefined;
+      if (learned && (!line.quantity || line.quantity <= 1 || line.quantity < learned)) {
+        line.quantity = learned;
+        line.unit = line.unit || 'pcs';
+      }
+
       line.standardUnitPrice = computeStandardUnitPrice(line as any);
       return line as any;
     });

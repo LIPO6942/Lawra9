@@ -273,3 +273,72 @@ export function computeProductInsights(receipts: Receipt[], lookbackMonths = 3):
   insights.sort((a, b) => (b.frequencyCount - a.frequencyCount) || ((b.lastPurchasedAt ? new Date(b.lastPurchasedAt).getTime() : 0) - (a.lastPurchasedAt ? new Date(a.lastPurchasedAt).getTime() : 0)));
   return insights;
 }
+
+// -------------------------------
+// Quantity inference & lightweight learning
+// -------------------------------
+
+type InferredLine = { quantity?: number; unit?: string; unitPrice?: number; lineTotal?: number };
+
+export function inferQuantityFromLabel(
+  label: string | undefined,
+  current: { quantity?: number; unit?: string; unitPrice?: number; lineTotal?: number }
+): InferredLine {
+  const out: InferredLine = { ...current };
+  const text = (label || '').toLowerCase().replace(/,/g, '.');
+  const packMatch = text.match(/(\d{1,3})\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*=\s*(\d+(?:\.\d+)?))?/);
+  if (packMatch) {
+    const qty = parseInt(packMatch[1]);
+    const unitP = parseFloat(packMatch[2]);
+    const totalP = packMatch[3] ? parseFloat(packMatch[3]) : (isFinite(qty * unitP) ? qty * unitP : NaN);
+    if (!isNaN(qty) && qty > 0 && qty <= 200) {
+      out.quantity = (current.quantity && current.quantity > 1) ? current.quantity : qty;
+      out.unit = current.unit || 'pcs';
+    }
+    if (!isNaN(unitP) && out.unitPrice == null) out.unitPrice = unitP;
+    if (!isNaN(totalP) && out.lineTotal == null) out.lineTotal = parseFloat(totalP.toFixed(3));
+  }
+  if ((out.quantity == null || out.quantity === 1) && out.unitPrice != null && out.lineTotal != null && out.unitPrice > 0) {
+    const q = Math.round((out.lineTotal / out.unitPrice) * 1000) / 1000;
+    const qi = Math.round(q);
+    if (Number.isFinite(qi) && qi >= 1 && qi <= 200 && Math.abs(q - qi) < 0.05) {
+      out.quantity = qi;
+      out.unit = out.unit || 'pcs';
+    }
+  }
+  return out;
+}
+
+const LEARNING_KEY = 'receipt_learning_packqty';
+// Keying strategy: `${storeName || 'ALL'}|${productKey}` for store-specific, legacy keys are just productKey
+type LearningMap = Record<string, number>;
+
+function loadLearning(): LearningMap {
+  if (typeof window === 'undefined') return {};
+  try {
+    const s = window.localStorage.getItem(LEARNING_KEY);
+    return s ? JSON.parse(s) as LearningMap : {};
+  } catch { return {}; }
+}
+
+function saveLearning(map: LearningMap) {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(LEARNING_KEY, JSON.stringify(map)); } catch {}
+}
+
+export function getLearnedPackQty(productKey: string, storeName?: string): number | undefined {
+  const m = loadLearning();
+  const storeKey = `${storeName || 'ALL'}|${productKey}`;
+  return m[storeKey] ?? m[productKey]; // fallback to legacy/global
+}
+
+export function learnPackQty(productKey: string, qty: number, storeName?: string) {
+  if (!productKey || !Number.isFinite(qty) || qty <= 1) return;
+  const m = loadLearning();
+  const storeKey = `${storeName || 'ALL'}|${productKey}`;
+  // Update store-specific
+  if (!m[storeKey] || m[storeKey] < qty) m[storeKey] = qty;
+  // Also maintain/global legacy as max for broad reuse
+  if (!m[productKey] || m[productKey] < qty) m[productKey] = qty;
+  saveLearning(m);
+}
