@@ -105,9 +105,20 @@ const extractInvoiceDataFlow = ai.defineFlow(
     outputSchema: ExtractInvoiceDataOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error(
+        "Configuration manquante: GEMINI_API_KEY est absente. Ajoutez-la dans .env.local puis redémarrez le serveur Next.js."
+      );
+    }
+    try {
+      const { output } = await prompt(input);
+      if (!output) {
+        throw new Error("Analyse IA: aucune sortie n'a été retournée par le modèle.");
+      }
+      return output;
+    } catch (err: any) {
+      const rawMsg = (err && (err.message || err.toString?.())) || 'Erreur inconnue';
+      throw new Error(`Analyse IA impossible: ${rawMsg}`);
+    }
   }
 );
-
-    

@@ -319,7 +319,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
           
       } catch (error: any) {
           console.error('L\'analyse ou la sauvegarde du document a échoué :', error);
-          toast({ variant: 'destructive', title: "L'opération a échoué", description: "Nous n'avons pas pu traiter votre document. Veuillez réessayer."});
+          const message = (error && (error.message || error.toString?.())) || "Nous n'avons pas pu traiter votre document. Veuillez réessayer.";
+          toast({ variant: 'destructive', title: "L'opération a échoué", description: message });
           setIsProcessing(false);
       }
   };
