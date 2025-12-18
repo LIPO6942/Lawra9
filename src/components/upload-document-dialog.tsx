@@ -24,6 +24,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { MaisonUploadDialog } from './maison-upload-dialog';
 import { Label } from './ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { normalizeSupplierKey } from '@/lib/utils';
 
 type AnalysisResult = Partial<ExtractInvoiceDataOutput>;
 
@@ -83,10 +94,13 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const [isOpen, setIsOpen] = useState(open || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
+  const [isSupplierMergeDialogOpen, setIsSupplierMergeDialogOpen] = useState(false);
+  const [supplierMergeInfo, setSupplierMergeInfo] = useState<{ detected?: string; existing?: string; normalizedKey?: string } | null>(null);
+  const [pendingNewDocData, setPendingNewDocData] = useState<DocumentWithFile | null>(null);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
-  const { addDocument, updateDocument } = useDocuments();
+  const { documents, addDocument, updateDocument } = useDocuments();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -183,10 +197,77 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   const resetDialog = () => {
     setIsProcessing(false);
     setProcessingMessage('');
+    setIsSupplierMergeDialogOpen(false);
+    setSupplierMergeInfo(null);
+    setPendingNewDocData(null);
     stopCameraStream();
     setHasCameraPermission(null);
     setFileToUpload(null);
     setFormData({});
+  };
+
+  const resolveCanonicalSupplier = (normalizedKey: string): string | undefined => {
+    const freq = new Map<string, number>();
+    for (const d of documents) {
+      const s = (d.supplier || '').trim();
+      if (!s) continue;
+      if (normalizeSupplierKey(s) !== normalizedKey) continue;
+      freq.set(s, (freq.get(s) || 0) + 1);
+    }
+    let best: string | undefined;
+    let bestCount = 0;
+    for (const [name, count] of freq.entries()) {
+      if (count > bestCount) {
+        best = name;
+        bestCount = count;
+      }
+    }
+    return best;
+  };
+
+  const saveNewDocument = async (docData: DocumentWithFile) => {
+    setIsProcessing(true);
+    setProcessingMessage('Sauvegarde en cours...');
+    await addDocument(docData);
+    toast({ title: "Document ajouté !", description: `"${docData.name}" a été sauvegardé avec succès.` });
+    handleOpenChange(false);
+  };
+
+  const handleSupplierMergeChoice = async (choice: 'useExisting' | 'merge' | 'keepNew') => {
+    if (!pendingNewDocData) {
+      setIsSupplierMergeDialogOpen(false);
+      setSupplierMergeInfo(null);
+      return;
+    }
+
+    const detected = (pendingNewDocData.supplier || '').trim();
+    const normalizedKey = supplierMergeInfo?.normalizedKey || normalizeSupplierKey(detected);
+    const canonical = supplierMergeInfo?.existing || resolveCanonicalSupplier(normalizedKey) || detected;
+
+    try {
+      if (choice === 'merge') {
+        const docsToUpdate = documents.filter(d => {
+          const s = (d.supplier || '').trim();
+          if (!s) return false;
+          return normalizeSupplierKey(s) === normalizedKey && s !== canonical;
+        });
+
+        await Promise.all(
+          docsToUpdate.map(d => updateDocument(d.id, { supplier: canonical }))
+        );
+      }
+
+      const finalSupplier = choice === 'keepNew' ? detected : canonical;
+      await saveNewDocument({ ...pendingNewDocData, supplier: finalSupplier });
+    } catch (error: any) {
+      console.error('Supplier merge/save failed:', error);
+      toast({ variant: 'destructive', title: "L'opération a échoué", description: "Impossible de sauvegarder le document." });
+      setIsProcessing(false);
+    } finally {
+      setIsSupplierMergeDialogOpen(false);
+      setSupplierMergeInfo(null);
+      setPendingNewDocData(null);
+    }
   };
   
   const processAndSaveDocument = async (file: File) => {
@@ -221,9 +302,20 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               file: file,
           };
 
-          await addDocument(newDocData);
-          toast({ title: "Document ajouté !", description: `"${newDocData.name}" a été sauvegardé avec succès.` });
-          handleOpenChange(false);
+          const detectedSupplier = (newDocData.supplier || '').trim();
+          if (detectedSupplier) {
+            const normalizedKey = normalizeSupplierKey(detectedSupplier);
+            const canonical = resolveCanonicalSupplier(normalizedKey);
+            if (canonical && canonical !== detectedSupplier) {
+              setPendingNewDocData(newDocData);
+              setSupplierMergeInfo({ detected: detectedSupplier, existing: canonical, normalizedKey });
+              setIsSupplierMergeDialogOpen(true);
+              setIsProcessing(false);
+              return;
+            }
+          }
+
+          await saveNewDocument(newDocData);
           
       } catch (error: any) {
           console.error('L\'analyse ou la sauvegarde du document a échoué :', error);
@@ -311,6 +403,23 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
             {dialogDescription}
           </DialogDescription>
         </DialogHeader>
+
+        <AlertDialog open={isSupplierMergeDialogOpen} onOpenChange={setIsSupplierMergeDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Fournisseur déjà existant</AlertDialogTitle>
+              <AlertDialogDescription>
+                Le document a été détecté avec le fournisseur "{supplierMergeInfo?.detected}" mais vous avez déjà "{supplierMergeInfo?.existing}".
+                Voulez-vous fusionner pour garder un seul fournisseur ?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => handleSupplierMergeChoice('keepNew')}>Garder "{supplierMergeInfo?.detected}"</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => handleSupplierMergeChoice('useExisting')}>Utiliser "{supplierMergeInfo?.existing}"</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleSupplierMergeChoice('merge')}>Fusionner</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {isProcessing ? (
              <div className="flex flex-col items-center justify-center space-y-4 py-12">

@@ -21,6 +21,16 @@ export function normalizeProductKey(label: string): string {
     .trim();
 }
 
+export function normalizeSupplierKey(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export type ProductPurchase = {
   productKey: string;
   rawLabel: string;
