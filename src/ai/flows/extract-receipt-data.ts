@@ -46,7 +46,7 @@ Règles:
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
   input: ExtractReceiptDataInput,
-  timeoutMs: number = 180000
+  timeoutMs: number = 240000
 ): Promise<ExtractReceiptDataOutput | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -83,7 +83,7 @@ async function extractWithGroq(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.2-90b-vision-preview',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
           { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus Carrefour Tunisie.' },
           {
@@ -127,13 +127,24 @@ export async function extractReceiptData(
 ): Promise<ExtractReceiptDataOutput> {
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
 
-  // 1️⃣ Primary Analysis: Gemini (4 minutes timeout)
+  // 1️⃣ Prioritize Groq (240 s timeout) - Using Llama-4 Scout for OCR
+  try {
+    const groqRes = await extractWithGroqTimeout(input);
+    if (groqRes) {
+      console.log('[Groq] Succès (prioritaire).');
+      return JSON.parse(JSON.stringify(groqRes));
+    }
+  } catch (err: any) {
+    console.warn('[Groq] Échec:', err.message);
+  }
+
+  // 2️⃣ Fallback to Gemini (4 minutes timeout)
   if (!process.env.GOOGLE_API_KEY) {
     console.warn('[Gemini] API Key missing (GOOGLE_API_KEY), skipping Gemini.');
   } else {
     try {
       const geminiPromise = ai.generate({
-        model: 'googleai/gemini-2.0-flash',
+        model: 'googleai/gemini-1.5-flash',
         prompt: [
           { text: RECEIPT_PROMPT },
           { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } },
