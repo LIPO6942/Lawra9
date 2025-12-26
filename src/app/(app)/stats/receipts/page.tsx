@@ -148,7 +148,7 @@ export default function ReceiptStatsPage() {
               <BarChart data={topProductsBySpend} layout="vertical" margin={{ left: 0, right: 20 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} interval={0} />
+                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9 }} interval={0} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="totalSpend" fill="hsl(var(--chart-1))" radius={4} barSize={20} />
               </BarChart>
@@ -162,7 +162,7 @@ export default function ReceiptStatsPage() {
               <BarChart data={topProductsByQty} layout="vertical" margin={{ left: 0, right: 20 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} interval={0} />
+                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9 }} interval={0} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="totalQty" fill="hsl(var(--chart-2))" radius={4} barSize={20} />
               </BarChart>
@@ -196,17 +196,17 @@ export default function ReceiptStatsPage() {
                   <TableRow>
                     <TableHead>Catégorie</TableHead>
                     <TableHead className="text-right">Dépense</TableHead>
-                    <TableHead className="text-right">Quantité</TableHead>
-                    <TableHead className="text-right">Articles</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Quantité</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Articles</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {catStats.map((c) => (
                     <TableRow key={c.category}>
-                      <TableCell className="font-medium">{c.category}</TableCell>
-                      <TableCell className="text-right">{(c.totalSpend || 0).toFixed(3)} TND</TableCell>
-                      <TableCell className="text-right">{c.totalQty}</TableCell>
-                      <TableCell className="text-right">{c.itemsCount}</TableCell>
+                      <TableCell className="font-medium text-xs sm:text-sm">{c.category}</TableCell>
+                      <TableCell className="text-right text-xs sm:text-sm">{(c.totalSpend || 0).toFixed(3)} TND</TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">{c.totalQty}</TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">{c.itemsCount}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -224,8 +224,8 @@ export default function ReceiptStatsPage() {
                   <TableRow>
                     <TableHead>Produit</TableHead>
                     <TableHead className="text-right">Dernier prix</TableHead>
-                    <TableHead className="text-right">Dernier achat</TableHead>
-                    <TableHead className="text-right">Fréquence (3m)</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Dernier achat</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Fréquence (3m)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -238,10 +238,10 @@ export default function ReceiptStatsPage() {
                     }
                     return (
                       <TableRow key={p.productKey}>
-                        <TableCell className="font-medium">{p.normalizedLabel || p.rawLabel || p.productKey}</TableCell>
-                        <TableCell className="text-right">{p.lastUnitPrice != null ? `${p.lastUnitPrice.toFixed(3)} TND` : '-'}</TableCell>
-                        <TableCell className="text-right">{dateDisp}</TableCell>
-                        <TableCell className="text-right">{p.frequencyCount}</TableCell>
+                        <TableCell className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none" title={p.normalizedLabel || p.rawLabel || p.productKey}>{p.normalizedLabel || p.rawLabel || p.productKey}</TableCell>
+                        <TableCell className="text-right text-xs sm:text-sm">{p.lastUnitPrice != null ? `${p.lastUnitPrice.toFixed(3)}` : '-'}</TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">{dateDisp}</TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">{p.frequencyCount}</TableCell>
                       </TableRow>
                     );
                   })}
