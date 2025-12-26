@@ -24,18 +24,22 @@ export type ExtractReceiptDataInput = z.infer<typeof ExtractReceiptDataInputSche
 
 const ExtractReceiptDataOutputSchema = z.object({
   storeName: z.string().optional(),
+  storeId: z.string().optional(),
   purchaseAt: z.string().optional(),
   currency: z.string().optional(),
   total: z.number().optional(),
+  subtotal: z.number().optional(),
+  taxTotal: z.number().optional(),
   lines: z.array(ReceiptLineSchema),
-  ocrText: z.string().optional(), // Ajouté pour corriger l'erreur de build
+  ocrText: z.string().optional(),
+  confidence: z.number().optional(),
 });
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
 const RECEIPT_PROMPT = `Extraire les données du ticket de caisse Carrefour Tunisie. Format JSON uniquement.
 Règles: 
 - Un article peut être sur 3 lignes (Libellé-Prix, CodeBarre, Qté x PxUnit). Regroupez-les.
-- Renvoyez storeName, purchaseAt (ISO), total, et la liste des lines.
+- Renvoyez storeName, purchaseAt (ISO), total, subtotal, taxTotal et la liste des lines.
 `;
 
 async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput | null> {
@@ -77,7 +81,8 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
       const parsed = JSON.parse(content);
       return {
         ...parsed,
-        ocrText: parsed.ocrText || "Extrait par Groq"
+        ocrText: parsed.ocrText || "Extrait par Groq",
+        confidence: parsed.confidence || 0.8
       };
     }
   } catch (e) {
@@ -129,6 +134,13 @@ export async function extractReceiptData(input: ExtractReceiptDataInput): Promis
   return {
     storeName: "Échec de l'analyse",
     lines: [],
-    ocrText: "Timeout ou dépassement des limites Vercel. Essayez une image compressée."
+    ocrText: "Timeout ou dépassement des limites Vercel. Essayez une image compressée.",
+    confidence: 0,
+    storeId: "",
+    purchaseAt: new Date().toISOString(),
+    currency: "TND",
+    total: 0,
+    subtotal: 0,
+    taxTotal: 0
   };
 }
