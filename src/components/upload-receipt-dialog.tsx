@@ -108,8 +108,8 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
 
       setProcessingMessage('Ticket lu ! Optimisation...');
       const enhancedLines = (res.lines || []).map((l: any, idx: number) => {
-        const label = l.normalizedLabel || l.rawLabel;
-        const heurCat = mapCategoryHeuristic(label || '');
+        const label = l.normalizedLabel || l.rawLabel || 'Produit Inconnu';
+        const heurCat = mapCategoryHeuristic(label);
         const norm = normalizeUnit(l.quantity, l.unit, label);
         const line = {
           id: l.id || `ln-${idx}`,
