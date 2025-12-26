@@ -10,6 +10,53 @@ import { extractReceiptData } from '@/ai/flows/extract-receipt-data';
 import { Receipt } from '@/lib/types';
 import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normalizeProductKey, getLearnedPackQty } from '@/lib/utils';
 
+/**
+ * Fonction pour redimensionner et compresser l'image côté client
+ * sans utiliser de bibliothèque externe.
+ */
+async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.7): Promise<{ blob: Blob, dataUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      let width = img.width;
+      let height = img.height;
+
+      // Calcul des nouvelles dimensions en gardant le ratio
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error("Canvas context error"));
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob((blob) => {
+        if (!blob) return reject(new Error("Compression error"));
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({ blob, dataUrl: reader.result as string });
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = (e) => reject(e);
+  });
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -35,27 +82,32 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
 
   async function processAndSaveReceipt(file: File) {
     try {
-      // Vercel Hobby limit is 4.5MB for server actions. Base64 increases size by ~33%. 
-      // 3.5MB raw file => ~4.6MB encoded. So 3.0MB is a safer limit for Hobby.
-      if (file.size > 3.0 * 1024 * 1024) {
-        throw new Error("L'image est trop volumineuse pour l'analyse sur Vercel Free (max 3Mo). Veuillez compresser l'image ou prendre une photo moins lourde.");
-      }
-
       setIsProcessing(true);
-      setProcessingMessage('Envoi du reçu vers l\'IA...');
-      const dataUri = await fileToDataUrl(file);
 
-      const res = await extractReceiptData({ receiptDataUri: dataUri, mimeType: file.type });
+      let finalDataUri: string;
+      let finalFile: File = file;
 
-      if (res.storeName === "Échec de l'analyse") {
-        throw new Error(res.ocrText || "L'IA n'a pas pu analyser ce document.");
+      // Gestion .HEIC et images lourdes
+      const isHeic = file.name.toLowerCase().endsWith('.heic');
+
+      if (isHeic || file.size > 1 * 1024 * 1024) {
+        setProcessingMessage(isHeic ? 'Conversion HEIC et optimisation...' : 'Optimisation de l\'image lourde...');
+        const { blob, dataUrl } = await compressImage(file);
+        finalDataUri = dataUrl;
+        finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
+      } else {
+        setProcessingMessage('Préparation...');
+        finalDataUri = await fileToDataUrl(file);
       }
 
-      if (!res || !res.lines) {
-        throw new Error("L'analyse n'a pas retourné de données valides.");
-      }
+      setProcessingMessage('Analyse par l\'IA (Mode Rapide)...');
 
-      setProcessingMessage('Optimisation des données...');
+      const res = await extractReceiptData({ receiptDataUri: finalDataUri, mimeType: 'image/jpeg' });
+
+      if (!res) throw new Error("Le serveur n'a pas répondu.");
+      if (res.storeName === "Échec de l'analyse") throw new Error(res.ocrText || "L'IA n'a pas pu analyser ce document.");
+
+      setProcessingMessage('Optimisation des résultats...');
       const enhancedLines = (res.lines || []).map((l: any, idx: number) => {
         const label = l.normalizedLabel || l.rawLabel;
         const heurCat = mapCategoryHeuristic(label || '');
@@ -76,7 +128,6 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
           standardUnitPrice: undefined as number | undefined,
         };
 
-        // --- Post-processing inference for packs ---
         const text = (label || '').toLowerCase().replace(',', '.');
         const packMatch = text.match(/(\d{1,3})\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*=\s*(\d+(?:\.\d+)?))?/);
         if (packMatch) {
@@ -87,12 +138,8 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
             line.quantity = line.quantity && line.quantity > 1 ? line.quantity : qty;
             line.unit = line.unit || 'pcs';
           }
-          if (!isNaN(unitP)) {
-            line.unitPrice = line.unitPrice ?? unitP;
-          }
-          if (totalP != null && !isNaN(totalP)) {
-            line.lineTotal = line.lineTotal ?? parseFloat(totalP.toFixed(3));
-          }
+          if (!isNaN(unitP)) line.unitPrice = line.unitPrice ?? unitP;
+          if (totalP != null && !isNaN(totalP)) line.lineTotal = line.lineTotal ?? parseFloat(totalP.toFixed(3));
         }
 
         if ((line.quantity == null || line.quantity === 1) && line.unitPrice != null && line.lineTotal != null && line.unitPrice > 0) {
@@ -115,7 +162,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         return line as any;
       });
 
-      setProcessingMessage('Enregistrement...');
+      setProcessingMessage('Sauvegarde...');
       const receipt: Omit<Receipt, 'id'> = {
         storeName: res.storeName,
         storeId: res.storeId,
@@ -125,7 +172,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         subtotal: res.subtotal,
         taxTotal: res.taxTotal,
         ocrText: res.ocrText,
-        file,
+        file: finalFile,
         status: 'parsed',
         confidence: res.confidence ?? 0.7,
         lines: enhancedLines,
@@ -134,11 +181,9 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       await addReceipt(receipt);
       handleOpenChange(false);
     } catch (err: any) {
-      console.error("Erreur lors de l'analyse du reçu:", err);
-      setProcessingMessage(err.message || "Erreur d'analyse. Vérifiez l'image ou la taille du fichier.");
-      setTimeout(() => {
-        setIsProcessing(false);
-      }, 6000);
+      console.error("Erreur:", err);
+      setProcessingMessage(err.message || "Erreur lors du traitement.");
+      setTimeout(() => setIsProcessing(false), 6000);
     }
   }
 
@@ -163,13 +208,17 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-headline">Ajouter un reçu</DialogTitle>
-          <DialogDescription>Uploadez un reçu (image/PDF). L'analyse est automatique.</DialogDescription>
+          <DialogDescription>
+            Uploadez vos reçus (iPhone HEIC supportés). L'image sera automatiquement optimisée pour l'IA.
+          </DialogDescription>
         </DialogHeader>
 
         {isProcessing ? (
           <div className="flex flex-col items-center justify-center space-y-4 py-12">
             <Loader2 className="h-16 w-16 animate-spin text-accent" />
-            <p className="font-semibold text-lg text-center px-4">{processingMessage || 'Traitement...'}</p>
+            <p className="font-semibold text-lg text-center px-4 transition-all duration-300">
+              {processingMessage}
+            </p>
           </div>
         ) : (
           <div className="py-8">
@@ -177,10 +226,10 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
               <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
                 <UploadCloud className="h-12 w-12 text-muted-foreground" />
                 <p className="font-semibold">Cliquez ou glissez-déposez</p>
-                <p className="text-xs text-muted-foreground">Image JPG/PNG (Max 3Mo pour Vercel Free)</p>
+                <p className="text-xs text-muted-foreground">Supporte HEIC, JPG, PNG (Auto-compression)</p>
               </div>
             </label>
-            <Input id="receipt-upload" type="file" className="hidden" onChange={onFileChange} accept=".pdf,.png,.jpg,.jpeg" />
+            <Input id="receipt-upload" type="file" className="hidden" onChange={onFileChange} accept=".heic,.png,.jpg,.jpeg" />
           </div>
         )}
 
