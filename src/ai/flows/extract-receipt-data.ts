@@ -40,13 +40,79 @@ const ExtractReceiptDataOutputSchema = z.object({
 });
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
+const RECEIPT_PROMPT = `Vous êtes un expert en extraction de données de tickets de caisse, spécialisé dans les formats de supermarchés (ex: Carrefour Tunisie).
+
+Objectif: Extraire toutes les métadonnées et TOUTES les lignes d'articles de façon structurée au format JSON.
+
+Règles de lecture CRITIQUES pour les articles:
+1. **Structure multi-lignes (Patron Carrefour)**: Un article est généralement structuré sur 3 lignes :
+   - Ligne 1: [PRÉFIXE ÉVENTUEL] [LIBELLÉ DE L'ARTICLE] [MONTANT TOTAL LIGNE] (ex: "R 25CL DELIO AROMA G 11.400d")
+   - Ligne 2: [CODE-BARRES] (ex: "6191534802476")
+   - Ligne 3: [QUANTITÉ] x [PRIX UNITAIRE] (ex: "12 x 0.950d")
+   -> Regroupez ces 3 lignes en UN SEUL objet article.
+
+2. **Extraction des Valeurs**:
+   - Supprimez le suffixe 'd' (Dinar) pour ne garder que le nombre décimal.
+   - Si "Quantity x UnitPrice" est présent, utilisez-les. Sinon Quantity=1.
+
+3. **Validation**: Calculez toujours Quantity * UnitPrice.
+
+Structure JSON attendue:
+{
+  "storeName": "Nom Magasin",
+  "purchaseAt": "ISO Date",
+  "total": 0.0,
+  "lines": [
+    { "rawLabel": "...", "normalizedLabel": "...", "quantity": 1, "unitPrice": 0.0, "lineTotal": 0.0, "barcode": "..." }
+  ]
+}`;
+
+async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput | null> {
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) return null;
+
+  console.log("[Groq] Tentative de fallback...");
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${groqKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.2-11b-vision-preview",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: RECEIPT_PROMPT },
+              { type: "image_url", image_url: { url: input.receiptDataUri } }
+            ]
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.1
+      })
+    });
+
+    const data = await response.json();
+    if (data.choices?.[0]?.message?.content) {
+      console.log("[Groq] Analyse réussie.");
+      return JSON.parse(data.choices[0].message.content);
+    }
+  } catch (e) {
+    console.error("[Groq] Erreur fallback:", e);
+  }
+  return null;
+}
+
 export async function extractReceiptData(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput> {
   console.log("[Genkit] Début extractReceiptData (taille image:", input.receiptDataUri.length, ")");
 
+  // 1. Essai avec Gemini (Principal)
   try {
-    // Timeout de sécurité 50s
     const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout IA (50s)")), 50000)
+      setTimeout(() => reject(new Error("Timeout Gemini")), 15000) // Timeout plus court pour Gemini avant fallback
     );
 
     const result = await Promise.race([
@@ -54,54 +120,31 @@ export async function extractReceiptData(input: ExtractReceiptDataInput): Promis
       timeout
     ]) as any;
 
-    if (!result || !result.output) {
-      throw new Error("L'IA n'a pas retourné de résultat valide.");
+    if (result?.output) {
+      console.log("[Gemini] Analyse réussie.");
+      return JSON.parse(JSON.stringify(result.output));
     }
-
-    console.log("[Genkit] Analyse réussie.");
-    // Force la sérialisation pour éviter les erreurs de "Server Components render"
-    return JSON.parse(JSON.stringify(result.output));
-  } catch (error: any) {
-    console.error("[Genkit] Erreur fatale lors de l'analyse:", error.message || error);
-    return {
-      storeName: "Échec de l'analyse",
-      lines: [],
-      ocrText: `Erreur: ${error.message || "Problème de communication avec l'IA"}`
-    } as any;
+  } catch (geminiError: any) {
+    console.warn("[Gemini] Échec ou timeout, passage au fallback Groq...", geminiError.message);
   }
+
+  // 2. Essai avec Groq (Fallback)
+  const groqRes = await extractWithGroq(input);
+  if (groqRes) return JSON.parse(JSON.stringify(groqRes));
+
+  // 3. Échec final
+  return {
+    storeName: "Échec de l'analyse",
+    lines: [],
+    ocrText: "Ni Gemini ni Groq n'ont pu traiter le reçu. Vérifiez la qualité de l'image."
+  } as any;
 }
+
 const prompt = ai.definePrompt({
   name: 'extractReceiptDataPrompt',
   input: { schema: ExtractReceiptDataInputSchema },
   output: { schema: ExtractReceiptDataOutputSchema },
-  prompt: `Vous êtes un expert en extraction de données de tickets de caisse, spécialisé dans les formats de supermarchés (ex: Carrefour Tunisie).
-
-Objectif: Extraire toutes les métadonnées et TOUTES les lignes d'articles de façon structurée.
-
-Règles de lecture CRITIQUES pour les articles:
-1. **Structure multi-lignes (Patron Carrefour)**: Un article est généralement structuré sur 3 lignes :
-   - Ligne 1: [PRÉFIXE ÉVENTUEL] [LIBELLÉ DE L'ARTICLE] [MONTANT TOTAL LIGNE]
-     *Note: Le préfixe (ex: 'R', '*', '>>') doit être ignoré dans normalizedLabel mais peut rester dans rawLabel.*
-     *Exemple: "R 25CL DELIO AROMA G 11.400d" -> Label: "25CL DELIO AROMA G", Total: 11.400*
-   - Ligne 2: [CODE-BARRES] (ex: "6191534802476")
-   - Ligne 3: [QUANTITÉ] x [PRIX UNITAIRE] (ex: "12 x 0.950d")
-   -> Regroupez ces 3 lignes en UN SEUL objet article.
-
-2. **Extraction des Valeurs**:
-   - Supprimez le suffixe 'd' (Dinar) pour ne garder que le nombre décimal.
-   - Si "Quantity x UnitPrice" est présent sur la ligne suivante, utilisez-les.
-   - Si seule la Ligne 1 est présente, alors Quantity=1 et UnitPrice=Montant Total.
-
-3. **Validation**:
-   - Calculez toujours Quantity * UnitPrice. Si le résultat ≈ Montant Total de la Ligne 1, l'extraction est correcte.
-   - En cas de promotion (ligne négative juste en dessous), essayez de l'associer à l'article ou listez-la comme un article à prix négatif.
-
-4. **Métadonnées**:
-   - Trouvez le nom du magasin (Carrefour), la date (format JJ/MM/AA), l'heure, et le TOTAL final du ticket.
-
-Voici le reçu à analyser:
-{{media url=receiptDataUri mimeType=mimeType}}
-`,
+  prompt: RECEIPT_PROMPT,
 });
 
 // Facultatif: un flow pour Genkit UI
@@ -112,7 +155,6 @@ export const extractReceiptDataFlow = ai.defineFlow(
     outputSchema: ExtractReceiptDataOutputSchema,
   },
   async (input: ExtractReceiptDataInput) => {
-    const { output } = await prompt(input);
-    return output!;
+    return extractReceiptData(input);
   }
 );

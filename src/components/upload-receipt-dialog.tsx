@@ -41,12 +41,17 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
 
       const res = await extractReceiptData({ receiptDataUri: dataUri, mimeType: file.type });
 
+      if (res.storeName === "Échec de l'analyse") {
+        throw new Error(res.ocrText || "L'IA n'a pas pu analyser ce document.");
+      }
+
       if (!res || !res.lines) {
         throw new Error("L'analyse n'a pas retourné de données valides.");
       }
 
       setProcessingMessage('Optimisation des données...');
-      const enhancedLines = (res.lines || []).map((l, idx) => {
+      // ... reste du code identique ...
+      const enhancedLines = (res.lines || []).map((l: any, idx: number) => {
         const label = l.normalizedLabel || l.rawLabel;
         const heurCat = mapCategoryHeuristic(label || '');
         const norm = normalizeUnit(l.quantity, l.unit, label);
@@ -123,13 +128,14 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
 
       await addReceipt(receipt);
       handleOpenChange(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erreur lors de l'analyse du reçu:", err);
-      setProcessingMessage("Erreur d'analyse. Vérifiez votre connexion ou l'image.");
-      // Auto-reset after a delay so the user can try again
+      // Afficher le vrai message d'erreur s'il est disponible
+      const errorMsg = err.message || "Erreur de connexion.";
+      setProcessingMessage(errorMsg);
       setTimeout(() => {
         setIsProcessing(false);
-      }, 3000);
+      }, 5000); // Plus long pour laisser le temps de lire l'erreur
     }
   }
 
