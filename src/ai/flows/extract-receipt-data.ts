@@ -38,10 +38,36 @@ const ExtractReceiptDataOutputSchema = z.object({
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
 // ----- Prompt -----
-const RECEIPT_PROMPT = `Extraire les données du ticket de caisse Carrefour Tunisie. Format JSON uniquement.
-Règles:
-- Un article peut être sur 3 lignes (Libellé-Prix, CodeBarre, Qté x PxUnit). Regroupez-les.
-- Renvoyez storeName, purchaseAt (ISO), total, subtotal, taxTotal et la liste des lines.`;
+const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour, Monoprix, MG, etc.).
+Analyse cette image et extrais TOUS les produits listés, ligne par ligne.
+
+Instructions obligatoires:
+1.  **Liste des Produits ("lines")**: Pour CHAQUE ligne de produit sur le ticket:
+    -   "rawLabel": Copie EXACTEMENT le texte du libellé (exemple: "LAIT 1L D.LICE"). Si illisible, mets "Article illisible".
+    -   "normalizedLabel": Corrige le libellé pour qu'il soit propre (exemple: "Lait 1L Délice").
+    -   "quantity": Trouve la quantité. Si c'est un produit au poids (ex: 1.250 kg), mets 1.25. Si c'est unitaire (ex: 2 x 1.500), mets 2. Par défaut, mets 1.
+    -   "unitPrice": Le prix unitaire.
+    -   "lineTotal": Le montant total de la ligne.
+2.  **Date ("purchaseAt")**: Cherche la date (JJ/MM/AAAA) et l'heure. Convertis en format ISO 8601 (YYYY-MM-DDTHH:mm:ss). Si introuvable, utilise la date d'aujourd'hui.
+3.  **Magasin ("storeName")**: Le nom du supermarché.
+4.  **Totaux**: "total", "subtotal" (si dispo).
+
+Format de sortie JSON Strict:
+{
+  "storeName": "string",
+  "purchaseAt": "ISO date string",
+  "total": number,
+  "lines": [
+    {
+      "rawLabel": "string",
+      "normalizedLabel": "string",
+      "quantity": number,
+      "unitPrice": number,
+      "lineTotal": number
+    }
+  ]
+}
+NB: Ne rate AUCUN produit. Si le ticket est long, extrais tout ce que tu vois.`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
