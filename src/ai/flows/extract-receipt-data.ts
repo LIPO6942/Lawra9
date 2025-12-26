@@ -44,7 +44,10 @@ Règles:
 
 async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) return null;
+  if (!groqKey) {
+    console.error("[Groq] GROQ_API_KEY is missing in env");
+    return null;
+  }
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -73,7 +76,11 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
       })
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error("[Groq] API Error Status:", response.status, errBody);
+      return null;
+    }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
@@ -86,7 +93,7 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
       };
     }
   } catch (e) {
-    console.error("[Groq] Error:", e);
+    console.error("[Groq] Exception during fetch:", e);
   }
   return null;
 }
@@ -94,47 +101,51 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
 export async function extractReceiptData(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput> {
   console.log("[Genkit] Scan début (Image size:", input.receiptDataUri.length, ")");
 
-  // 1. Gemini
-  try {
-    const geminiPromise = ai.generate({
-      model: 'googleai/gemini-2.0-flash',
-      prompt: [
-        { text: RECEIPT_PROMPT },
-        { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } }
-      ],
-      output: { schema: ExtractReceiptDataOutputSchema }
-    });
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn("[Gemini] API Key missing, jumping to Groq");
+  } else {
+    // 1. Gemini (Délai augmenté à 25s pour laisser l'IA réfléchir)
+    try {
+      const geminiPromise = ai.generate({
+        model: 'googleai/gemini-2.0-flash',
+        prompt: [
+          { text: RECEIPT_PROMPT },
+          { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } }
+        ],
+        output: { schema: ExtractReceiptDataOutputSchema }
+      });
 
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout Gemini (6s)")), 6500)
-    );
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout Gemini (25s)")), 25000)
+      );
 
-    const result = await (Promise.race([geminiPromise, timeoutPromise]) as Promise<any>);
+      const result = await (Promise.race([geminiPromise, timeoutPromise]) as Promise<any>);
 
-    if (result && result.output) {
-      console.log("[Gemini] Succès.");
-      return JSON.parse(JSON.stringify(result.output));
+      if (result && result.output) {
+        console.log("[Gemini] Succès.");
+        return JSON.parse(JSON.stringify(result.output));
+      }
+    } catch (err: any) {
+      console.warn("[Gemini] Échec/Timeout:", err.message);
     }
-  } catch (err: any) {
-    console.warn("[Gemini] Échec/Timeout:", err.message);
   }
 
-  // 2. Fallback Groq
+  // 2. Fallback Groq (Délai augmenté car si Gemini a timeout, Groq a encore du temps)
   try {
     const groqRes = await extractWithGroq(input);
     if (groqRes) {
       console.log("[Groq] Succès.");
       return JSON.parse(JSON.stringify(groqRes));
     }
-  } catch (err) {
-    console.warn("[Groq] Échec.");
+  } catch (err: any) {
+    console.warn("[Groq] Échec:", err.message);
   }
 
   // 3. Fallback ultime
   return {
     storeName: "Échec de l'analyse",
     lines: [],
-    ocrText: "Timeout ou dépassement des limites Vercel. Essayez une image compressée.",
+    ocrText: "L'IA n'a pas pu répondre à temps. Réessayez avec une image plus petite ou vérifiez vos clés API.",
     confidence: 0,
     storeId: "",
     purchaseAt: new Date().toISOString(),

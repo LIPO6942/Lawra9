@@ -12,7 +12,6 @@ import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normaliz
 
 /**
  * Fonction pour redimensionner et compresser l'image côté client
- * sans utiliser de bibliothèque externe.
  */
 async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.7): Promise<{ blob: Blob, dataUrl: string }> {
   return new Promise((resolve, reject) => {
@@ -23,7 +22,6 @@ async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, qual
       let width = img.width;
       let height = img.height;
 
-      // Calcul des nouvelles dimensions en gardant le ratio
       if (width > height) {
         if (width > maxWidth) {
           height = Math.round((height * maxWidth) / width);
@@ -87,11 +85,11 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       let finalDataUri: string;
       let finalFile: File = file;
 
-      // Gestion .HEIC et images lourdes
       const isHeic = file.name.toLowerCase().endsWith('.heic');
 
-      if (isHeic || file.size > 1 * 1024 * 1024) {
-        setProcessingMessage(isHeic ? 'Conversion HEIC et optimisation...' : 'Optimisation de l\'image lourde...');
+      // On réduit la limite à 2.5Mo pour plus de sécurité sur Vercel Hobby
+      if (isHeic || file.size > 2.5 * 1024 * 1024) {
+        setProcessingMessage(isHeic ? 'Conversion iPhone supportée...' : 'Image un peu lourde, optimisation...');
         const { blob, dataUrl } = await compressImage(file);
         finalDataUri = dataUrl;
         finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
@@ -100,14 +98,15 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         finalDataUri = await fileToDataUrl(file);
       }
 
-      setProcessingMessage('Analyse par l\'IA (Mode Rapide)...');
+      setProcessingMessage('Analyse IA en cours (cela peut prendre 30s)...');
 
+      // On wrap l'appel dans un try/catch spécifique pour chopper les erreurs de timeout serveur
       const res = await extractReceiptData({ receiptDataUri: finalDataUri, mimeType: 'image/jpeg' });
 
-      if (!res) throw new Error("Le serveur n'a pas répondu.");
-      if (res.storeName === "Échec de l'analyse") throw new Error(res.ocrText || "L'IA n'a pas pu analyser ce document.");
+      if (!res) throw new Error("Le serveur est injoignable.");
+      if (res.storeName === "Échec de l'analyse") throw new Error(res.ocrText || "L'IA n'a pas pu lire le ticket.");
 
-      setProcessingMessage('Optimisation des résultats...');
+      setProcessingMessage('Ticket lu ! Optimisation...');
       const enhancedLines = (res.lines || []).map((l: any, idx: number) => {
         const label = l.normalizedLabel || l.rawLabel;
         const heurCat = mapCategoryHeuristic(label || '');
@@ -162,7 +161,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         return line as any;
       });
 
-      setProcessingMessage('Sauvegarde...');
+      setProcessingMessage('Presque fini...');
       const receipt: Omit<Receipt, 'id'> = {
         storeName: res.storeName,
         storeId: res.storeId,
@@ -181,9 +180,14 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       await addReceipt(receipt);
       handleOpenChange(false);
     } catch (err: any) {
-      console.error("Erreur:", err);
-      setProcessingMessage(err.message || "Erreur lors du traitement.");
-      setTimeout(() => setIsProcessing(false), 6000);
+      console.error("Erreur détectée:", err);
+      // On filtre l'erreur technique Vercel pour être plus clair
+      if (err.message?.includes("digest")) {
+        setProcessingMessage("Le serveur a mis trop de temps. Réessayez avec une image plus petite.");
+      } else {
+        setProcessingMessage(err.message || "Un problème est survenu.");
+      }
+      setTimeout(() => setIsProcessing(false), 8000);
     }
   }
 
@@ -209,7 +213,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         <DialogHeader>
           <DialogTitle className="font-headline">Ajouter un reçu</DialogTitle>
           <DialogDescription>
-            Uploadez vos reçus (iPhone HEIC supportés). L'image sera automatiquement optimisée pour l'IA.
+            Supporte iPhone (HEIC) et photos lourdes. L'IA analyse votre ticket en détail.
           </DialogDescription>
         </DialogHeader>
 
@@ -226,7 +230,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
               <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
                 <UploadCloud className="h-12 w-12 text-muted-foreground" />
                 <p className="font-semibold">Cliquez ou glissez-déposez</p>
-                <p className="text-xs text-muted-foreground">Supporte HEIC, JPG, PNG (Auto-compression)</p>
+                <p className="text-xs text-muted-foreground">iPhone supporté (Conversion auto)</p>
               </div>
             </label>
             <Input id="receipt-upload" type="file" className="hidden" onChange={onFileChange} accept=".heic,.png,.jpg,.jpeg" />
