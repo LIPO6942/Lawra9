@@ -28,6 +28,7 @@ const ExtractReceiptDataOutputSchema = z.object({
   currency: z.string().optional(),
   total: z.number().optional(),
   lines: z.array(ReceiptLineSchema),
+  ocrText: z.string().optional(), // Ajouté pour corriger l'erreur de build
 });
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
@@ -72,7 +73,13 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    if (content) return JSON.parse(content);
+    if (content) {
+      const parsed = JSON.parse(content);
+      return {
+        ...parsed,
+        ocrText: parsed.ocrText || "Extrait par Groq"
+      };
+    }
   } catch (e) {
     console.error("[Groq] Error:", e);
   }
@@ -84,7 +91,6 @@ export async function extractReceiptData(input: ExtractReceiptDataInput): Promis
 
   // 1. Gemini
   try {
-    // Correction de la syntaxe ai.generate pour Genkit
     const geminiPromise = ai.generate({
       model: 'googleai/gemini-2.0-flash',
       prompt: [
@@ -124,5 +130,5 @@ export async function extractReceiptData(input: ExtractReceiptDataInput): Promis
     storeName: "Échec de l'analyse",
     lines: [],
     ocrText: "Timeout ou dépassement des limites Vercel. Essayez une image compressée."
-  } as any;
+  };
 }
