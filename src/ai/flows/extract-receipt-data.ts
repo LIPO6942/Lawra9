@@ -53,29 +53,25 @@ const prompt = ai.definePrompt({
 Objectif: Extraire toutes les métadonnées et TOUTES les lignes d'articles de façon structurée.
 
 Règles de lecture CRITIQUES pour les articles:
-1. **Liaison multi-lignes (Patron Carrefour)**: Un article est souvent réparti sur 2 ou 3 lignes consécutives:
-   - Ligne 1: [LIBELLÉ DE L'ARTICLE] [MONTANT TOTAL DE LA LIGNE] (ex: "DELIO AROMA G 11.400d")
-   - Ligne 2 (optionnelle): [CODE-BARRES] (ex: "6191534802476")
+1. **Structure multi-lignes (Patron Carrefour)**: Un article est généralement structuré sur 3 lignes :
+   - Ligne 1: [PRÉFIXE ÉVENTUEL] [LIBELLÉ DE L'ARTICLE] [MONTANT TOTAL LIGNE]
+     *Note: Le préfixe (ex: 'R', '*', '>>') doit être ignoré dans normalizedLabel mais peut rester dans rawLabel.*
+     *Exemple: "R 25CL DELIO AROMA G 11.400d" -> Label: "25CL DELIO AROMA G", Total: 11.400*
+   - Ligne 2: [CODE-BARRES] (ex: "6191534802476")
    - Ligne 3: [QUANTITÉ] x [PRIX UNITAIRE] (ex: "12 x 0.950d")
-   -> Vous DEVEZ impérativement regrouper ces informations dans le MÊME objet article. 
-   -> Dans cet exemple: quantity=12, unitPrice=0.950, lineTotal=11.400.
+   -> Regroupez ces 3 lignes en UN SEUL objet article.
 
-2. **Prix et Devises**: 
-   - Le suffixe 'd' ou 'dt' indique souvent les Millimes/Dinars. Ignorez le 'd' pour ne garder que le nombre.
-   - Les prix ont souvent 3 décimales (ex: 0.950, 11.400).
+2. **Extraction des Valeurs**:
+   - Supprimez le suffixe 'd' (Dinar) pour ne garder que le nombre décimal.
+   - Si "Quantity x UnitPrice" est présent sur la ligne suivante, utilisez-les.
+   - Si seule la Ligne 1 est présente, alors Quantity=1 et UnitPrice=Montant Total.
 
-3. **Logique de calcul**:
-   - Si vous voyez "Quantity x UnitPrice", vérifiez que Quantity * UnitPrice ≈ LineTotal.
-   - Si le montant total est présent seul (ex: "LAIT CONCENTR 7.900"), considérez quantity=1 et unitPrice=7.900.
+3. **Validation**:
+   - Calculez toujours Quantity * UnitPrice. Si le résultat ≈ Montant Total de la Ligne 1, l'extraction est correcte.
+   - En cas de promotion (ligne négative juste en dessous), essayez de l'associer à l'article ou listez-la comme un article à prix négatif.
 
-4. **Champs additionnels**:
-   - barcode: capturez le code numérique situé juste sous le libellé.
-   - rawLabel: le nom complet (ex: "25CL DELIO AROMA G").
-   - category: déduire selon le type de produit.
-
-5. **Cohérence globale**:
-   - Extraire le nom du magasin (ex: "Carrefour"), la date et l'heure (chercher format JJ/MM/AA ou similaire), et le TOTAL final.
-   - Le total final doit correspondre à la somme des "lineTotal" extraits.
+4. **Métadonnées**:
+   - Trouvez le nom du magasin (Carrefour), la date (format JJ/MM/AA), l'heure, et le TOTAL final du ticket.
 
 Voici le reçu à analyser:
 {{media url=receiptDataUri mimeType=mimeType}}

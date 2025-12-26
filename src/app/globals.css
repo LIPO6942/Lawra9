@@ -110,8 +110,7 @@
 
   /* Smooth transitions for interactive elements */
   button,
-  a,
-  .transition-all {
+  a {
     @apply transition-all duration-200 ease-in-out;
   }
 }
