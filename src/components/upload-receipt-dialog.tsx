@@ -87,8 +87,8 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
 
       const isHeic = file.name.toLowerCase().endsWith('.heic');
 
-      // On réduit la limite à 2.5Mo pour plus de sécurité sur Vercel Hobby
-      if (isHeic || file.size > 2.5 * 1024 * 1024) {
+      // On autorise jusqu'à 9.5Mo (limite serveur 10Mo)
+      if (isHeic || file.size > 9.5 * 1024 * 1024) {
         setProcessingMessage(isHeic ? 'Conversion iPhone supportée...' : 'Image un peu lourde, optimisation...');
         const { blob, dataUrl } = await compressImage(file);
         finalDataUri = dataUrl;
