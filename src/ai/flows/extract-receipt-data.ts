@@ -128,8 +128,8 @@ export async function extractReceiptData(
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
 
   // 1️⃣ Primary Analysis: Gemini (4 minutes timeout)
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn('[Gemini] API Key missing, skipping Gemini.');
+  if (!process.env.GOOGLE_API_KEY) {
+    console.warn('[Gemini] API Key missing (GOOGLE_API_KEY), skipping Gemini.');
   } else {
     try {
       const geminiPromise = ai.generate({
