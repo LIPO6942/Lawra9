@@ -76,7 +76,22 @@ Format de sortie JSON Strict:
       "lineTotal": number
     }
   ]
-}`;
+}
+
+EXEMPLE CONCRET (Ce que tu vois -> Ce que tu dois extraire):
+IMAGE:
+  25CL DELIO AROMA G        11.400
+      12  x   0.950
+
+JSON ATTENDU:
+  {
+    "rawLabel": "25CL DELIO AROMA G",
+    "quantity": 12,
+    "unitPrice": 0.950,
+    "lineTotal": 11.400
+  }
+
+NB: Pour la date, si le format est JJ/MM/AAAA (ex: 20/05/2024), CONVERTIS-LE en YYYY-MM-DD (ex: "2024-05-20T12:00:00"). NE RENVOIE JAMAIS "20/05/2024".`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
