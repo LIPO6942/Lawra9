@@ -211,10 +211,10 @@ export function monthlyTrend(receipts: Receipt[]) {
   for (const r of receipts) {
     const d = r.purchaseAt ? new Date(r.purchaseAt) : null;
     if (!d) continue;
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     map[key] = (map[key] || 0) + (r.total || 0);
   }
-  return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([month,total])=>({ month, total }));
+  return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).map(([month, total]) => ({ month, total }));
 }
 
 // -------------------------------
@@ -285,6 +285,45 @@ export function computeProductInsights(receipts: Receipt[], lookbackMonths = 3):
   return insights;
 }
 
+export type TopProductStat = {
+  productKey: string;
+  name: string;
+  totalSpend: number;
+  totalQty: number;
+  frequency: number;
+  avgPrice: number;
+};
+
+export function computeTopProducts(receipts: Receipt[]): TopProductStat[] {
+  const purchases = flattenPurchasesFromReceipts(receipts);
+  const map: Record<string, TopProductStat> = {};
+
+  for (const p of purchases) {
+    if (!map[p.productKey]) {
+      map[p.productKey] = {
+        productKey: p.productKey,
+        name: p.normalizedLabel || p.rawLabel || p.productKey,
+        totalSpend: 0,
+        totalQty: 0,
+        frequency: 0,
+        avgPrice: 0,
+      };
+    }
+    const spend = p.lineTotal ?? (p.unitPrice && p.quantity ? p.unitPrice * p.quantity : 0) ?? 0;
+    map[p.productKey].totalSpend += spend;
+    map[p.productKey].totalQty += p.quantity;
+    map[p.productKey].frequency += 1;
+    // Update name preference: normalized > raw > existing
+    if (p.normalizedLabel) map[p.productKey].name = p.normalizedLabel;
+    else if (p.rawLabel && !map[p.productKey].name) map[p.productKey].name = p.rawLabel;
+  }
+
+  return Object.values(map).map(p => ({
+    ...p,
+    avgPrice: p.totalQty > 0 ? p.totalSpend / p.totalQty : 0
+  }));
+}
+
 // -------------------------------
 // Quantity inference & lightweight learning
 // -------------------------------
@@ -334,7 +373,7 @@ function loadLearning(): LearningMap {
 
 function saveLearning(map: LearningMap) {
   if (typeof window === 'undefined') return;
-  try { window.localStorage.setItem(LEARNING_KEY, JSON.stringify(map)); } catch {}
+  try { window.localStorage.setItem(LEARNING_KEY, JSON.stringify(map)); } catch { }
 }
 
 export function getLearnedPackQty(productKey: string, storeName?: string): number | undefined {

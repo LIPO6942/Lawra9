@@ -41,16 +41,26 @@ export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSc
 const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour, Monoprix, MG, etc.).
 Analyse cette image et extrais TOUS les produits listés, ligne par ligne.
 
+ATTENTION AU FORMAT CARREFOUR :
+- Le libellé du produit est sur une ligne, le PRIX TOTAL de la ligne est souvent aligné à droite de cette même ligne.
+- S'il y a une quantité > 1, elle est souvent indiquée sur la ligne EN-DESSOUS du libellé, sous la forme "Quantité x Prix Unitaire" (ex: "2 x 0.850").
+- Dans ce cas (multi-ligne):
+    *   Quantité = le premier chiffre (ex: 2).
+    *   Prix Unitaire = le deuxième chiffre (ex: 0.850).
+    *   Total Ligne = le montant à droite de la PREMIÈRE ligne (celle du libellé).
+    *   Vérification : Quantité x Prix Unitaire ≈ Total Ligne.
+- Si tout est sur une seule ligne (Quantité = 1), le Prix Unitaire = Total Ligne = le montant à droite.
+
 Instructions obligatoires:
-1.  **Liste des Produits ("lines")**: Pour CHAQUE ligne de produit sur le ticket:
-    -   "rawLabel": Copie EXACTEMENT le texte du libellé (exemple: "LAIT 1L D.LICE"). Si illisible, mets "Article illisible".
-    -   "normalizedLabel": Corrige le libellé pour qu'il soit propre (exemple: "Lait 1L Délice").
-    -   "quantity": Trouve la quantité. Si c'est un produit au poids (ex: 1.250 kg), mets 1.25. Si c'est unitaire (ex: 2 x 1.500), mets 2. Par défaut, mets 1.
+1.  **Liste des Produits ("lines")**: Pour CHAQUE article:
+    -   "rawLabel": Texte du libellé (ex: "25CL DELIO AROMA G").
+    -   "normalizedLabel": Libellé propre (ex: "25cl Delio Aroma Gaz").
+    -   "quantity": La quantité achetée (par défaut 1).
     -   "unitPrice": Le prix unitaire.
-    -   "lineTotal": Le montant total de la ligne.
-2.  **Date ("purchaseAt")**: Cherche la date (JJ/MM/AAAA) et l'heure. Convertis en format ISO 8601 (YYYY-MM-DDTHH:mm:ss). Si introuvable, utilise la date d'aujourd'hui.
+    -   "lineTotal": Le montant total payé pour cet article.
+2.  **Date ("purchaseAt")**: Format ISO 8601 (YYYY-MM-DDTHH:mm:ss).
 3.  **Magasin ("storeName")**: Le nom du supermarché.
-4.  **Totaux**: "total", "subtotal" (si dispo).
+4.  **Totaux**: "total", "subtotal".
 
 Format de sortie JSON Strict:
 {
@@ -66,8 +76,7 @@ Format de sortie JSON Strict:
       "lineTotal": number
     }
   ]
-}
-NB: Ne rate AUCUN produit. Si le ticket est long, extrais tout ce que tu vois.`;
+}`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(

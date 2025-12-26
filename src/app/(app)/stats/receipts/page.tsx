@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
-import { computeKpis, monthlyTrend, spendByCategory, spendByStore, aggregateCategoryStats, computeProductInsights } from '@/lib/utils';
+import { computeKpis, monthlyTrend, spendByCategory, spendByStore, aggregateCategoryStats, computeProductInsights, computeTopProducts } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format as formatDate, parseISO, isValid as isValidDate } from 'date-fns';
 
@@ -45,12 +45,18 @@ export default function ReceiptStatsPage() {
   const byStore = useMemo(() => Object.entries(spendByStore(data)).map(([name, total]) => ({ name, total })), [data]);
   const trend = useMemo(() => monthlyTrend(data), [data]);
   const catStats = useMemo(() => aggregateCategoryStats(data), [data]);
+
   // Product insights over the last 3 months, but respect selected store filter
   const storeFilteredReceipts = useMemo(() => {
     if (store === 'ALL') return data; // already time-filtered for the selected months
     return data.filter(r => r.storeName === store);
   }, [data, store]);
   const productInsights = useMemo(() => computeProductInsights(storeFilteredReceipts, 3), [storeFilteredReceipts]);
+
+  // Top Products Stats
+  const topProducts = useMemo(() => computeTopProducts(storeFilteredReceipts), [storeFilteredReceipts]);
+  const topProductsBySpend = useMemo(() => topProducts.sort((a, b) => b.totalSpend - a.totalSpend).slice(0, 10), [topProducts]);
+  const topProductsByQty = useMemo(() => topProducts.sort((a, b) => b.totalQty - a.totalQty).slice(0, 10), [topProducts]);
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -128,6 +134,37 @@ export default function ReceiptStatsPage() {
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="total" fill="var(--color-total, hsl(var(--primary)))" radius={4} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Top 10 Produits (Coût)</CardTitle></CardHeader>
+          <CardContent>
+            <ChartContainer config={{ totalSpend: { label: 'Dépense' } }} className="h-60 sm:h-72 md:h-80">
+              <BarChart data={topProductsBySpend} layout="vertical" margin={{ left: 0, right: 20 }}>
+                <CartesianGrid horizontal={false} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} interval={0} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="totalSpend" fill="hsl(var(--chart-1))" radius={4} barSize={20} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Top 10 Produits (Quantité)</CardTitle></CardHeader>
+          <CardContent>
+            <ChartContainer config={{ totalQty: { label: 'Qté' } }} className="h-60 sm:h-72 md:h-80">
+              <BarChart data={topProductsByQty} layout="vertical" margin={{ left: 0, right: 20 }}>
+                <CartesianGrid horizontal={false} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} interval={0} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="totalQty" fill="hsl(var(--chart-2))" radius={4} barSize={20} />
               </BarChart>
             </ChartContainer>
           </CardContent>
