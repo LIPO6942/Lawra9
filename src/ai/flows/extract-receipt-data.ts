@@ -134,6 +134,7 @@ export async function extractReceiptData(
     return JSON.parse(JSON.stringify(groqRes));
   }
 
+  /* 
   // 2️⃣ Fallback to Gemini (60 s timeout)
   if (!process.env.GEMINI_API_KEY) {
     console.warn('[Gemini] API Key missing, skipping Gemini.');
@@ -161,6 +162,7 @@ export async function extractReceiptData(
       console.warn('[Gemini] Échec/Timeout:', err.message);
     }
   }
+  */
 
   // 3️⃣ Ultimate fallback – return empty structure
   return {
