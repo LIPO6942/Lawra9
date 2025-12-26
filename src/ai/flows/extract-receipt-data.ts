@@ -127,15 +127,7 @@ export async function extractReceiptData(
 ): Promise<ExtractReceiptDataOutput> {
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
 
-  // 1️⃣ Prioritize Groq (180 s timeout)
-  const groqRes = await extractWithGroqTimeout(input);
-  if (groqRes) {
-    console.log('[Groq] Succès (prioritaire).');
-    return JSON.parse(JSON.stringify(groqRes));
-  }
-
-  /* 
-  // 2️⃣ Fallback to Gemini (60 s timeout)
+  // 1️⃣ Primary Analysis: Gemini (4 minutes timeout)
   if (!process.env.GEMINI_API_KEY) {
     console.warn('[Gemini] API Key missing, skipping Gemini.');
   } else {
@@ -150,7 +142,7 @@ export async function extractReceiptData(
       });
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout Gemini (60s)')), 60000)
+        setTimeout(() => reject(new Error('Timeout Gemini (4 minutes)')), 240000)
       );
 
       const result = await (Promise.race([geminiPromise, timeoutPromise]) as Promise<any>);
@@ -162,7 +154,6 @@ export async function extractReceiptData(
       console.warn('[Gemini] Échec/Timeout:', err.message);
     }
   }
-  */
 
   // 3️⃣ Ultimate fallback – return empty structure
   return {
