@@ -165,7 +165,19 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       const receipt: Omit<Receipt, 'id'> = {
         storeName: res.storeName,
         storeId: res.storeId,
-        purchaseAt: (res.purchaseAt && !isNaN(Date.parse(res.purchaseAt))) ? res.purchaseAt : new Date().toISOString(),
+        purchaseAt: (() => {
+          if (!res.purchaseAt) return new Date().toISOString();
+          // Try to parse DD/MM/YYYY or DD-MM-YYYY
+          const frenchDate = res.purchaseAt.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if (frenchDate) {
+            const [_, day, month, year] = frenchDate;
+            const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00:00.000Z`;
+            return !isNaN(Date.parse(iso)) ? iso : new Date().toISOString();
+          }
+          // Default JS parse check
+          if (!isNaN(Date.parse(res.purchaseAt))) return res.purchaseAt;
+          return new Date().toISOString(); // Fallback to today if unparseable
+        })(),
         currency: res.currency,
         total: res.total,
         subtotal: res.subtotal,

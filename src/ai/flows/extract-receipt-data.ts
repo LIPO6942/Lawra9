@@ -91,7 +91,11 @@ JSON ATTENDU:
     "lineTotal": 11.400
   }
 
-NB: Pour la date, si le format est JJ/MM/AAAA (ex: 20/05/2024), CONVERTIS-LE en YYYY-MM-DD (ex: "2024-05-20T12:00:00"). NE RENVOIE JAMAIS "20/05/2024".`;
+IMPORTANT:
+Si tu vois une ligne avec "X x Y" (ex: 12 x 0.950), cela signifie que la ligne JUSTE AU-DESSUS contient le nom du produit.
+TU DOIS FUSIONNER CES DEUX LIGNES EN UN SEUL PRODUIT.
+- Ne crée PAS d'entrée séparée pour "12 x 0.950".
+- Mets "12" dans quantity et "0.950" dans unitPrice de l'article du dessus.`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
