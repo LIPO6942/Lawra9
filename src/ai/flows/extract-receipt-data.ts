@@ -46,7 +46,7 @@ Règles:
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
   input: ExtractReceiptDataInput,
-  timeoutMs: number = 60000
+  timeoutMs: number = 90000
 ): Promise<ExtractReceiptDataOutput | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -127,14 +127,14 @@ export async function extractReceiptData(
 ): Promise<ExtractReceiptDataOutput> {
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
 
-  // 1️⃣ Prioritize Groq (60 s timeout)
+  // 1️⃣ Prioritize Groq (90 s timeout)
   const groqRes = await extractWithGroqTimeout(input);
   if (groqRes) {
     console.log('[Groq] Succès (prioritaire).');
     return JSON.parse(JSON.stringify(groqRes));
   }
 
-  // 2️⃣ Fallback to Gemini (25 s timeout)
+  // 2️⃣ Fallback to Gemini (60 s timeout)
   if (!process.env.GEMINI_API_KEY) {
     console.warn('[Gemini] API Key missing, skipping Gemini.');
   } else {
@@ -149,7 +149,7 @@ export async function extractReceiptData(
       });
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout Gemini (25s)')), 25000)
+        setTimeout(() => reject(new Error('Timeout Gemini (60s)')), 60000)
       );
 
       const result = await (Promise.race([geminiPromise, timeoutPromise]) as Promise<any>);
