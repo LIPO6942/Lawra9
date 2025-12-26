@@ -35,8 +35,14 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
 
   async function processAndSaveReceipt(file: File) {
     try {
+      // Vercel Hobby limit is 4.5MB for server actions. Base64 increases size by ~33%. 
+      // 3.5MB raw file => ~4.6MB encoded. So 3.0MB is a safer limit for Hobby.
+      if (file.size > 3.0 * 1024 * 1024) {
+        throw new Error("L'image est trop volumineuse pour l'analyse sur Vercel Free (max 3Mo). Veuillez compresser l'image ou prendre une photo moins lourde.");
+      }
+
       setIsProcessing(true);
-      setProcessingMessage('Analyse du reçu par l\'IA...');
+      setProcessingMessage('Envoi du reçu vers l\'IA...');
       const dataUri = await fileToDataUrl(file);
 
       const res = await extractReceiptData({ receiptDataUri: dataUri, mimeType: file.type });
@@ -50,7 +56,6 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       }
 
       setProcessingMessage('Optimisation des données...');
-      // ... reste du code identique ...
       const enhancedLines = (res.lines || []).map((l: any, idx: number) => {
         const label = l.normalizedLabel || l.rawLabel;
         const heurCat = mapCategoryHeuristic(label || '');
@@ -130,12 +135,10 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       handleOpenChange(false);
     } catch (err: any) {
       console.error("Erreur lors de l'analyse du reçu:", err);
-      // Afficher le vrai message d'erreur s'il est disponible
-      const errorMsg = err.message || "Erreur de connexion.";
-      setProcessingMessage(errorMsg);
+      setProcessingMessage(err.message || "Erreur d'analyse. Vérifiez l'image ou la taille du fichier.");
       setTimeout(() => {
         setIsProcessing(false);
-      }, 5000); // Plus long pour laisser le temps de lire l'erreur
+      }, 6000);
     }
   }
 
@@ -166,7 +169,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         {isProcessing ? (
           <div className="flex flex-col items-center justify-center space-y-4 py-12">
             <Loader2 className="h-16 w-16 animate-spin text-accent" />
-            <p className="font-semibold text-lg">{processingMessage || 'Traitement...'}</p>
+            <p className="font-semibold text-lg text-center px-4">{processingMessage || 'Traitement...'}</p>
           </div>
         ) : (
           <div className="py-8">
@@ -174,7 +177,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
               <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center transition hover:border-accent">
                 <UploadCloud className="h-12 w-12 text-muted-foreground" />
                 <p className="font-semibold">Cliquez ou glissez-déposez</p>
-                <p className="text-xs text-muted-foreground">PDF, PNG, JPG (max. 10MB)</p>
+                <p className="text-xs text-muted-foreground">Image JPG/PNG (Max 3Mo pour Vercel Free)</p>
               </div>
             </label>
             <Input id="receipt-upload" type="file" className="hidden" onChange={onFileChange} accept=".pdf,.png,.jpg,.jpeg" />

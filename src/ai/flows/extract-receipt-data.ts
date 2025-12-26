@@ -67,9 +67,19 @@ Structure JSON attendue:
   ]
 }`;
 
+const prompt = ai.definePrompt({
+  name: 'extractReceiptDataPrompt',
+  input: { schema: ExtractReceiptDataInputSchema },
+  output: { schema: ExtractReceiptDataOutputSchema },
+  prompt: RECEIPT_PROMPT,
+});
+
 async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) return null;
+  if (!groqKey) {
+    console.warn("[Groq] Clé API GROQ_API_KEY absente.");
+    return null;
+  }
 
   console.log("[Groq] Tentative de fallback...");
   try {
@@ -95,13 +105,18 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
       })
     });
 
-    const data = await response.json();
-    if (data.choices?.[0]?.message?.content) {
-      console.log("[Groq] Analyse réussie.");
-      return JSON.parse(data.choices[0].message.content);
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.status}`);
     }
-  } catch (e) {
-    console.error("[Groq] Erreur fallback:", e);
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (content) {
+      console.log("[Groq] Analyse réussie.");
+      return JSON.parse(content);
+    }
+  } catch (e: any) {
+    console.error("[Groq] Erreur fallback:", e.message);
   }
   return null;
 }
@@ -109,52 +124,44 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
 export async function extractReceiptData(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput> {
   console.log("[Genkit] Début extractReceiptData (taille image:", input.receiptDataUri.length, ")");
 
-  // 1. Essai avec Gemini (Principal)
+  if (!input.receiptDataUri || input.receiptDataUri.length < 100) {
+    return {
+      storeName: "Erreur",
+      lines: [],
+      ocrText: "Image invalide ou trop petite."
+    } as any;
+  }
+
+  // 1. Essai avec Gemini
   try {
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout Gemini")), 15000) // Timeout plus court pour Gemini avant fallback
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout Gemini (20s)")), 20000)
     );
 
     const result = await Promise.race([
       prompt(input),
-      timeout
+      timeoutPromise
     ]) as any;
 
-    if (result?.output) {
+    if (result && result.output) {
       console.log("[Gemini] Analyse réussie.");
       return JSON.parse(JSON.stringify(result.output));
     }
   } catch (geminiError: any) {
-    console.warn("[Gemini] Échec ou timeout, passage au fallback Groq...", geminiError.message);
+    console.warn("[Gemini] Échec/Timeout:", geminiError.message);
   }
 
-  // 2. Essai avec Groq (Fallback)
+  // 2. Essai avec Groq
   const groqRes = await extractWithGroq(input);
-  if (groqRes) return JSON.parse(JSON.stringify(groqRes));
+  if (groqRes) {
+    console.log("[Groq] Retour au client.");
+    return JSON.parse(JSON.stringify(groqRes));
+  }
 
   // 3. Échec final
   return {
     storeName: "Échec de l'analyse",
     lines: [],
-    ocrText: "Ni Gemini ni Groq n'ont pu traiter le reçu. Vérifiez la qualité de l'image."
+    ocrText: "L'IA n'a pas pu analyser ce reçu. Vérifiez la qualité de l'image ou essayez un fichier plus léger."
   } as any;
 }
-
-const prompt = ai.definePrompt({
-  name: 'extractReceiptDataPrompt',
-  input: { schema: ExtractReceiptDataInputSchema },
-  output: { schema: ExtractReceiptDataOutputSchema },
-  prompt: RECEIPT_PROMPT,
-});
-
-// Facultatif: un flow pour Genkit UI
-export const extractReceiptDataFlow = ai.defineFlow(
-  {
-    name: 'extractReceiptDataFlow',
-    inputSchema: ExtractReceiptDataInputSchema,
-    outputSchema: ExtractReceiptDataOutputSchema,
-  },
-  async (input: ExtractReceiptDataInput) => {
-    return extractReceiptData(input);
-  }
-);
