@@ -1,5 +1,5 @@
 
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -21,10 +21,11 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
+      bodySizeLimit: '10mb',
       allowedOrigins: [
-          'http://localhost:3000',
-          'http://127.0.0.1:3000',
-          'https://*.cloudworkstations.dev' // Added for Firebase Studio environment
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://*.cloudworkstations.dev'
       ],
     },
   },

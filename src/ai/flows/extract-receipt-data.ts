@@ -85,7 +85,29 @@ const extractReceiptDataFlow = ai.defineFlow(
     outputSchema: ExtractReceiptDataOutputSchema,
   },
   async (input: ExtractReceiptDataInput) => {
-    const { output } = await prompt(input);
-    return output!;
+    console.log("[Genkit] Début du flux extractReceiptDataFlow (image reçue)");
+
+    // Protection par timeout (Vercel a une limite de 60s en pro, 10s en hobby)
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout: L'analyse de l'IA a pris trop de temps (50s).")), 50000)
+    );
+
+    try {
+      const result = await Promise.race([
+        prompt(input),
+        timeout
+      ]) as any;
+
+      console.log("[Genkit] IA a répondu.");
+      return result.output!;
+    } catch (error: any) {
+      console.error("[Genkit] Erreur fatale dans le flux:", error.message || error);
+      // Retourner un objet minimal pour éviter le crash client si possible
+      return {
+        storeName: "Erreur d'analyse",
+        lines: [],
+        ocrText: "L'IA n'a pas pu répondre dans les temps ou a rencontré une erreur."
+      } as any;
+    }
   }
 );

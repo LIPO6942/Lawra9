@@ -34,91 +34,103 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
   };
 
   async function processAndSaveReceipt(file: File) {
-    setIsProcessing(true);
-    setProcessingMessage('Analyse du reçu...');
-    const dataUri = await fileToDataUrl(file);
+    try {
+      setIsProcessing(true);
+      setProcessingMessage('Analyse du reçu par l\'IA...');
+      const dataUri = await fileToDataUrl(file);
 
-    const res = await extractReceiptData({ receiptDataUri: dataUri, mimeType: file.type });
+      const res = await extractReceiptData({ receiptDataUri: dataUri, mimeType: file.type });
 
-    setProcessingMessage('Sauvegarde...');
-    const enhancedLines = (res.lines || []).map((l, idx) => {
-      const label = l.normalizedLabel || l.rawLabel;
-      const heurCat = mapCategoryHeuristic(label || '');
-      const norm = normalizeUnit(l.quantity, l.unit, label);
-      const line = {
-        id: l.id || `ln-${idx}`,
-        rawLabel: l.rawLabel,
-        normalizedLabel: l.normalizedLabel,
-        category: l.category || heurCat,
-        quantity: l.quantity ?? 1,
-        unit: l.unit ?? 'pcs',
-        unitPrice: l.unitPrice,
-        lineTotal: l.lineTotal,
-        vatRate: l.vatRate,
-        barcode: l.barcode,
-        stdUnit: norm.stdUnit,
-        stdQty: norm.stdQty,
-        standardUnitPrice: undefined as number | undefined,
+      if (!res || !res.lines) {
+        throw new Error("L'analyse n'a pas retourné de données valides.");
+      }
+
+      setProcessingMessage('Optimisation des données...');
+      const enhancedLines = (res.lines || []).map((l, idx) => {
+        const label = l.normalizedLabel || l.rawLabel;
+        const heurCat = mapCategoryHeuristic(label || '');
+        const norm = normalizeUnit(l.quantity, l.unit, label);
+        const line = {
+          id: l.id || `ln-${idx}`,
+          rawLabel: l.rawLabel,
+          normalizedLabel: l.normalizedLabel,
+          category: l.category || heurCat,
+          quantity: l.quantity ?? 1,
+          unit: l.unit ?? 'pcs',
+          unitPrice: l.unitPrice,
+          lineTotal: l.lineTotal,
+          vatRate: l.vatRate,
+          barcode: l.barcode,
+          stdUnit: norm.stdUnit,
+          stdQty: norm.stdQty,
+          standardUnitPrice: undefined as number | undefined,
+        };
+
+        // --- Post-processing inference for packs ---
+        const text = (label || '').toLowerCase().replace(',', '.');
+        const packMatch = text.match(/(\d{1,3})\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*=\s*(\d+(?:\.\d+)?))?/);
+        if (packMatch) {
+          const qty = parseInt(packMatch[1]);
+          const unitP = parseFloat(packMatch[2]);
+          const totalP = packMatch[3] ? parseFloat(packMatch[3]) : (isFinite(qty * unitP) ? qty * unitP : undefined);
+          if (!isNaN(qty) && qty > 0 && qty <= 200) {
+            line.quantity = line.quantity && line.quantity > 1 ? line.quantity : qty;
+            line.unit = line.unit || 'pcs';
+          }
+          if (!isNaN(unitP)) {
+            line.unitPrice = line.unitPrice ?? unitP;
+          }
+          if (totalP != null && !isNaN(totalP)) {
+            line.lineTotal = line.lineTotal ?? parseFloat(totalP.toFixed(3));
+          }
+        }
+
+        if ((line.quantity == null || line.quantity === 1) && line.unitPrice != null && line.lineTotal != null && line.unitPrice > 0) {
+          const q = Math.round((line.lineTotal / line.unitPrice) * 1000) / 1000;
+          const qi = Math.round(q);
+          if (Number.isFinite(qi) && qi >= 1 && qi <= 200 && Math.abs(q - qi) < 0.05) {
+            line.quantity = qi;
+            line.unit = line.unit || 'pcs';
+          }
+        }
+
+        const productKey = normalizeProductKey(label || '');
+        const learned = productKey ? getLearnedPackQty(productKey, res.storeName) : undefined;
+        if (learned && (!line.quantity || line.quantity <= 1 || line.quantity < learned)) {
+          line.quantity = learned;
+          line.unit = line.unit || 'pcs';
+        }
+
+        line.standardUnitPrice = computeStandardUnitPrice(line as any);
+        return line as any;
+      });
+
+      setProcessingMessage('Enregistrement...');
+      const receipt: Omit<Receipt, 'id'> = {
+        storeName: res.storeName,
+        storeId: res.storeId,
+        purchaseAt: res.purchaseAt || new Date().toISOString(),
+        currency: res.currency,
+        total: res.total,
+        subtotal: res.subtotal,
+        taxTotal: res.taxTotal,
+        ocrText: res.ocrText,
+        file,
+        status: 'parsed',
+        confidence: res.confidence ?? 0.7,
+        lines: enhancedLines,
       };
 
-      // --- Post-processing inference for packs (e.g., "6 x 0.790 = 4.740", "12x0.950=11.400") ---
-      const text = (label || '').toLowerCase().replace(',', '.');
-      const packMatch = text.match(/(\d{1,3})\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*=\s*(\d+(?:\.\d+)?))?/);
-      if (packMatch) {
-        const qty = parseInt(packMatch[1]);
-        const unitP = parseFloat(packMatch[2]);
-        const totalP = packMatch[3] ? parseFloat(packMatch[3]) : (isFinite(qty * unitP) ? qty * unitP : undefined);
-        if (!isNaN(qty) && qty > 0 && qty <= 200) {
-          line.quantity = line.quantity && line.quantity > 1 ? line.quantity : qty;
-          line.unit = line.unit || 'pcs';
-        }
-        if (!isNaN(unitP)) {
-          line.unitPrice = line.unitPrice ?? unitP;
-        }
-        if (totalP != null && !isNaN(totalP)) {
-          line.lineTotal = line.lineTotal ?? parseFloat(totalP.toFixed(3));
-        }
-      }
-
-      // If unitPrice & lineTotal present but quantity missing/1, infer quantity = round(lineTotal/unitPrice)
-      if ((line.quantity == null || line.quantity === 1) && line.unitPrice != null && line.lineTotal != null && line.unitPrice > 0) {
-        const q = Math.round((line.lineTotal / line.unitPrice) * 1000) / 1000; // keep some precision
-        const qi = Math.round(q);
-        if (Number.isFinite(qi) && qi >= 1 && qi <= 200 && Math.abs(q - qi) < 0.05) {
-          line.quantity = qi;
-          line.unit = line.unit || 'pcs';
-        }
-      }
-
-      // Apply learned pack quantity if available
-      const productKey = normalizeProductKey(label || '');
-      const learned = productKey ? getLearnedPackQty(productKey, res.storeName) : undefined;
-      if (learned && (!line.quantity || line.quantity <= 1 || line.quantity < learned)) {
-        line.quantity = learned;
-        line.unit = line.unit || 'pcs';
-      }
-
-      line.standardUnitPrice = computeStandardUnitPrice(line as any);
-      return line as any;
-    });
-
-    const receipt: Omit<Receipt, 'id'> = {
-      storeName: res.storeName,
-      storeId: res.storeId,
-      purchaseAt: res.purchaseAt || new Date().toISOString(),
-      currency: res.currency,
-      total: res.total,
-      subtotal: res.subtotal,
-      taxTotal: res.taxTotal,
-      ocrText: res.ocrText,
-      file,
-      status: 'parsed',
-      confidence: res.confidence ?? 0.7,
-      lines: enhancedLines,
-    };
-
-    await addReceipt(receipt);
-    handleOpenChange(false);
+      await addReceipt(receipt);
+      handleOpenChange(false);
+    } catch (err) {
+      console.error("Erreur lors de l'analyse du reçu:", err);
+      setProcessingMessage("Erreur d'analyse. Vérifiez votre connexion ou l'image.");
+      // Auto-reset after a delay so the user can try again
+      setTimeout(() => {
+        setIsProcessing(false);
+      }, 3000);
+    }
   }
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
