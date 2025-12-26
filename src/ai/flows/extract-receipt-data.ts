@@ -41,9 +41,35 @@ const ExtractReceiptDataOutputSchema = z.object({
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
 export async function extractReceiptData(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput> {
-  return extractReceiptDataFlow(input);
-}
+  console.log("[Genkit] Début extractReceiptData (taille image:", input.receiptDataUri.length, ")");
 
+  try {
+    // Timeout de sécurité 50s
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout IA (50s)")), 50000)
+    );
+
+    const result = await Promise.race([
+      prompt(input),
+      timeout
+    ]) as any;
+
+    if (!result || !result.output) {
+      throw new Error("L'IA n'a pas retourné de résultat valide.");
+    }
+
+    console.log("[Genkit] Analyse réussie.");
+    // Force la sérialisation pour éviter les erreurs de "Server Components render"
+    return JSON.parse(JSON.stringify(result.output));
+  } catch (error: any) {
+    console.error("[Genkit] Erreur fatale lors de l'analyse:", error.message || error);
+    return {
+      storeName: "Échec de l'analyse",
+      lines: [],
+      ocrText: `Erreur: ${error.message || "Problème de communication avec l'IA"}`
+    } as any;
+  }
+}
 const prompt = ai.definePrompt({
   name: 'extractReceiptDataPrompt',
   input: { schema: ExtractReceiptDataInputSchema },
@@ -78,36 +104,15 @@ Voici le reçu à analyser:
 `,
 });
 
-const extractReceiptDataFlow = ai.defineFlow(
+// Facultatif: un flow pour Genkit UI
+export const extractReceiptDataFlow = ai.defineFlow(
   {
     name: 'extractReceiptDataFlow',
     inputSchema: ExtractReceiptDataInputSchema,
     outputSchema: ExtractReceiptDataOutputSchema,
   },
   async (input: ExtractReceiptDataInput) => {
-    console.log("[Genkit] Début du flux extractReceiptDataFlow (image reçue)");
-
-    // Protection par timeout (Vercel a une limite de 60s en pro, 10s en hobby)
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout: L'analyse de l'IA a pris trop de temps (50s).")), 50000)
-    );
-
-    try {
-      const result = await Promise.race([
-        prompt(input),
-        timeout
-      ]) as any;
-
-      console.log("[Genkit] IA a répondu.");
-      return result.output!;
-    } catch (error: any) {
-      console.error("[Genkit] Erreur fatale dans le flux:", error.message || error);
-      // Retourner un objet minimal pour éviter le crash client si possible
-      return {
-        storeName: "Erreur d'analyse",
-        lines: [],
-        ocrText: "L'IA n'a pas pu répondre dans les temps ou a rencontré une erreur."
-      } as any;
-    }
+    const { output } = await prompt(input);
+    return output!;
   }
 );
