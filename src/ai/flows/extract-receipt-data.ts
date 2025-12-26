@@ -82,18 +82,15 @@ async function extractWithGroq(input: ExtractReceiptDataInput): Promise<ExtractR
 export async function extractReceiptData(input: ExtractReceiptDataInput): Promise<ExtractReceiptDataOutput> {
   console.log("[Genkit] Scan début (Image size:", input.receiptDataUri.length, ")");
 
-  if (input.receiptDataUri.length > 5 * 1024 * 1024) {
-    return { storeName: "Échec de l'analyse", lines: [], ocrText: "Payload trop lourd (>5MB Base64)." } as any;
-  }
-
-  // 1. Gemini (Timeout réduit à 6s pour laisser du temps au fallback avant le kill Vercel à 10s)
+  // 1. Gemini
   try {
+    // Correction de la syntaxe ai.generate pour Genkit
     const geminiPromise = ai.generate({
-      prompt: RECEIPT_PROMPT,
       model: 'googleai/gemini-2.0-flash',
-      input: {
-        media: [{ url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' }]
-      },
+      prompt: [
+        { text: RECEIPT_PROMPT },
+        { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } }
+      ],
       output: { schema: ExtractReceiptDataOutputSchema }
     });
 
@@ -101,7 +98,7 @@ export async function extractReceiptData(input: ExtractReceiptDataInput): Promis
       setTimeout(() => reject(new Error("Timeout Gemini (6s)")), 6500)
     );
 
-    const result = await Promise.race([geminiPromise, timeoutPromise]) as any;
+    const result = await (Promise.race([geminiPromise, timeoutPromise]) as Promise<any>);
 
     if (result && result.output) {
       console.log("[Gemini] Succès.");
