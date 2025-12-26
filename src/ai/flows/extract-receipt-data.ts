@@ -92,10 +92,8 @@ JSON ATTENDU:
   }
 
 IMPORTANT:
-Si tu vois une ligne avec "X x Y" (ex: 12 x 0.950), cela signifie que la ligne JUSTE AU-DESSUS contient le nom du produit.
-TU DOIS FUSIONNER CES DEUX LIGNES EN UN SEUL PRODUIT.
-- Ne crée PAS d'entrée séparée pour "12 x 0.950".
-- Mets "12" dans quantity et "0.950" dans unitPrice de l'article du dessus.`;
+1. LIGNES MULTIPLES: Si tu vois "X x Y" (ex: "12 x 0.950"), mets "12" dans quantity et "0.950" dans unitPrice de l'article JUSTE AU-DESSUS.
+2. DATE: La date est souvent en bas du ticket (ex: "26/12/2024"). Cherche bien partout. Si tu trouves "26/12/2024", RENVOIE "2024-12-26T12:00:00". Si tu ne trouves PAS la date, renvoie null (ne n'invente pas).`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
