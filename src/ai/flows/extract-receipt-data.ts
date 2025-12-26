@@ -46,7 +46,7 @@ Règles:
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
   input: ExtractReceiptDataInput,
-  timeoutMs: number = 30000
+  timeoutMs: number = 60000
 ): Promise<ExtractReceiptDataOutput | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -127,8 +127,8 @@ export async function extractReceiptData(
 ): Promise<ExtractReceiptDataOutput> {
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
 
-  // 1️⃣ Prioritize Groq (30 s timeout)
-  const groqRes = await extractWithGroqTimeout(input, 30000);
+  // 1️⃣ Prioritize Groq (60 s timeout)
+  const groqRes = await extractWithGroqTimeout(input);
   if (groqRes) {
     console.log('[Groq] Succès (prioritaire).');
     return JSON.parse(JSON.stringify(groqRes));
