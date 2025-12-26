@@ -98,7 +98,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         finalDataUri = await fileToDataUrl(file);
       }
 
-      setProcessingMessage('Analyse IA en cours (cela peut prendre 30s)...');
+      setProcessingMessage('Analyse IA en cours (1 à 2 min)...');
 
       // On wrap l'appel dans un try/catch spécifique pour chopper les erreurs de timeout serveur
       const res = await extractReceiptData({ receiptDataUri: finalDataUri, mimeType: 'image/jpeg' });
