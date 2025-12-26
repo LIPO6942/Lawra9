@@ -45,7 +45,7 @@ export default function ReceiptsPage() {
     setLineDrafts(prev => prev.filter((_, idx) => idx !== i));
   }
 
-  function setField(i: number, key: 'quantity'|'unitPrice'|'lineTotal', val: string) {
+  function setField(i: number, key: 'quantity' | 'unitPrice' | 'lineTotal', val: string) {
     setLineDrafts(prev => {
       const next = [...prev];
       const row = { ...next[i] };
@@ -246,7 +246,7 @@ export default function ReceiptsPage() {
                               if (pp.receiptId !== p.receiptId) return pp;
                               const set = new Set(pp.indicesToDelete);
                               if (e.target.checked) set.add(d.index); else set.delete(d.index);
-                              return { ...pp, indicesToDelete: Array.from(set).sort((a,b)=>a-b) };
+                              return { ...pp, indicesToDelete: Array.from(set).sort((a, b) => a - b) };
                             }));
                           }}
                           className="h-4 w-4"
@@ -261,7 +261,7 @@ export default function ReceiptsPage() {
                             if (pp.receiptId !== p.receiptId) return pp;
                             const set = new Set(pp.indicesToDelete);
                             set.add(d.index);
-                            return { ...pp, indicesToDelete: Array.from(set).sort((a,b)=>a-b) };
+                            return { ...pp, indicesToDelete: Array.from(set).sort((a, b) => a - b) };
                           }));
                         }}
                         title="Marquer pour suppression"
@@ -327,44 +327,47 @@ export default function ReceiptsPage() {
               </div>
             );
           })()}
-          <div className="max-h-[60vh] overflow-auto overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
+          <div className="max-h-[60vh] overflow-auto">
+            {/* Desktop Table View */}
+            <table className="w-full hidden sm:table text-sm">
               <thead>
-                <tr className="text-left">
-                  <th className="py-2 pr-2">Libellé</th>
-                  <th className="py-2 pr-2 w-24">Qté</th>
-                  <th className="py-2 pr-2 w-28">PU</th>
-                  <th className="py-2 pr-2 w-28">Total</th>
-                  <th className="py-2 pr-2 w-16 text-right">Action</th>
+                <tr className="text-left border-b">
+                  <th className="py-3 pr-2 font-semibold">Libellé</th>
+                  <th className="py-3 pr-2 w-20 font-semibold">Qté</th>
+                  <th className="py-3 pr-2 w-24 font-semibold">PU</th>
+                  <th className="py-3 pr-2 w-24 font-semibold">Total</th>
+                  <th className="py-3 pr-2 w-16 text-right font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {lineDrafts.map((ln, i) => (
-                  <tr key={ln.id || i} className="border-t">
-                    <td className="py-2 pr-2 truncate" title={ln.normalizedLabel || ln.rawLabel}>{ln.normalizedLabel || ln.rawLabel}</td>
-                    <td className="py-2 pr-2">
-                      <input className="h-8 w-20 rounded-md border bg-background px-2"
+                  <tr key={ln.id || i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="py-3 pr-2 truncate max-w-[200px]" title={ln.normalizedLabel || ln.rawLabel}>
+                      <div className="font-medium">{ln.normalizedLabel || ln.rawLabel}</div>
+                    </td>
+                    <td className="py-3 pr-2">
+                      <input className="h-9 w-16 rounded-lg border bg-background px-2 focus:ring-2 focus:ring-primary/20 transition-all"
                         type="number" step="1" min="0" value={ln.quantity ?? ''}
                         onChange={(e) => setField(i, 'quantity', e.target.value)}
                         onBlur={() => autoRecalc(i)}
                       />
                     </td>
-                    <td className="py-2 pr-2">
-                      <input className="h-8 w-24 rounded-md border bg-background px-2"
+                    <td className="py-3 pr-2">
+                      <input className="h-9 w-24 rounded-lg border bg-background px-2 focus:ring-2 focus:ring-primary/20 transition-all text-right"
                         type="number" step="0.001" min="0" value={ln.unitPrice ?? ''}
                         onChange={(e) => setField(i, 'unitPrice', e.target.value)}
                         onBlur={() => autoRecalc(i)}
                       />
                     </td>
-                    <td className="py-2 pr-2">
-                      <input className="h-8 w-24 rounded-md border bg-background px-2"
+                    <td className="py-3 pr-2">
+                      <input className="h-9 w-24 rounded-lg border bg-background px-2 focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-right"
                         type="number" step="0.001" min="0" value={ln.lineTotal ?? ''}
                         onChange={(e) => setField(i, 'lineTotal', e.target.value)}
                         onBlur={() => autoRecalc(i)}
                       />
                     </td>
-                    <td className="py-2 pr-2 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => deleteDraftLine(i)} title="Supprimer la ligne">
+                    <td className="py-3 pr-2 text-right">
+                      <Button variant="ghost" size="icon" onClick={() => deleteDraftLine(i)} className="hover:bg-destructive/10">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </td>
@@ -372,6 +375,46 @@ export default function ReceiptsPage() {
                 ))}
               </tbody>
             </table>
+
+            {/* Mobile Card View */}
+            <div className="sm:hidden space-y-4">
+              {lineDrafts.map((ln, i) => (
+                <Card key={ln.id || i} className="p-3 border shadow-none bg-muted/20">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="font-semibold text-sm line-clamp-2 pr-6">{ln.normalizedLabel || ln.rawLabel}</div>
+                    <Button variant="ghost" size="icon" onClick={() => deleteDraftLine(i)} className="h-8 w-8 text-destructive shrink-0">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-muted-foreground">Qté</label>
+                      <input className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
+                        type="number" step="1" min="0" value={ln.quantity ?? ''}
+                        onChange={(e) => setField(i, 'quantity', e.target.value)}
+                        onBlur={() => autoRecalc(i)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-muted-foreground">P.U</label>
+                      <input className="h-9 w-full rounded-lg border bg-background px-2 text-sm text-right"
+                        type="number" step="0.001" min="0" value={ln.unitPrice ?? ''}
+                        onChange={(e) => setField(i, 'unitPrice', e.target.value)}
+                        onBlur={() => autoRecalc(i)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-muted-foreground">Total</label>
+                      <input className="h-9 w-full rounded-lg border bg-background px-2 text-sm font-bold text-right"
+                        type="number" step="0.001" min="0" value={ln.lineTotal ?? ''}
+                        onChange={(e) => setField(i, 'lineTotal', e.target.value)}
+                        onBlur={() => autoRecalc(i)}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setLineEditorOpen(false)}>Annuler</Button>

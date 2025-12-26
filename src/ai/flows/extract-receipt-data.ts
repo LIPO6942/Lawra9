@@ -48,37 +48,36 @@ const prompt = ai.definePrompt({
   name: 'extractReceiptDataPrompt',
   input: { schema: ExtractReceiptDataInputSchema },
   output: { schema: ExtractReceiptDataOutputSchema },
-  prompt: `Vous êtes un assistant d'extraction de tickets de caisse en français (et arabe si présent).
+  prompt: `Vous êtes un expert en extraction de données de tickets de caisse, spécialisé dans les formats de supermarchés (ex: Carrefour Tunisie).
 
-Objectif: retourner les métadonnées du reçu et TOUTES les lignes d'articles structurées.
+Objectif: Extraire toutes les métadonnées et TOUTES les lignes d'articles de façon structurée.
 
-Règles:
-- Détecter: nom magasin, date/heure d'achat, devise, total, sous-total, total TVA.
-- Extraire chaque ligne: libellé exact (rawLabel), quantité, unité, prix unitaire, total ligne.
-- Si la quantité n'est pas indiquée, considérer 1.
-- Normaliser les nombres (virgule -> point). Retourner les valeurs numériques.
-- Si un code-barres/PLU apparait, le retourner dans barcode.
-- Vérifier la cohérence: somme des lignes ≈ total (tolérance 2%).
-- Cas des packs/multiplicateurs: si un motif du type "6 x 0.790 = 4.740", "12x0.950=11.400" ou une ligne séparée indique la quantité, alors:
-  - quantity = 6 (ou 12, etc.)
-  - unitPrice = 0.790
-  - lineTotal = 4.740 (recalculer si nécessaire avec arrondi normal commercial à 3 décimales)
-  - Si la quantité apparaît sans unité explicite, utiliser unit="pcs".
-  - Si des nombres sont séparés sur des lignes adjacentes (ex: "6 x" et plus bas "0.790 11.400"), inférer la quantité à partir du contexte et rendre les champs cohérents.
-- Mettre confidence entre 0 et 1 selon votre certitude globale.
-- Inclure dans ocrText un résumé texte si utile.
+Règles de lecture CRITIQUES pour les articles:
+1. **Liaison multi-lignes (Patron Carrefour)**: Un article est souvent réparti sur 2 ou 3 lignes consécutives:
+   - Ligne 1: [LIBELLÉ DE L'ARTICLE] [MONTANT TOTAL DE LA LIGNE] (ex: "DELIO AROMA G 11.400d")
+   - Ligne 2 (optionnelle): [CODE-BARRES] (ex: "6191534802476")
+   - Ligne 3: [QUANTITÉ] x [PRIX UNITAIRE] (ex: "12 x 0.950d")
+   -> Vous DEVEZ impérativement regrouper ces informations dans le MÊME objet article. 
+   -> Dans cet exemple: quantity=12, unitPrice=0.950, lineTotal=11.400.
 
-Catégorisation:
-- Assigner à chaque ligne une catégorie parmi: "Epicerie", "Frais", "Boucherie", "Boulangerie", "Boissons", "Hygiène", "Entretien", "Bébé", "Animaux", "Maison", "Électronique", "Autres".
-- Si ambigu, choisissez la mieux adaptée et restez cohérent.
+2. **Prix et Devises**: 
+   - Le suffixe 'd' ou 'dt' indique souvent les Millimes/Dinars. Ignorez le 'd' pour ne garder que le nombre.
+   - Les prix ont souvent 3 décimales (ex: 0.950, 11.400).
 
-Quantité/Unité:
-- Renseigner "quantity" et "unit" si repérables (ex: 2 pcs, 500 g, 1 L). Si absents, quantity=1, unit="pcs".
- - Si "unitPrice" et "lineTotal" sont présents mais pas "quantity", déduire quantity=round(lineTotal/unitPrice) si plausible (1..100).
+3. **Logique de calcul**:
+   - Si vous voyez "Quantity x UnitPrice", vérifiez que Quantity * UnitPrice ≈ LineTotal.
+   - Si le montant total est présent seul (ex: "LAIT CONCENTR 7.900"), considérez quantity=1 et unitPrice=7.900.
 
-Retourner les dates au format ISO AAAA-MM-JJ ou AAAA-MM-JJTHH:mm si heure trouvée.
+4. **Champs additionnels**:
+   - barcode: capturez le code numérique situé juste sous le libellé.
+   - rawLabel: le nom complet (ex: "25CL DELIO AROMA G").
+   - category: déduire selon le type de produit.
 
-Voici le reçu:
+5. **Cohérence globale**:
+   - Extraire le nom du magasin (ex: "Carrefour"), la date et l'heure (chercher format JJ/MM/AA ou similaire), et le TOTAL final.
+   - Le total final doit correspondre à la somme des "lineTotal" extraits.
+
+Voici le reçu à analyser:
 {{media url=receiptDataUri mimeType=mimeType}}
 `,
 });
