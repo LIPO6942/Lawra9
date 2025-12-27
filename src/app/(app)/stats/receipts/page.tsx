@@ -121,7 +121,7 @@ export default function ReceiptStatsPage() {
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="#f97316" radius={4} />
+                <Bar dataKey="total" fill="#f97316" radius={4} barSize={32} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -135,7 +135,7 @@ export default function ReceiptStatsPage() {
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="#3b82f6" radius={4} />
+                <Bar dataKey="total" fill="#3b82f6" radius={4} barSize={40} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -147,10 +147,10 @@ export default function ReceiptStatsPage() {
           <CardHeader><CardTitle>Top 10 Produits (Coût)</CardTitle></CardHeader>
           <CardContent>
             <ChartContainer config={{ totalSpend: { label: 'Dépense' } }} className="h-60 sm:h-72 md:h-80">
-              <BarChart data={topProductsBySpend} layout="vertical" margin={{ left: 0, right: 20 }}>
+              <BarChart data={topProductsBySpend} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9 }} interval={0} />
+                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 9 }} interval={0} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="totalSpend" fill="#8b5cf6" radius={4} barSize={20} />
               </BarChart>
@@ -161,10 +161,10 @@ export default function ReceiptStatsPage() {
           <CardHeader><CardTitle>Top 10 Produits (Quantité)</CardTitle></CardHeader>
           <CardContent>
             <ChartContainer config={{ totalQty: { label: 'Qté' } }} className="h-60 sm:h-72 md:h-80">
-              <BarChart data={topProductsByQty} layout="vertical" margin={{ left: 0, right: 20 }}>
+              <BarChart data={topProductsByQty} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9 }} interval={0} />
+                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 9 }} interval={0} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="totalQty" fill="#ec4899" radius={4} barSize={20} />
               </BarChart>
