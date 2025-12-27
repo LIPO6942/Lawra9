@@ -9,52 +9,9 @@ import { useReceipts } from '@/contexts/receipt-context';
 import { extractReceiptData } from '@/ai/flows/extract-receipt-data';
 import { Receipt } from '@/lib/types';
 import { useDocuments } from '@/contexts/document-context';
-import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normalizeProductKey, getLearnedPackQty } from '@/lib/utils';
+import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normalizeProductKey, getLearnedPackQty, compressImage } from '@/lib/utils';
 
-/**
- * Fonction pour redimensionner et compresser l'image côté client
- */
-async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.7): Promise<{ blob: Blob, dataUrl: string }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(img.src);
-      let width = img.width;
-      let height = img.height;
 
-      if (width > height) {
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
-          width = Math.round((width * maxHeight) / height);
-          height = maxHeight;
-        }
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return reject(new Error("Canvas context error"));
-
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob((blob) => {
-        if (!blob) return reject(new Error("Compression error"));
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve({ blob, dataUrl: reader.result as string });
-        };
-        reader.readAsDataURL(blob);
-      }, 'image/jpeg', quality);
-    };
-    img.onerror = (e) => reject(e);
-  });
-}
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -92,9 +49,16 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       // On autorise jusqu'à 9.5Mo (limite serveur 10Mo)
       if (isHeic || file.size > 9.5 * 1024 * 1024) {
         setProcessingMessage(isHeic ? 'Conversion iPhone supportée...' : 'Image un peu lourde, optimisation...');
-        const { blob, dataUrl } = await compressImage(file);
-        finalDataUri = dataUrl;
-        finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
+        try {
+          const compressed = await compressImage(file, 0.7);
+          finalDataUri = compressed.dataUrl;
+          finalFile = new File([compressed.blob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
+        } catch (e) {
+          console.warn("Compression failed, using original file.", e);
+          setProcessingMessage("Échec de l'optimisation, utilisation de l'original...");
+          finalDataUri = await fileToDataUrl(file);
+          finalFile = file;
+        }
       } else {
         setProcessingMessage('Préparation...');
         finalDataUri = await fileToDataUrl(file);

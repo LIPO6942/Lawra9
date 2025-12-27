@@ -9,8 +9,8 @@
  * - ExtractInvoiceDataOutput - The return type for the extractInvoiceData function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const ExtractInvoiceDataInputSchema = z.object({
   invoiceDataUri: z
@@ -18,7 +18,7 @@ const ExtractInvoiceDataInputSchema = z.object({
     .describe(
       "A data URI of the invoice or receipt image/PDF, that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-    mimeType: z.string().optional().describe('The MIME type of the document (e.g., "image/jpeg", "application/pdf").'),
+  mimeType: z.string().optional().describe('The MIME type of the document (e.g., "image/jpeg", "application/pdf").'),
 });
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
@@ -45,8 +45,8 @@ export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promis
 
 const prompt = ai.definePrompt({
   name: 'extractInvoiceDataPrompt',
-  input: {schema: ExtractInvoiceDataInputSchema},
-  output: {schema: ExtractInvoiceDataOutputSchema},
+  input: { schema: ExtractInvoiceDataInputSchema },
+  output: { schema: ExtractInvoiceDataOutputSchema },
   prompt: `Vous êtes un expert dans l'analyse de documents et factures tunisiens. Votre tâche est de détecter le type de document ET d'en extraire les informations pertinentes.
 
   **Étape 1 : Détection du type de document**
@@ -86,11 +86,11 @@ const prompt = ai.definePrompt({
         category: 'HARM_CATEGORY_HARASSMENT',
         threshold: 'BLOCK_ONLY_HIGH',
       },
-       {
+      {
         category: 'HARM_CATEGORY_HATE_SPEECH',
         threshold: 'BLOCK_ONLY_HIGH',
       },
-       {
+      {
         category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
         threshold: 'BLOCK_ONLY_HIGH',
       },
@@ -105,9 +105,9 @@ const extractInvoiceDataFlow = ai.defineFlow(
     outputSchema: ExtractInvoiceDataOutputSchema,
   },
   async input => {
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       throw new Error(
-        "Configuration manquante: GEMINI_API_KEY est absente. Ajoutez-la dans .env.local puis redémarrez le serveur Next.js."
+        "Configuration manquante: GOOGLE_API_KEY ou GEMINI_API_KEY est absente."
       );
     }
     try {

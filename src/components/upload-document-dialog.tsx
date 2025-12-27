@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { normalizeSupplierKey } from '@/lib/utils';
+import { normalizeSupplierKey, compressImage } from '@/lib/utils';
 
 type AnalysisResult = Partial<ExtractInvoiceDataOutput>;
 
@@ -274,19 +274,35 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
     setIsProcessing(true);
 
     try {
+      let finalFile = file;
+
+      // Compression if large image
+      if (file.type.startsWith('image/') && file.size > 1 * 1024 * 1024) {
+        setProcessingMessage('Optimisation de l\'image...');
+        try {
+          finalFile = await compressImage(file, 0.8, 1600);
+        } catch (e) {
+          console.warn('Compression failed, using original', e);
+        }
+      }
+
+      if (finalFile.size > 9.5 * 1024 * 1024) {
+        throw new Error("Le fichier est trop volumineux même après compression. Limite: 10 Mo.");
+      }
+
       setProcessingMessage('Analyse du document...');
-      const documentDataUri = await fileToDataUrl(file);
+      const documentDataUri = await fileToDataUrl(finalFile);
 
       const result: AnalysisResult = await extractInvoiceData({
         invoiceDataUri: documentDataUri,
-        mimeType: file.type,
+        mimeType: finalFile.type,
       });
 
       setProcessingMessage('Sauvegarde en cours...');
       const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
 
       const newDocData: DocumentWithFile = {
-        name: formatDocumentName(result, file.name),
+        name: formatDocumentName(result, finalFile.name),
         category: aiCategory,
         supplier: result.supplier,
         amount: result.amount,
@@ -299,7 +315,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         consumptionQuantity: result.consumptionQuantity,
         gasAmount: result.gasAmount,
         gasConsumptionQuantity: result.gasConsumptionQuantity,
-        file: file,
+        file: finalFile,
       };
 
       const detectedSupplier = (newDocData.supplier || '').trim();

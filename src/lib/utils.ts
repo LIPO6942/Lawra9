@@ -392,3 +392,49 @@ export function learnPackQty(productKey: string, qty: number, storeName?: string
   if (!m[productKey] || m[productKey] < qty) m[productKey] = qty;
   saveLearning(m);
 }
+
+/**
+ * Fonction pour redimensionner et compresser l'image côté client
+ */
+export async function compressImage(file: File, quality = 0.7, maxWidth = 1600, maxHeight = 1600): Promise<{ blob: Blob, dataUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error("Canvas context error"));
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob((blob) => {
+        if (!blob) return reject(new Error("Compression error"));
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({ blob, dataUrl: reader.result as string });
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = (e) => reject(e);
+  });
+}
+
