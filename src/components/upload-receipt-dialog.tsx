@@ -8,6 +8,7 @@ import { Camera, Loader2, PlusCircle, UploadCloud } from 'lucide-react';
 import { useReceipts } from '@/contexts/receipt-context';
 import { extractReceiptData } from '@/ai/flows/extract-receipt-data';
 import { Receipt } from '@/lib/types';
+import { useDocuments } from '@/contexts/document-context';
 import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normalizeProductKey, getLearnedPackQty } from '@/lib/utils';
 
 /**
@@ -69,6 +70,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
   const { addReceipt } = useReceipts();
+  const { addDocument } = useDocuments();
 
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
@@ -196,6 +198,17 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       };
 
       await addReceipt(receipt);
+
+      // Save as Document as well
+      await addDocument({
+        name: `Reçu ${res.storeName || 'Magasin'} - ${res.total ? res.total.toFixed(3) + ' TND' : 'Inconnu'}`,
+        category: 'Autre',
+        file: finalFile,
+        issueDate: receipt.purchaseAt,
+        amount: res.total?.toFixed(3),
+        note: `Reçu généré automatiquement. ${res.lines?.length || 0} articles.`,
+      } as any);
+
       handleOpenChange(false);
     } catch (err: any) {
       console.error("Erreur détectée:", err);

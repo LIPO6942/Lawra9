@@ -41,7 +41,9 @@ export default function ReceiptStatsPage() {
 
   const data = useFilteredReceipts(store, months);
   const kpi = useMemo(() => computeKpis(data), [data]);
-  const byCat = useMemo(() => Object.entries(spendByCategory(data)).map(([name, total]) => ({ name, total })), [data]);
+  const byCat = useMemo(() => Object.entries(spendByCategory(data))
+    .filter(([name]) => name !== 'Autres' && name !== 'Produit Inconnu')
+    .map(([name, total]) => ({ name, total })), [data]);
   const byStore = useMemo(() => Object.entries(spendByStore(data)).map(([name, total]) => ({ name, total })), [data]);
   const trend = useMemo(() => monthlyTrend(data), [data]);
   const catStats = useMemo(() => aggregateCategoryStats(data), [data]);
@@ -113,13 +115,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Dépense par catégorie</CardTitle></CardHeader>
           <CardContent>
-            <ChartContainer config={{ total: { label: 'Total' } }} className="h-60 sm:h-72 md:h-80">
+            <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--chart-1))' } }} className="h-60 sm:h-72 md:h-80">
               <BarChart data={byCat}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="var(--color-total, hsl(var(--primary)))" radius={4} />
+                <Bar dataKey="total" fill="hsl(var(--chart-1))" radius={4} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -127,13 +129,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Dépense par magasin</CardTitle></CardHeader>
           <CardContent>
-            <ChartContainer config={{ total: { label: 'Total' } }} className="h-60 sm:h-72 md:h-80">
+            <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--chart-2))' } }} className="h-60 sm:h-72 md:h-80">
               <BarChart data={byStore}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="var(--color-total, hsl(var(--primary)))" radius={4} />
+                <Bar dataKey="total" fill="hsl(var(--chart-2))" radius={4} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -174,13 +176,13 @@ export default function ReceiptStatsPage() {
       <Card>
         <CardHeader><CardTitle>Tendance mensuelle</CardTitle></CardHeader>
         <CardContent>
-          <ChartContainer config={{ total: { label: 'Total' } }} className="h-56 sm:h-72 md:h-80">
+          <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--chart-3))' } }} className="h-56 sm:h-72 md:h-80">
             <LineChart data={trend}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="month" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Line dataKey="total" type="monotone" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+              <Line dataKey="total" type="monotone" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={false} />
             </LineChart>
           </ChartContainer>
         </CardContent>

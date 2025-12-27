@@ -91,9 +91,29 @@ JSON ATTENDU:
     "lineTotal": 11.400
   }
 
-IMPORTANT:
-1. LIGNES MULTIPLES: Si tu vois "X x Y" (ex: "12 x 0.950"), mets "12" dans quantity et "0.950" dans unitPrice de l'article JUSTE AU-DESSUS.
-2. DATE: La date est souvent en bas du ticket (ex: "26/12/2024"). Cherche bien partout. Si tu trouves "26/12/2024", RENVOIE "2024-12-26T12:00:00". Si tu ne trouves PAS la date, renvoie null (ne n'invente pas).`;
+IMPORTANT - ALGORITHME DE LECTURE (Suis cela à la lettre):
+1.  **Scanning**: Lis le ticket ligne par ligne du haut vers le bas.
+2.  **Product Line**: Si une ligne contient du texte (ex: "DELIO") et un prix à droite (ex: "11.400"), c'est un produit.
+    -   Stocke "11.400" comme \`lineTotal\`.
+    -   Stocke "DELIO" comme \`rawLabel\`.
+3.  **Check Next Line**: REGARDE IMMÉDIATEMENT LA LIGNE DU DESSOUS.
+4.  **Quantity Pattern**: Si la ligne du dessous contient un motif comme "12 x 0.950" ou "2 x 0.840" :
+    -   C'est la QUANTITÉ et le PRIX UNITAIRE de l'article du dessus.
+    -   Mets \`quantity\` = 12.
+    -   Mets \`unitPrice\` = 0.950.
+    -   Ignore cette ligne "12 x 0.950" en tant que produit séparé (c'est un détail).
+5.  **Default**: Si la ligne du dessous est un autre produit (ex: "LAIT..."), alors l'article du dessus a \`quantity\` = 1 et \`unitPrice\` = \`lineTotal\`.
+6.  **Date**: Cherche la date (ex: "26/12/2024") souvent en bas. Renvoie au format ISO.
+
+EXEMPLE (Ne te trompe pas):
+Ligne 1:  370G LAIT CONC       7.900   -> Produit (Total=7.900)
+Ligne 2:  100G GAUFRE          1.350   -> Produit (Total=1.350)
+Ligne 3:  25CL DELIO AROMA    11.400   -> Produit (Total=11.400)
+Ligne 4:      12   x   0.950           -> DÉTAIL pour DELIO (Qté=12, PU=0.950)
+Ligne 5:  2L AQUALINE          4.560   -> Produit suivant...
+
+Résultat pour DELIO: { "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }
+Résultat pour LAIT:  { "quantity": 1, "unitPrice": 7.900, "lineTotal": 7.900 }`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
