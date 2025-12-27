@@ -115,13 +115,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Dépense par catégorie</CardTitle></CardHeader>
           <CardContent>
-            <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--chart-1))' } }} className="h-60 sm:h-72 md:h-80">
+            <ChartContainer config={{ total: { label: 'Total', color: '#f97316' } }} className="h-60 sm:h-72 md:h-80">
               <BarChart data={byCat}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="hsl(var(--chart-1))" radius={4} />
+                <Bar dataKey="total" fill="#f97316" radius={4} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -129,13 +129,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Dépense par magasin</CardTitle></CardHeader>
           <CardContent>
-            <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--chart-2))' } }} className="h-60 sm:h-72 md:h-80">
+            <ChartContainer config={{ total: { label: 'Total', color: '#3b82f6' } }} className="h-60 sm:h-72 md:h-80">
               <BarChart data={byStore}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="hsl(var(--chart-2))" radius={4} />
+                <Bar dataKey="total" fill="#3b82f6" radius={4} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -152,7 +152,7 @@ export default function ReceiptStatsPage() {
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9 }} interval={0} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalSpend" fill="hsl(var(--chart-1))" radius={4} barSize={20} />
+                <Bar dataKey="totalSpend" fill="#8b5cf6" radius={4} barSize={20} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -166,7 +166,7 @@ export default function ReceiptStatsPage() {
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9 }} interval={0} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalQty" fill="hsl(var(--chart-2))" radius={4} barSize={20} />
+                <Bar dataKey="totalQty" fill="#ec4899" radius={4} barSize={20} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -176,13 +176,13 @@ export default function ReceiptStatsPage() {
       <Card>
         <CardHeader><CardTitle>Tendance mensuelle</CardTitle></CardHeader>
         <CardContent>
-          <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--chart-3))' } }} className="h-56 sm:h-72 md:h-80">
+          <ChartContainer config={{ total: { label: 'Total', color: '#10b981' } }} className="h-56 sm:h-72 md:h-80">
             <LineChart data={trend}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="month" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Line dataKey="total" type="monotone" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={false} />
+              <Line dataKey="total" type="monotone" stroke="#10b981" strokeWidth={2} dot={false} />
             </LineChart>
           </ChartContainer>
         </CardContent>
