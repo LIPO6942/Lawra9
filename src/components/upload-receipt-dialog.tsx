@@ -169,8 +169,8 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         storeId: res.storeId,
         purchaseAt: (() => {
           if (!res.purchaseAt) return new Date().toISOString();
-          // Try to parse DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, or DD/MM/YY
-          const frenchDate = res.purchaseAt.match(/^(\d{1,2})[\/\-\.\s](\d{1,2})[\/\-\.\s](\d{2,4})/);
+          // Try to parse DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, or DD/MM/YY (allow optional text before/after)
+          const frenchDate = res.purchaseAt.match(/(\d{1,2})[\/\-\.\s](\d{1,2})[\/\-\.\s](\d{2,4})/);
           if (frenchDate) {
             let [_, day, month, year] = frenchDate;
             if (year.length === 2) year = "20" + year; // Handle YY -> 20YY

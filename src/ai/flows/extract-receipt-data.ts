@@ -103,7 +103,7 @@ IMPORTANT - ALGORITHME DE LECTURE (Suis cela à la lettre):
     -   Mets \`unitPrice\` = 0.950.
     -   Ignore cette ligne "12 x 0.950" en tant que produit séparé (c'est un détail).
 5.  **Default**: Si la ligne du dessous est un autre produit (ex: "LAIT..."), alors l'article du dessus a \`quantity\` = 1 et \`unitPrice\` = \`lineTotal\`.
-6.  **Date**: Cherche la date (ex: "26/12/2024") souvent en bas. Renvoie au format ISO.
+6.  **Date**: Cherche la date exacte (ex: "26/12/2024"). Elle est souvent tout en haut ou tout en bas du ticket. Renvoie-la au format YYYY-MM-DD. Si tu ne trouves ABSOLUMENT rien qui ressemble à une date, renvoie null.
 
 EXEMPLE (Ne te trompe pas):
 Ligne 1:  370G LAIT CONC       7.900   -> Produit (Total=7.900)
@@ -113,7 +113,9 @@ Ligne 4:      12   x   0.950           -> DÉTAIL pour DELIO (Qté=12, PU=0.950)
 Ligne 5:  2L AQUALINE          4.560   -> Produit suivant...
 
 Résultat pour DELIO: { "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }
-Résultat pour LAIT:  { "quantity": 1, "unitPrice": 7.900, "lineTotal": 7.900 }`;
+Résultat pour LAIT:  { "quantity": 1, "unitPrice": 7.900, "lineTotal": 7.900 }
+
+DATE IMPORTANTE: La date est cruciale pour les statistiques. Si tu vois "26/12/24", c'est 2024-12-26.`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(

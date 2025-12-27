@@ -31,7 +31,7 @@ function useFilteredReceipts(store: string, months: number) {
 export default function ReceiptStatsPage() {
   const { receipts } = useReceipts();
   const [store, setStore] = useState('ALL');
-  const [months, setMonths] = useState(6);
+  const [months, setMonths] = useState(12);
 
   const stores = useMemo(() => {
     const s = new Set<string>();
