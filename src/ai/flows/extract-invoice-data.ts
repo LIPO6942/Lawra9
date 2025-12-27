@@ -31,21 +31,28 @@ const ExtractInvoiceDataOutputSchema = z.object({
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
-const INVOICE_PROMPT = `Vous êtes un expert dans l'analyse de documents et factures tunisiens. Votre tâche est de détecter le type de document ET d'en extraire les informations pertinentes.
+const INVOICE_PROMPT = `Vous êtes un expert dans l'analyse de factures tunisiennes (STEG, SONEDE, etc.). Votre tâche consiste à extraire les données en JSON avec une précision chirurgicale.
 
-**Étape 1 : Détection du type de document**
-Identifiez d'abord le type du document parmi les choix suivants : STEG, SONEDE, Reçu Bancaire, Maison, Internet, Assurance, Contrat, ou Autre.
+**DÉTECTION DU TYPE :**
+1. **STEG (ÉLECTRICITÉ/GAZ)** : Reconnaissable au logo bleu/rouge/gris, au texte "Société Tunisienne de l'Electricité et du Gaz" ou "الشركة التونسية للكهرباء والغاز".
+   - **Montant à payer** : C'est le montant final (souvent dans une case rouge en bas à gauche, libellé "Montant à payer" ou "المبلغ المطلوب").
+   - **Date d'échéance** : Cherchez "Prière de payer avant le" ou "الرجاء الدفع قبل" (format AAAA-MM-JJ).
+   - **Électricité** : Extrayez la quantité (ex: 501 KWh) dans "consumptionQuantity".
+   - **Gaz** : Si présent, extrayez le montant total gaz dans "gasAmount" et la quantité dans "gasConsumptionQuantity" (ex: "19 m3").
+2. **SONEDE (EAU)** : Reconnaissable au format de période "AAAA-MM-MM-MM" (ex: 2025-08-07-06) et au libellé "إستهلاك الماء".
 
-**Étape 2 : Extraction des données**
-Veuillez extraire les informations suivantes de l'image :
-- Nom du fournisseur : Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE".
-- Montant : Le montant total à payer.
-- Date d'échéance : Cherchez activement "آخر أجل للدفع" ou "الرجاء الدفع قبل". C'est crucial.
-- Dates : Date d'émission et période de facturation.
-- STEG Spécifique : Champ "amount" = total. consommation électricité dans "consumptionQuantity". Si Gaz existe, montant gaz dans "gasAmount" et quantité dans "gasConsumptionQuantity".
-- SONEDE Spécifique : Période trimestrielle (ex: 03-04-05-2025) dans "consumptionPeriod". Quantité eau en m³ dans "consumptionQuantity".
+**CHAMPS JSON :**
+- documentType: "STEG", "SONEDE", "Internet", etc.
+- supplier: Nom du fournisseur.
+- amount: Montant total à payer.
+- dueDate: Date d'échéance (AAAA-MM-JJ).
+- issueDate: Date d'émission (AAAA-MM-JJ).
+- billingStartDate/billingEndDate: Début et fin de période.
+- consumptionQuantity: Quantité électricité ou eau.
+- gasAmount: Montant spécifique gaz (pour STEG).
+- gasConsumptionQuantity: Quantité gaz (pour STEG).
 
-Retournez JSON uniquement au format AAAA-MM-JJ pour les dates.`;
+IMPORTANT: Retournez uniquement du JSON. Dates en AAAA-MM-JJ.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
