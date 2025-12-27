@@ -43,9 +43,11 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
 
   if ((docType === 'STEG' || docType === 'SONEDE' || docType === 'Internet') && result.supplier && result.amount) {
     let period = '';
+    const supplierName = docType === 'SONEDE' ? 'SONEDE' : result.supplier;
+
     if (docType === 'SONEDE' && result.consumptionPeriod) {
       period = result.consumptionPeriod;
-    } else if (result.billingStartDate && result.billingEndDate) {
+    } else if (docType !== 'SONEDE' && result.billingStartDate && result.billingEndDate) {
       try {
         const startDate = parseISO(result.billingStartDate);
         const endDate = parseISO(result.billingEndDate);
@@ -54,7 +56,7 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
         }
       } catch (e) { /* Ignore formatting error */ }
     }
-    return `Facture ${result.supplier}${period ? ` (${period})` : ''} - ${result.amount} TND`;
+    return `Facture ${supplierName}${period ? ` (${period})` : ''} - ${result.amount} TND`;
   }
 
   if (docType === 'Reçu Bancaire' && result.amount) {

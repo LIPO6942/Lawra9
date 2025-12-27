@@ -33,26 +33,24 @@ export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSc
 
 const INVOICE_PROMPT = `Vous êtes un expert dans l'analyse de factures tunisiennes (STEG, SONEDE, etc.). Votre tâche consiste à extraire les données en JSON avec une précision chirurgicale.
 
-**DÉTECTION DU TYPE :**
-1. **STEG (ÉLECTRICITÉ/GAZ)** : Reconnaissable au logo bleu/rouge/gris, au texte "Société Tunisienne de l'Electricité et du Gaz" ou "الشركة التونسية للكهرباء والغاز".
-   - **Montant à payer** : C'est le montant final (souvent dans une case rouge en bas à gauche, libellé "Montant à payer" ou "المبلغ المطلوب").
-   - **Date d'échéance** : Cherchez "Prière de payer avant le" ou "الرجاء الدفع قبل" (format AAAA-MM-JJ).
-   - **Électricité** : Extrayez la quantité (ex: 501 KWh) dans "consumptionQuantity".
-   - **Gaz** : Si présent, extrayez le montant total gaz dans "gasAmount" et la quantité dans "gasConsumptionQuantity" (ex: "19 m3").
-2. **SONEDE (EAU)** : Reconnaissable au format de période "AAAA-MM-MM-MM" (ex: 2025-08-07-06) et au libellé "إستهلاك الماء".
+**DÉTECTION DU TYPE & FOURNISSEUR :**
+1. **SONEDE (EAU)** : 
+   - Le fournisseur doit être strictement "SONEDE" (pas le nom long).
+   - **Période** : Format "AAAA-MM-MM-MM" (ex: "2025-08-07-06"). C'est CRUCIAL. Ne pas transformer en dates de début/fin.
+2. **STEG (ÉLEC/GAZ)** : 
+   - Le fournisseur doit être strictement "STEG".
+   - **Montant à payer** : Case rouge "Montant à payer" ou "المبلغ المطلوب".
 
 **CHAMPS JSON :**
 - documentType: "STEG", "SONEDE", "Internet", etc.
-- supplier: Nom du fournisseur.
+- supplier: Uniquement "STEG" ou "SONEDE".
 - amount: Montant total à payer.
 - dueDate: Date d'échéance (AAAA-MM-JJ).
 - issueDate: Date d'émission (AAAA-MM-JJ).
-- billingStartDate/billingEndDate: Début et fin de période.
-- consumptionQuantity: Quantité électricité ou eau.
-- gasAmount: Montant spécifique gaz (pour STEG).
-- gasConsumptionQuantity: Quantité gaz (pour STEG).
+- consumptionPeriod: Uniquement pour SONEDE, format EXACT "AAAA-MM-MM-MM".
+- consumptionQuantity: Quantité (ex: "501 KWh" ou "13 m3").
 
-IMPORTANT: Retournez uniquement du JSON. Dates en AAAA-MM-JJ.`;
+IMPORTANT: Retournez uniquement du JSON. Dates en AAAA-MM-JJ. Pas de texte explicatif.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
