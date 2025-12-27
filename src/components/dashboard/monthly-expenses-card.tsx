@@ -11,25 +11,25 @@ import { fr } from 'date-fns/locale';
 import { LineChart, Info } from 'lucide-react';
 
 const getDocumentDateForExpense = (doc: Document): Date | null => {
-    // For paid invoices, issueDate is updated to payment date. Prioritize this.
-    // For unpaid, use issue or billing end date.
-    const datePriority = [doc.issueDate, doc.billingEndDate, doc.createdAt];
-    for (const dateStr of datePriority) {
-        if (dateStr) {
-            const date = parseISO(dateStr);
-            if (isValid(date)) {
-                return date;
-            }
-        }
+  // For paid invoices, issueDate is updated to payment date. Prioritize this.
+  // For unpaid, use issue or billing end date.
+  const datePriority = [doc.issueDate, doc.billingEndDate, doc.createdAt];
+  for (const dateStr of datePriority) {
+    if (dateStr) {
+      const date = parseISO(dateStr);
+      if (isValid(date)) {
+        return date;
+      }
     }
-    return null;
+  }
+  return null;
 }
 
 type MonthlyTotal = {
-    month: string;
-    year: number;
-    total: number;
-    monthIndex: number;
+  month: string;
+  year: number;
+  total: number;
+  monthIndex: number;
 };
 
 export function MonthlyExpensesCard() {
@@ -46,7 +46,7 @@ export function MonthlyExpensesCard() {
       const docDate = getDocumentDateForExpense(doc);
       if (docDate && getYear(docDate) === currentYear) {
         const monthKey = format(docDate, 'yyyy-MM');
-        const amount = parseFloat(doc.amount.replace(',', '.'));
+        const amount = parseFloat(String(doc.amount).replace(',', '.'));
         if (!isNaN(amount)) {
           totals[monthKey] = (totals[monthKey] || 0) + amount;
         }
@@ -80,30 +80,30 @@ export function MonthlyExpensesCard() {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">
-            {currentMonthTotal.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
-            <span className="text-sm font-normal"> TND</span>
+          {currentMonthTotal.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+          <span className="text-sm font-normal"> TND</span>
         </div>
         <Accordion type="single" collapsible className="w-full mt-2">
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="text-xs text-muted-foreground py-1 hover:no-underline justify-start gap-1">
-                Voir l'historique de l'année
+              Voir l'historique de l'année
             </AccordionTrigger>
             <AccordionContent>
-                <div className="space-y-2 pt-2">
+              <div className="space-y-2 pt-2">
                 {monthlyTotals.length > 0 ? monthlyTotals.map(item => (
-                    <div key={`${item.year}-${item.month}`} className="flex justify-between items-center text-sm">
-                        <span className="capitalize text-muted-foreground">{item.month}</span>
-                        <span className="font-mono font-semibold">
-                            {item.total.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND
-                        </span>
-                    </div>
+                  <div key={`${item.year}-${item.month}`} className="flex justify-between items-center text-sm">
+                    <span className="capitalize text-muted-foreground">{item.month}</span>
+                    <span className="font-mono font-semibold">
+                      {item.total.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND
+                    </span>
+                  </div>
                 )) : (
-                    <div className="flex items-center justify-center text-xs text-muted-foreground py-4">
-                        <Info className="h-4 w-4 mr-2"/>
-                        <p>Aucune dépense enregistrée cette année.</p>
-                    </div>
+                  <div className="flex items-center justify-center text-xs text-muted-foreground py-4">
+                    <Info className="h-4 w-4 mr-2" />
+                    <p>Aucune dépense enregistrée cette année.</p>
+                  </div>
                 )}
-                </div>
+              </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
