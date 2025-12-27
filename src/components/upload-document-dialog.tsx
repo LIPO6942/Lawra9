@@ -39,7 +39,12 @@ import { normalizeSupplierKey, compressImage } from '@/lib/utils';
 type AnalysisResult = Partial<ExtractInvoiceDataOutput>;
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
-  const docType = result.documentType as Document['category'];
+  let docType = result.documentType as Document['category'];
+
+  // Heuristic: if period matches SONEDE format (YYYY-MM-MM-MM), it's SONEDE
+  if (result.consumptionPeriod?.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/)) {
+    docType = 'SONEDE';
+  }
 
   if ((docType === 'STEG' || docType === 'SONEDE' || docType === 'Internet') && result.supplier && result.amount) {
     let period = '';
@@ -75,7 +80,11 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
 const frenchCategories: Record<string, Document['category']> = {
   "STEG": "STEG",
   "SONEDE": "SONEDE",
+  "EAU": "SONEDE",
+  "ELECTRICITE": "STEG",
+  "GAZ": "STEG",
   "Reçu Bancaire": "Reçu Bancaire",
+  "Banque": "Reçu Bancaire",
   "Maison": "Maison",
   "Internet": "Internet",
   "Assurance": "Assurance",
@@ -302,7 +311,14 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       });
 
       setProcessingMessage('Sauvegarde en cours...');
-      const aiCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
+      let finalCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';
+
+      // Heuristic fallback
+      if (result.consumptionPeriod?.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/)) {
+        finalCategory = 'SONEDE';
+      }
+
+      const aiCategory = finalCategory;
 
       const newDocData: DocumentWithFile = {
         name: formatDocumentName(result, finalFile.name),

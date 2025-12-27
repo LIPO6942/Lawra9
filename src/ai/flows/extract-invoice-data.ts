@@ -31,27 +31,22 @@ const ExtractInvoiceDataOutputSchema = z.object({
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
-const INVOICE_PROMPT = `Vous êtes un expert dans l'analyse de factures tunisiennes (STEG, SONEDE, etc.). Votre tâche consiste à extraire les données en JSON avec une précision chirurgicale.
+const INVOICE_PROMPT = `Vous êtes un expert en factures tunisiennes (STEG, SONEDE). Votre mission est d'extraire les données avec une précision absolue. Retournez uniquement du JSON.
 
-**DÉTECTION DU TYPE & FOURNISSEUR :**
+**RÈGLES D'IDENTIFICATION CRUCIALES :**
 1. **SONEDE (EAU)** : 
-   - Fournisseur: "SONEDE". Période: format "AAAA-MM-MM-MM".
+   - SI vous voyez une période de consommation au format "AAAA-MM-MM-MM" (ex: "2025-08-07-06"), alors documentType est "SONEDE" et supplier est "SONEDE". 
+   - Mots clés : "SONEDE", "Société Nationale d'Exploitation et de Distribution des Eaux", "إستهلاك الماء".
 2. **STEG (ÉLEC/GAZ)** : 
-   - Fournisseur: "STEG".
-   - **DANGER HALLUCINATION** : Ne supposez JAMAIS que la facture est payée.
-   - **DATE D'ÉCHÉANCE (CRUCIAL)** : Cherchez exclusivement "Prière de payer avant le" ou "الرجاء الدفع قبل" située juste au-dessus du coupon de versement. 
-   - **ATTENTION** : Ne confondez PAS avec "Prochain relevé" (qui est souvent en 2026). La date d'échéance est imminente (ex: déc/janv).
+   - Mots clés : "STEG", "الشركة التونسية للكهرباء والغاز", "KWh".
+   - Fournisseur est "STEG".
 
-**CHAMPS JSON :**
-- documentType: "STEG", "SONEDE", etc.
-- supplier: "STEG", "SONEDE", etc.
-- amount: Montant total final à payer en Dinars Tunisiens (TND). **IMPORTANT** : Utilisez TOUJOURS le point comme séparateur décimal (ex: "24.500"). Ne retournez JAMAIS de montant sans séparateur (ex: "24500" pour 24DT est interdit).
-- dueDate: Date d'échéance EXACTE (AAAA-MM-JJ). Priorité absolue à "Prière de payer avant le".
-- consumptionPeriod: Pour SONEDE, format EXACT "AAAA-MM-MM-MM".
+**EXTRACTION DES CHAMPS :**
+- amount: Montant total à payer. Utilisez TOUJOURS le point décimal (ex: "24.000"). Si vous voyez "24000" millimes, convertissez en "24.000".
+- dueDate: Date d'échéance (AAAA-MM-JJ). Sur STEG, c'est obligatoirement la date près de "Prière de payer avant le".
+- consumptionPeriod: Uniquement pour SONEDE. Extrayez la chaîne exacte type "2025-08-07-06".
 
-**CONSIGNE MONTANT** : Si vous lisez "24 350" ou "24,350", écrivez "24.350". Si vous voyez des millimes comme "24350" sans virgule, convertissez en "24.350".
-
-IMPORTANT: JSON uniquement. Pas de blabla. Pas d'hallucinations sur le statut de paiement.`;
+IMPORTANT: Ne supposez jamais qu'une facture est payée. JSON uniquement. Pas de blabla.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
@@ -67,7 +62,7 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
       body: JSON.stringify({
         model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
-          { role: 'system', content: 'Tu es un expert en extraction JSON de factures (STEG/SONEDE).' },
+          { role: 'system', content: 'Tu es un expert en extraction JSON de factures tunisiennes (STEG/SONEDE). Restreint la sortie au JSON pur.' },
           {
             role: 'user',
             content: [
