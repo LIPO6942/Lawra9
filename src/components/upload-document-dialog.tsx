@@ -280,7 +280,8 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       if (file.type.startsWith('image/') && file.size > 1 * 1024 * 1024) {
         setProcessingMessage('Optimisation de l\'image...');
         try {
-          finalFile = await compressImage(file, 0.8, 1600);
+          const compressed = await compressImage(file, 0.8, 1600);
+          finalFile = new File([compressed.blob], file.name, { type: 'image/jpeg' });
         } catch (e) {
           console.warn('Compression failed, using original', e);
         }
