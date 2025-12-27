@@ -35,22 +35,21 @@ const INVOICE_PROMPT = `Vous êtes un expert dans l'analyse de factures tunisien
 
 **DÉTECTION DU TYPE & FOURNISSEUR :**
 1. **SONEDE (EAU)** : 
-   - Le fournisseur doit être strictement "SONEDE" (pas le nom long).
-   - **Période** : Format "AAAA-MM-MM-MM" (ex: "2025-08-07-06"). C'est CRUCIAL. Ne pas transformer en dates de début/fin.
+   - Fournisseur: "SONEDE". Période: format "AAAA-MM-MM-MM".
 2. **STEG (ÉLEC/GAZ)** : 
-   - Le fournisseur doit être strictement "STEG".
-   - **Montant à payer** : Case rouge "Montant à payer" ou "المبلغ المطلوب".
+   - Fournisseur: "STEG".
+   - **DANGER HALLUCINATION** : Ne supposez JAMAIS que la facture est payée.
+   - **DATE D'ÉCHÉANCE (CRUCIAL)** : Cherchez exclusivement "Prière de payer avant le" ou "الرجاء الدفع قبل" située juste au-dessus du coupon de versement. 
+   - **ATTENTION** : Ne confondez PAS avec "Prochain relevé" (qui est souvent en 2026). La date d'échéance est imminente (ex: déc/janv).
 
 **CHAMPS JSON :**
-- documentType: "STEG", "SONEDE", "Internet", etc.
-- supplier: Uniquement "STEG" ou "SONEDE".
-- amount: Montant total à payer.
-- dueDate: Date d'échéance (AAAA-MM-JJ).
-- issueDate: Date d'émission (AAAA-MM-JJ).
-- consumptionPeriod: Uniquement pour SONEDE, format EXACT "AAAA-MM-MM-MM".
-- consumptionQuantity: Quantité (ex: "501 KWh" ou "13 m3").
+- documentType: "STEG", "SONEDE", etc.
+- supplier: "STEG", "SONEDE", etc.
+- amount: Montant total final à payer.
+- dueDate: Date d'échéance EXACTE (AAAA-MM-JJ). Priorité absolue à "Prière de payer avant le".
+- consumptionPeriod: Pour SONEDE, format EXACT "AAAA-MM-MM-MM".
 
-IMPORTANT: Retournez uniquement du JSON. Dates en AAAA-MM-JJ. Pas de texte explicatif.`;
+IMPORTANT: JSON uniquement. Pas de blabla. Pas d'hallucinations sur le statut de paiement.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;

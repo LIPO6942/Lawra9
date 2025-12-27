@@ -34,23 +34,23 @@ interface DocumentContextType {
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
 
 const getDocumentDate = (doc: Document): Date | null => {
-    const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
-    for (const dateStr of datePriority) {
-        if (dateStr) {
-            const date = parseISO(dateStr);
-            if (isValid(date)) {
-                return date;
-            }
-        }
+  const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
+  for (const dateStr of datePriority) {
+    if (dateStr) {
+      const date = parseISO(dateStr);
+      if (isValid(date)) {
+        return date;
+      }
     }
-    return null;
+  }
+  return null;
 }
 
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const loadDocuments = useCallback(async () => {
     if (user) {
       try {
@@ -60,12 +60,12 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // We no longer create object URLs here to prevent them from becoming stale.
         // They will be created on-demand in the component that needs them (e.g., DocumentView).
         setDocuments(docsFromDb.sort((a, b) => {
-            const dateA = getDocumentDate(a);
-            const dateB = getDocumentDate(b);
-            if (dateA && dateB) {
-                return dateB.getTime() - dateA.getTime();
-            }
-            return 0;
+          const dateA = getDocumentDate(a);
+          const dateB = getDocumentDate(b);
+          if (dateA && dateB) {
+            return dateB.getTime() - dateA.getTime();
+          }
+          return 0;
         }));
       } catch (error) {
         console.error("Failed to load documents from IndexedDB", error);
@@ -84,18 +84,18 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addDocument = async (doc: DocumentWithFile) => {
     if (!user) return;
     const db = await openDB(user.uid);
-    const newDoc: Document = { 
-        ...doc, 
-        id: `doc-${Date.now()}`, 
-        createdAt: new Date().toISOString() 
+    const newDoc: Document = {
+      ...doc,
+      id: `doc-${Date.now()}`,
+      createdAt: new Date().toISOString()
     };
 
     if (newDoc.category === 'Maison' && newDoc.files && newDoc.files.length > 0) {
-        newDoc.file = newDoc.files[0].file;
+      newDoc.file = newDoc.files[0].file;
     }
 
     await dbAddDocument(db, newDoc);
-    await loadDocuments(); 
+    await loadDocuments();
   };
 
   const updateDocument = async (id: string, data: Partial<DocumentWithFile>) => {
@@ -103,47 +103,47 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const db = await openDB(user.uid);
     const docToUpdate = documents.find(d => d.id === id);
     if (!docToUpdate) return;
-    
+
     let updatedData: Document = { ...docToUpdate, ...data };
-    
+
     if (updatedData.category === 'Maison') {
-        if (updatedData.files && updatedData.files.length > 0) {
-            updatedData.file = updatedData.files[0].file;
-        } else {
-            delete updatedData.file;
-        }
+      if (updatedData.files && updatedData.files.length > 0) {
+        updatedData.file = updatedData.files[0].file;
+      } else {
+        delete updatedData.file;
+      }
     } else if (data.file) { // For non-maison docs, handle single file update
-        updatedData.file = data.file;
+      updatedData.file = data.file;
     }
 
     await dbUpdateDocument(db, updatedData);
-    await loadDocuments(); 
+    await loadDocuments();
   };
 
   const deleteDocument = async (id: string) => {
     if (!user) return;
     const db = await openDB(user.uid);
     await dbDeleteDocument(db, id);
-    await loadDocuments(); 
+    await loadDocuments();
     toast({ title: 'Document supprimé' });
   };
-  
+
   const markAsPaid = useCallback(async (id: string) => {
     if (!user) return;
     const db = await openDB(user.uid);
     const docToUpdate = documents.find(d => d.id === id);
     if (docToUpdate) {
-        const updatedDoc = {
-            ...docToUpdate,
-            issueDate: new Date().toISOString(),
-            dueDate: undefined
-        };
-        await dbUpdateDocument(db, updatedDoc);
-        await loadDocuments();
-        toast({ title: 'Document marqué comme payé' });
+      const updatedDoc = {
+        ...docToUpdate,
+        issueDate: new Date().toISOString(),
+        dueDate: undefined
+      };
+      await dbUpdateDocument(db, updatedDoc);
+      await loadDocuments();
+      toast({ title: 'Document marqué comme payé' });
     }
   }, [user, documents, loadDocuments, toast]);
-  
+
   const getDocumentById = useCallback((id: string): Document | undefined => {
     return documents.find(doc => doc.id === id);
   }, [documents]);
@@ -154,18 +154,18 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!doc.dueDate || doc.category === 'Maison') return false;
         try {
           return isValid(parseISO(doc.dueDate));
-        } catch(e) {
+        } catch (e) {
           return false;
         }
       })
       .map(doc => ({
         id: `alert-${doc.id}`,
         documentId: doc.id,
-        documentName: doc.name,
+        documentName: doc.supplier || doc.name,
         dueDate: doc.dueDate!,
         type: ((doc.category === 'STEG' || doc.category === 'SONEDE') ? 'Paiement' : 'Renouvellement') as Alert['type'],
       }))
-      .sort((a,b) => differenceInDays(parseISO(a.dueDate), new Date()) - differenceInDays(parseISO(b.dueDate), new Date()));
+      .sort((a, b) => differenceInDays(parseISO(a.dueDate), new Date()) - differenceInDays(parseISO(b.dueDate), new Date()));
   }, [documents]);
 
   const monthlyExpenses = useMemo(() => {
@@ -202,14 +202,14 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const result: MonthlyExpense[] = monthOrder.slice(0, getMonth(new Date()) + 1).map(monthName => {
       const monthData: MonthlyExpense = { month: `${monthName}.` };
       const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Maison', 'Assurance', 'Contrat', 'Autre'];
-      
+
       categories.forEach(cat => {
         monthData[cat] = expensesByMonth[monthName]?.[cat] || 0;
       });
-      
+
       return monthData;
     });
-    
+
     return result;
   }, [documents]);
 

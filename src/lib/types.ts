@@ -26,6 +26,7 @@ export type Document = {
   // Multi-file support for Maison
   files?: SubFile[];
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
+  status?: 'pending' | 'paid' | 'expired';
   notes?: string; // Free text notes
 };
 
