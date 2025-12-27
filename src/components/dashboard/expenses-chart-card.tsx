@@ -54,7 +54,6 @@ export function ExpensesChartCard({ data }: ExpensesChartCardProps) {
                 width={30}
               />
               <Tooltip
-                cursor={{ fill: 'hsla(var(--card-foreground), 0.1)' }}
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
                     return (

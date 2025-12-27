@@ -45,9 +45,11 @@ const INVOICE_PROMPT = `Vous êtes un expert dans l'analyse de factures tunisien
 **CHAMPS JSON :**
 - documentType: "STEG", "SONEDE", etc.
 - supplier: "STEG", "SONEDE", etc.
-- amount: Montant total final à payer.
+- amount: Montant total final à payer en Dinars Tunisiens (TND). **IMPORTANT** : Utilisez TOUJOURS le point comme séparateur décimal (ex: "24.500"). Ne retournez JAMAIS de montant sans séparateur (ex: "24500" pour 24DT est interdit).
 - dueDate: Date d'échéance EXACTE (AAAA-MM-JJ). Priorité absolue à "Prière de payer avant le".
 - consumptionPeriod: Pour SONEDE, format EXACT "AAAA-MM-MM-MM".
+
+**CONSIGNE MONTANT** : Si vous lisez "24 350" ou "24,350", écrivez "24.350". Si vous voyez des millimes comme "24350" sans virgule, convertissez en "24.350".
 
 IMPORTANT: JSON uniquement. Pas de blabla. Pas d'hallucinations sur le statut de paiement.`;
 
