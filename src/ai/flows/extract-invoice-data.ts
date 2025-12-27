@@ -1,14 +1,6 @@
 
 'use server';
 
-/**
- * @fileOverview A flow to extract invoice data and detect document type from images or PDFs.
- *
- * - extractInvoiceData - A function that handles the data extraction and type detection process.
- * - ExtractInvoiceDataInput - The input type for the extractInvoiceData function.
- * - ExtractInvoiceDataOutput - The return type for the extractInvoiceData function.
- */
-
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -16,109 +8,101 @@ const ExtractInvoiceDataInputSchema = z.object({
   invoiceDataUri: z
     .string()
     .describe(
-      "A data URI of the invoice or receipt image/PDF, that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A data URI of the invoice or receipt image/PDF, that must include a MIME type and use Base64 encoding."
     ),
-  mimeType: z.string().optional().describe('The MIME type of the document (e.g., "image/jpeg", "application/pdf").'),
+  mimeType: z.string().optional(),
 });
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
 const ExtractInvoiceDataOutputSchema = z.object({
-  documentType: z.string().describe('Le type de document détecté (STEG, SONEDE, Reçu Bancaire, Maison, Internet, Assurance, Contrat, Autre).'),
-  supplier: z.string().describe('Le nom du fournisseur ou de l\'entité. Ex: "STEG", "SONEDE", "Orange", "Banque Zitouna", "Kiosque Ali".'),
-  amount: z.string().describe('Le montant total à payer. Pour la STEG, c\'est le montant total (électricité + gaz).'),
-  dueDate: z.string().optional().describe('La date d\'échéance au format AAAA-MM-JJ. Laisser vide si non applicable.'),
-  issueDate: z.string().optional().describe("La date d'émission du document au format AAAA-MM-JJ."),
-  invoiceNumber: z.string().optional().describe("Le numéro de la facture."),
-  billingStartDate: z.string().optional().describe('La date de début de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
-  billingEndDate: z.string().optional().describe('La date de fin de la période de facturation au format AAAA-MM-JJ. Laisser vide si non applicable (ex: reçu).'),
-  consumptionPeriod: z.string().optional().describe('Uniquement pour les factures SONEDE. Extrayez la période de consommation trimestrielle exactement comme elle apparaît (ex: "03-04-05-2025").'),
-  consumptionQuantity: z.string().optional().describe("La quantité d'électricité ou d'eau consommée (ex: '150 KWh', '75 m³'). Inclure l'unité. Laisser vide si non applicable."),
-  gasAmount: z.string().optional().describe('Uniquement pour STEG. Le montant total de la rubrique Gaz, si elle existe.'),
-  gasConsumptionQuantity: z.string().optional().describe('Uniquement pour STEG. La quantité de gaz consommée (ex: "50 m³"), si elle existe. Inclure l\'unité.'),
-  reference: z.string().optional().describe('Le numéro de référence de la facture ou de la transaction.'),
+  documentType: z.string().describe('Type de document (STEG, SONEDE, Reçu Bancaire, Maison, Internet, Assurance, Contrat, Autre).'),
+  supplier: z.string().describe('Fournisseur (ex: STEG, SONEDE, Orange).'),
+  amount: z.string().describe('Montant total.'),
+  dueDate: z.string().optional().describe('Date d\'échéance AAAA-MM-JJ.'),
+  issueDate: z.string().optional().describe('Date d\'émission AAAA-MM-JJ.'),
+  invoiceNumber: z.string().optional(),
+  billingStartDate: z.string().optional(),
+  billingEndDate: z.string().optional(),
+  consumptionPeriod: z.string().optional(),
+  consumptionQuantity: z.string().optional(),
+  gasAmount: z.string().optional(),
+  gasConsumptionQuantity: z.string().optional(),
+  reference: z.string().optional(),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
-export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput> {
-  return extractInvoiceDataFlow(input);
+const INVOICE_PROMPT = `Vous êtes un expert dans l'analyse de documents et factures tunisiens. Votre tâche est de détecter le type de document ET d'en extraire les informations pertinentes.
+
+**Étape 1 : Détection du type de document**
+Identifiez d'abord le type du document parmi les choix suivants : STEG, SONEDE, Reçu Bancaire, Maison, Internet, Assurance, Contrat, ou Autre.
+
+**Étape 2 : Extraction des données**
+Veuillez extraire les informations suivantes de l'image :
+- Nom du fournisseur : Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE".
+- Montant : Le montant total à payer.
+- Date d'échéance : Cherchez activement "آخر أجل للدفع" ou "الرجاء الدفع قبل". C'est crucial.
+- Dates : Date d'émission et période de facturation.
+- STEG Spécifique : Champ "amount" = total. consommation électricité dans "consumptionQuantity". Si Gaz existe, montant gaz dans "gasAmount" et quantité dans "gasConsumptionQuantity".
+- SONEDE Spécifique : Période trimestrielle (ex: 03-04-05-2025) dans "consumptionPeriod". Quantité eau en m³ dans "consumptionQuantity".
+
+Retournez JSON uniquement au format AAAA-MM-JJ pour les dates.`;
+
+async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) return null;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${groqKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [
+          { role: 'system', content: 'Tu es un expert en extraction JSON de factures (STEG/SONEDE).' },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: INVOICE_PROMPT },
+              { type: 'image_url', image_url: { url: input.invoiceDataUri } },
+            ],
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    return content ? JSON.parse(content) : null;
+  } catch (e) {
+    console.error('[Groq Invoice] Error:', e);
+    return null;
+  }
 }
 
-const prompt = ai.definePrompt({
-  name: 'extractInvoiceDataPrompt',
-  input: { schema: ExtractInvoiceDataInputSchema },
-  output: { schema: ExtractInvoiceDataOutputSchema },
-  prompt: `Vous êtes un expert dans l'analyse de documents et factures tunisiens. Votre tâche est de détecter le type de document ET d'en extraire les informations pertinentes.
+export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput> {
+  // 1. Try Groq (Preferred)
+  const groqRes = await extractWithGroq(input);
+  if (groqRes) return groqRes;
 
-  **Étape 1 : Détection du type de document**
-  Identifiez d'abord le type du document parmi les choix suivants : STEG, SONEDE, Reçu Bancaire, Maison, Internet, Assurance, Contrat, ou Autre.
-
-  **Étape 2 : Extraction des données**
-  Veuillez extraire les informations suivantes de l'image du document fournie.
-  - Nom du fournisseur : Si le document mentionne "Société Tunisienne de l'Electricité et du Gaz", le fournisseur DOIT être "STEG". Pour l'eau, c'est "SONEDE". Pour un reçu bancaire, le nom de la banque (ex: "Banque Zitouna").
-  - Montant : Le **montant total à payer**. C'est l'information la plus importante. Pour la STEG, c'est le montant global (électricité + gaz).
-  - **Date d'échéance (prioritaire)** : Cherchez activement une date d'échéance, de dernier délai de paiement, ou "آخر أجل للدفع" ou "الرجاء الدفع قبل هذا التاريخ". C'est une information cruciale pour les alertes. Si vous la trouvez, remplissez le champ 'dueDate'.
-  - Dates : Date d'émission et période de facturation si applicable.
-  - Numéros : Numéro de facture, référence.
-
-  **Détails spécifiques par type :**
-  1. **Factures STEG** :
-     - Le champ "amount" doit être le montant TOTAL de la facture.
-     - Cherchez la consommation d'**électricité**. Repérez le libellé "Quantité" ou "الكمية" dans la rubrique électricité. Extrayez la valeur numérique ET son unité (ex: 150 KWh) dans "consumptionQuantity". NE PAS confondre avec le montant en dinars.
-     - **IMPORTANT** : Cherchez une rubrique distincte pour le **Gaz**. Si elle existe, extrayez le montant total du gaz dans "gasAmount". Puis, repérez le libellé "Quantité" ou "الكمية" dans la rubrique gaz. Extrayez la valeur numérique et son unité (ex: 50 m³) dans "gasConsumptionQuantity". NE PAS confondre avec le montant en dinars. Si la rubrique Gaz n'existe pas, laissez ces deux champs vides.
-  2. **Factures SONEDE** :
-     - La date à côté de "الرجاء الدفع قبل هذا التاريخ" est la **date d'échéance (dueDate)**. Le champ "issueDate" doit rester vide.
-     - La consommation est trimestrielle (ex: "03-04-05-2025"). Extrayez cette chaîne exacte dans "consumptionPeriod".
-     - Extrayez la quantité d'eau consommée en m³ (champ "Quantité") dans "consumptionQuantity".
-  3. **Reçus et tickets de caisse** : Les champs de consommation, période, etc., ne sont généralement pas applicables.
-
-  Retournez toutes les dates au format AAAA-MM-JJ.
-
-  Voici le document :
-  {{media url=invoiceDataUri mimeType=mimeType}}
-  `,
-  config: {
-    safetySettings: [
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
-    ],
-  },
-});
-
-const extractInvoiceDataFlow = ai.defineFlow(
-  {
-    name: 'extractInvoiceDataFlow',
-    inputSchema: ExtractInvoiceDataInputSchema,
-    outputSchema: ExtractInvoiceDataOutputSchema,
-  },
-  async input => {
-    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
-      throw new Error(
-        "Configuration manquante: GOOGLE_API_KEY ou GEMINI_API_KEY est absente."
-      );
-    }
-    try {
-      const { output } = await prompt(input);
-      if (!output) {
-        throw new Error("Analyse IA: aucune sortie n'a été retournée par le modèle.");
-      }
-      return output;
-    } catch (err: any) {
-      const rawMsg = (err && (err.message || err.toString?.())) || 'Erreur inconnue';
-      throw new Error(`Analyse IA impossible: ${rawMsg}`);
-    }
+  // 2. Fallback to Gemini
+  try {
+    const result = await ai.generate({
+      model: 'googleai/gemini-1.5-flash',
+      prompt: [
+        { text: INVOICE_PROMPT },
+        { media: { url: input.invoiceDataUri, contentType: input.mimeType || 'image/jpeg' } },
+      ],
+      output: { schema: ExtractInvoiceDataOutputSchema },
+    });
+    if (result.output) return result.output;
+    throw new Error("No output from Gemini");
+  } catch (err: any) {
+    throw new Error(`Analyse IA impossible: ${err.message}`);
   }
-);
+}
