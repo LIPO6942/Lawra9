@@ -105,68 +105,68 @@ export default function ReceiptStatsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Dépense totale</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{kpi.totalSpend.toFixed(3)} TND</CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Panier moyen</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{kpi.avgBasket.toFixed(3)} TND</CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Nb reçus</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{kpi.countReceipts}</CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Nb articles</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{kpi.countItems}</CardContent></Card>
+        <Card className="min-w-0 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Dépense totale</CardTitle></CardHeader><CardContent className="text-2xl font-semibold truncate">{kpi.totalSpend.toFixed(3)} TND</CardContent></Card>
+        <Card className="min-w-0 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Panier moyen</CardTitle></CardHeader><CardContent className="text-2xl font-semibold truncate">{kpi.avgBasket.toFixed(3)} TND</CardContent></Card>
+        <Card className="min-w-0 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Nb reçus</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{kpi.countReceipts}</CardContent></Card>
+        <Card className="min-w-0 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Nb articles</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{kpi.countItems}</CardContent></Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
         <Card>
           <CardHeader><CardTitle>Dépense par catégorie</CardTitle></CardHeader>
-          <CardContent>
-            <ChartContainer config={{ total: { label: 'Total', color: '#f97316' } }} className="h-60 sm:h-72 md:h-80">
-              <BarChart data={byCat}>
+          <CardContent className="overflow-hidden p-2 sm:p-6">
+            <ChartContainer config={{ total: { label: 'Total', color: '#f97316' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+              <BarChart data={byCat} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
-                <YAxis tickLine={false} axisLine={false} />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" height={80} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="#f97316" radius={4} barSize={32} />
+                <Bar dataKey="total" fill="#f97316" radius={4} barSize={18} />
               </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Dépense par magasin</CardTitle></CardHeader>
-          <CardContent>
-            <ChartContainer config={{ total: { label: 'Total', color: '#3b82f6' } }} className="h-60 sm:h-72 md:h-80">
-              <BarChart data={byStore}>
+          <CardContent className="overflow-hidden p-2 sm:p-6">
+            <ChartContainer config={{ total: { label: 'Total', color: '#3b82f6' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+              <BarChart data={byStore} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} interval={isMobile ? 1 : 0} angle={isMobile ? -45 : -15} textAnchor="end" height={isMobile ? 70 : 60} tick={{ fontSize: isMobile ? 10 : 12 }} />
-                <YAxis tickLine={false} axisLine={false} />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" height={80} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="#3b82f6" radius={4} barSize={40} />
+                <Bar dataKey="total" fill="#3b82f6" radius={4} barSize={24} />
               </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
         <Card>
           <CardHeader><CardTitle>Top 10 Produits (Coût)</CardTitle></CardHeader>
-          <CardContent>
-            <ChartContainer config={{ totalSpend: { label: 'Dépense' } }} className="h-60 sm:h-72 md:h-80">
-              <BarChart data={topProductsBySpend} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
+          <CardContent className="overflow-hidden p-2 sm:p-6">
+            <ChartContainer config={{ totalSpend: { label: 'Dépense' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+              <BarChart data={topProductsBySpend} layout="vertical" margin={{ left: 0, right: 40, top: 0, bottom: 0 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 9 }} interval={0} />
+                <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 9 }} interval={0} tickFormatter={(v) => v.length > 15 ? v.substring(0, 12) + "..." : v} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalSpend" fill="#8b5cf6" radius={4} barSize={20} />
+                <Bar dataKey="totalSpend" fill="#8b5cf6" radius={4} barSize={18} />
               </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Top 10 Produits (Quantité)</CardTitle></CardHeader>
-          <CardContent>
-            <ChartContainer config={{ totalQty: { label: 'Qté' } }} className="h-60 sm:h-72 md:h-80">
-              <BarChart data={topProductsByQty} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
+          <CardContent className="overflow-hidden p-2 sm:p-6">
+            <ChartContainer config={{ totalQty: { label: 'Qté' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+              <BarChart data={topProductsByQty} layout="vertical" margin={{ left: 0, right: 40, top: 0, bottom: 0 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 9 }} interval={0} />
+                <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 9 }} interval={0} tickFormatter={(v) => v.length > 15 ? v.substring(0, 12) + "..." : v} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalQty" fill="#ec4899" radius={4} barSize={20} />
+                <Bar dataKey="totalQty" fill="#ec4899" radius={4} barSize={18} />
               </BarChart>
             </ChartContainer>
           </CardContent>
