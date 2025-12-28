@@ -42,7 +42,7 @@ export default function ReceiptStatsPage() {
   const data = useFilteredReceipts(store, months);
   const kpi = useMemo(() => computeKpis(data), [data]);
   const byCat = useMemo(() => Object.entries(spendByCategory(data))
-    .filter(([name]) => name !== 'Autres' && name !== 'Produit Inconnu')
+    .filter(([name]) => name !== 'Autres' && name !== 'Produit Inconnu' && name !== 'Inconnu')
     .map(([name, total]) => ({ name, total })), [data]);
   const byStore = useMemo(() => Object.entries(spendByStore(data)).map(([name, total]) => ({ name, total })), [data]);
   const trend = useMemo(() => monthlyTrend(data), [data]);
@@ -115,13 +115,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Dépense par catégorie</CardTitle></CardHeader>
           <CardContent className="overflow-hidden p-2 sm:p-6">
-            <ChartContainer config={{ total: { label: 'Total', color: '#f97316' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+            <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--primary))' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
               <BarChart data={byCat} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" height={80} tick={{ fontSize: 10 }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="#f97316" radius={4} barSize={18} />
+                <Bar dataKey="total" fill="var(--color-total)" radius={4} barSize={18} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -129,13 +129,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Dépense par magasin</CardTitle></CardHeader>
           <CardContent className="overflow-hidden p-2 sm:p-6">
-            <ChartContainer config={{ total: { label: 'Total', color: '#3b82f6' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+            <ChartContainer config={{ total: { label: 'Total', color: 'hsl(var(--accent))' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
               <BarChart data={byStore} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" height={80} tick={{ fontSize: 10 }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="#3b82f6" radius={4} barSize={24} />
+                <Bar dataKey="total" fill="var(--color-total)" radius={4} barSize={24} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -146,13 +146,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Top 10 Produits (Coût)</CardTitle></CardHeader>
           <CardContent className="overflow-hidden p-2 sm:p-6">
-            <ChartContainer config={{ totalSpend: { label: 'Dépense' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+            <ChartContainer config={{ totalSpend: { label: 'Dépense', color: '#8b5cf6' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
               <BarChart data={topProductsBySpend} layout="vertical" margin={{ left: 0, right: 40, top: 0, bottom: 0 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 9 }} interval={0} tickFormatter={(v) => v.length > 15 ? v.substring(0, 12) + "..." : v} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalSpend" fill="#8b5cf6" radius={4} barSize={18} />
+                <Bar dataKey="totalSpend" fill="var(--color-totalSpend)" radius={4} barSize={18} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -160,13 +160,13 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Top 10 Produits (Quantité)</CardTitle></CardHeader>
           <CardContent className="overflow-hidden p-2 sm:p-6">
-            <ChartContainer config={{ totalQty: { label: 'Qté' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
+            <ChartContainer config={{ totalQty: { label: 'Qté', color: '#ec4899' } }} className="h-60 sm:h-72 md:h-80 w-full aspect-auto overflow-hidden">
               <BarChart data={topProductsByQty} layout="vertical" margin={{ left: 0, right: 40, top: 0, bottom: 0 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 9 }} interval={0} tickFormatter={(v) => v.length > 15 ? v.substring(0, 12) + "..." : v} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalQty" fill="#ec4899" radius={4} barSize={18} />
+                <Bar dataKey="totalQty" fill="var(--color-totalQty)" radius={4} barSize={18} />
               </BarChart>
             </ChartContainer>
           </CardContent>

@@ -105,7 +105,7 @@ export function groupHistoryByProduct(purchases: ProductPurchase[]) {
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Eau': ['eau', 'pristine', 'prestine', 'jannet', 'dima', 'marwa', 'safia'],
-  'Pâtes': ['pâtes', 'pates', 'spaghetti', 'macaroni', 'penne', 'coquille', 'coquillage', 'randa', 'twist', 'fell'],
+  'Pâtes': ['pâtes', 'pates', 'spaghetti', 'macaroni', 'penne', 'coquille', 'coquillage', 'randa', 'twist', 'fell', 'warda', 'babbouche', 'vermicelle', 'vermicelles', 'papill', 'papillon', 'lasagne'],
   'Frais': ['lait', 'yaourt', 'fromage', 'beurre', 'oeuf', 'crème'],
   'Boucherie': ['viande', 'poulet', 'dinde', 'boeuf', 'steak', 'escalope', 'hache'],
   'Poisson': ['poisson', 'thon', 'saumon', 'sardine'],
@@ -125,7 +125,7 @@ export function mapCategoryHeuristic(label: string): string {
   for (const [cat, words] of Object.entries(CATEGORY_KEYWORDS)) {
     if (words.some(w => text.includes(w))) return cat;
   }
-  return 'Autres';
+  return 'Recus de caisse';
 }
 
 // -------------------------------
@@ -233,7 +233,7 @@ export function aggregateCategoryStats(receipts: Receipt[]): CategoryStats[] {
   for (const r of receipts) {
     for (const l of (r.lines || [])) {
       const cat = l.category || mapCategoryHeuristic(l.normalizedLabel || l.rawLabel || '');
-      const spend = l.lineTotal ?? (l.unitPrice && l.quantity ? l.unitPrice * l.quantity : 0) ?? 0;
+      const spend = l.lineTotal ?? (l.unitPrice && l.quantity ? l.unitPrice * l.quantity : 0);
       const qty = l.quantity && l.quantity > 0 ? l.quantity : 1;
       if (!map[cat]) map[cat] = { spend: 0, qty: 0, count: 0 };
       map[cat].spend += spend || 0;
@@ -309,7 +309,7 @@ export function computeTopProducts(receipts: Receipt[]): TopProductStat[] {
         avgPrice: 0,
       };
     }
-    const spend = p.lineTotal ?? (p.unitPrice && p.quantity ? p.unitPrice * p.quantity : 0) ?? 0;
+    const spend = p.lineTotal ?? (p.unitPrice && p.quantity ? p.unitPrice * p.quantity : 0);
     map[p.productKey].totalSpend += spend;
     map[p.productKey].totalQty += p.quantity;
     map[p.productKey].frequency += 1;

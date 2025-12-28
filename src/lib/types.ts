@@ -8,7 +8,7 @@ export type SubFile = {
 export type Document = {
   id: string;
   name: string;
-  category: 'STEG' | 'SONEDE' | 'Reçu Bancaire' | 'Maison' | 'Internet' | 'Assurance' | 'Contrat' | 'Autre';
+  category: 'STEG' | 'SONEDE' | 'Reçu Bancaire' | 'Maison' | 'Internet' | 'Assurance' | 'Contrat' | 'Recus de caisse' | 'Autre';
   createdAt: string; // ISO date string
   amount?: string;
   supplier?: string;

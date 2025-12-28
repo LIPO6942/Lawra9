@@ -64,14 +64,16 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     return `Facture ${supplierName}${period ? ` (${period})` : ''} - ${result.amount} TND`;
   }
 
-  if (docType === 'Reçu Bancaire' && result.amount) {
+  if ((docType === 'Reçu Bancaire' || docType === 'Recus de caisse') && result.amount) {
     try {
+      const supplierPart = result.supplier ? `${result.supplier} ` : '';
       const dateStr = result.issueDate || result.dueDate || '';
       const date = parseISO(dateStr);
       const formattedDate = isValid(date) ? ` du ${format(date, 'dd/MM/yyyy', { locale: fr })}` : '';
-      return `Reçu Bancaire${formattedDate} - ${result.amount} TND`;
+      const typeLabel = docType === 'Recus de caisse' ? 'Reçu de caisse' : 'Reçu Bancaire';
+      return `${typeLabel} ${supplierPart}${formattedDate} - ${result.amount} TND`;
     } catch (e) {
-      return `Reçu Bancaire - ${result.amount} TND`;
+      return `${docType === 'Recus de caisse' ? 'Reçu de caisse' : 'Reçu Bancaire'} - ${result.amount} TND`;
     }
   }
   return originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
@@ -89,6 +91,7 @@ const frenchCategories: Record<string, Document['category']> = {
   "Internet": "Internet",
   "Assurance": "Assurance",
   "Contrat": "Contrat",
+  "Recus de caisse": "Recus de caisse",
   "Autre": "Autre",
 };
 

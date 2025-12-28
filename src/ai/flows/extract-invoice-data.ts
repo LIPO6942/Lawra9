@@ -31,22 +31,26 @@ const ExtractInvoiceDataOutputSchema = z.object({
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
-const INVOICE_PROMPT = `Vous êtes un expert en factures tunisiennes (STEG, SONEDE). Votre mission est d'extraire les données avec une précision absolue. Retournez uniquement du JSON.
+const INVOICE_PROMPT = `Vous êtes un expert en factures et reçus tunisiens (STEG, SONEDE, Carrefour, Monoprix, etc.). Votre mission est d'extraire les données avec une précision absolue. Retournez uniquement du JSON.
 
 **RÈGLES D'IDENTIFICATION CRUCIALES :**
-1. **SONEDE (EAU)** : 
-   - SI vous voyez une période de consommation au format "AAAA-MM-MM-MM" (ex: "2025-08-07-06"), alors documentType est "SONEDE" et supplier est "SONEDE". 
-   - Mots clés : "SONEDE", "Société Nationale d'Exploitation et de Distribution des Eaux", "إستهلاك الماء".
-2. **STEG (ÉLEC/GAZ)** : 
-   - Mots clés : "STEG", "الشركة التونسية للكهرباء والغاز", "KWh".
-   - Fournisseur est "STEG".
+1. **SONEDE (EAU)** : SI vous voyez une période de consommation type "2025-08-07-06", documentType est "SONEDE".
+2. **STEG (ÉLEC/GAZ)** : Mots clés "STEG", "KWh". DocumentType est "STEG".
+3. **REÇUS DE CAISSE (SUPERMARCHÉ)** : Pour tout reçu de courses (Carrefour, Magasin Général, Monoprix, etc.), utilisez TOUJOURS "Recus de caisse" comme documentType. Ne jamais utiliser "Autre" pour ces reçus.
+
+**FORMAT DES REÇUS (EX: CARREFOUR) :**
+- Souvent, le libellé du produit est sur une ligne avec le prix total de la ligne à droite.
+- La ligne JUSTE EN DESSOUS contient la quantité et le prix unitaire (ex: "6 x 0.790").
+- Associez correctement ces informations pour extraire le libellé, la quantité, le prix unitaire et le total par ligne.
+
+**CATÉGORIES DE PRODUITS :**
+- SI un produit mentionne : Randa, Warda, Babbouche, Vermicelles, Spaghetti, Coquillage, Papillon, Lasagne, Fell (ou toute ressemblance), classez-le dans la catégorie "Pates".
 
 **EXTRACTION DES CHAMPS :**
-- amount: Montant total à payer. Utilisez TOUJOURS le point décimal (ex: "24.000"). Si vous voyez "24000" millimes, convertissez en "24.000".
-- dueDate: Date d'échéance (AAAA-MM-JJ). Sur STEG, c'est obligatoirement la date près de "Prière de payer avant le".
-- consumptionPeriod: Uniquement pour SONEDE. Extrayez la chaîne exacte type "2025-08-07-06".
+- amount: Montant total à payer. Utilisez le point décimal (ex: "24.000").
+- dueDate/issueDate: AAAA-MM-JJ.
 
-IMPORTANT: Ne supposez jamais qu'une facture est payée. JSON uniquement. Pas de blabla.`;
+IMPORTANT: Pas de blabla, juste du JSON.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
