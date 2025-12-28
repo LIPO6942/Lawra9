@@ -8,24 +8,40 @@ import { useDocuments } from '@/contexts/document-context';
 import { BarChartHorizontal, Droplets, Zap, Wifi, TrendingUp, Info, Wind } from 'lucide-react';
 import { getYear, format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LineChart, Line } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Legend, CartesianGrid, LineChart, Line } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Document } from '@/lib/types';
 
 const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
 
 const expenseCategoryConfig = {
-    "STEG": { label: "STEG", color: "hsl(var(--chart-4))" },
-    "SONEDE": { label: "SONEDE", color: "hsl(var(--chart-1))" },
-    "Internet": { label: "Internet", color: "hsl(var(--chart-3))" },
-    "Reçu Bancaire": { label: "Banque", color: "hsl(var(--chart-2))" },
-    "Recus de caisse": { label: "Recus de caisse", color: "hsl(var(--chart-6, 27 87% 67%))" },
-    "Autre": { label: "Autre", color: "hsl(var(--chart-5))" },
+    steg: { label: "STEG", color: "hsl(var(--chart-4))" },
+    sonede: { label: "SONEDE", color: "hsl(var(--chart-1))" },
+    internet: { label: "Internet", color: "hsl(var(--chart-3))" },
+    bancaire: { label: "Banque", color: "hsl(var(--chart-2))" },
+    caisse: { label: "Recus de caisse", color: "hsl(var(--chart-6))" },
+    autre: { label: "Autre", color: "hsl(var(--chart-5))" },
+};
+
+const categoryMap: Record<string, string> = {
+    "STEG": "steg",
+    "SONEDE": "sonede",
+    "Internet": "internet",
+    "Reçu Bancaire": "bancaire",
+    "Recus de caisse": "caisse",
+    "Autre": "autre"
 };
 
 const consumptionConfig = {
-    "Électricité": { color: "var(--color-elec)", unit: "kWh" },
-    "Gaz": { color: "var(--color-gaz)", unit: "m³" },
-    "Eau": { color: "var(--color-eau)", unit: "m³" },
+    elec: { label: "Électricité", color: "hsl(var(--chart-4))", unit: "kWh" },
+    gaz: { label: "Gaz", color: "hsl(var(--chart-2))", unit: "m³" },
+    eau: { label: "Eau", color: "hsl(var(--chart-1))", unit: "m³" },
+};
+
+const consumptionMap: Record<string, string> = {
+    "Électricité": "elec",
+    "Gaz": "gaz",
+    "Eau": "eau"
 };
 
 const getDocumentDate = (doc: Document): Date | null => {
@@ -77,7 +93,8 @@ const StatsPage = () => {
 
             // Process expenses
             if (doc.amount) {
-                const categoryKey = doc.category || 'Autre';
+                const category = doc.category || 'Recus de caisse';
+                const categoryKey = categoryMap[category] || 'autre';
                 const amount = parseFloat(String(doc.amount).replace(',', '.'));
                 if (!isNaN(amount)) {
                     if (!dataByYearAndMonth[year][month].expenses[categoryKey]) dataByYearAndMonth[year][month].expenses[categoryKey] = 0;
@@ -87,10 +104,10 @@ const StatsPage = () => {
 
             // Process consumption
             if (doc.category === 'STEG') {
-                if (doc.consumptionQuantity) dataByYearAndMonth[year][month].consumption['Électricité'] = (dataByYearAndMonth[year][month].consumption['Électricité'] || 0) + parseQuantity(doc.consumptionQuantity);
-                if (doc.gasConsumptionQuantity) dataByYearAndMonth[year][month].consumption['Gaz'] = (dataByYearAndMonth[year][month].consumption['Gaz'] || 0) + parseQuantity(doc.gasConsumptionQuantity);
+                if (doc.consumptionQuantity) dataByYearAndMonth[year][month].consumption['elec'] = (dataByYearAndMonth[year][month].consumption['elec'] || 0) + parseQuantity(doc.consumptionQuantity);
+                if (doc.gasConsumptionQuantity) dataByYearAndMonth[year][month].consumption['gaz'] = (dataByYearAndMonth[year][month].consumption['gaz'] || 0) + parseQuantity(doc.gasConsumptionQuantity);
             } else if (doc.category === 'SONEDE' && doc.consumptionQuantity) {
-                dataByYearAndMonth[year][month].consumption['Eau'] = (dataByYearAndMonth[year][month].consumption['Eau'] || 0) + parseQuantity(doc.consumptionQuantity);
+                dataByYearAndMonth[year][month].consumption['eau'] = (dataByYearAndMonth[year][month].consumption['eau'] || 0) + parseQuantity(doc.consumptionQuantity);
             }
         });
 
@@ -172,11 +189,11 @@ const StatsPage = () => {
             ) : (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                        <StatCard title="Dépense STEG / mois" value={expenseAverages['STEG']?.avg} unit="TND" icon={Zap} />
-                        <StatCard title="Dépense SONEDE / mois" value={expenseAverages['SONEDE']?.avg} unit="TND" icon={Droplets} />
-                        <StatCard title="Conso. Élec / mois" value={consumptionAverages['Électricité']?.avg} unit="kWh" icon={Zap} />
-                        <StatCard title="Conso. Gaz / mois" value={consumptionAverages['Gaz']?.avg} unit="m³" icon={Wind} />
-                        <StatCard title="Conso. Eau / mois" value={consumptionAverages['Eau']?.avg} unit="m³" icon={Droplets} />
+                        <StatCard title="Dépense STEG / mois" value={expenseAverages['steg']?.avg} unit="TND" icon={Zap} />
+                        <StatCard title="Dépense SONEDE / mois" value={expenseAverages['sonede']?.avg} unit="TND" icon={Droplets} />
+                        <StatCard title="Conso. Élec / mois" value={consumptionAverages['elec']?.avg} unit="kWh" icon={Zap} />
+                        <StatCard title="Conso. Gaz / mois" value={consumptionAverages['gaz']?.avg} unit="m³" icon={Wind} />
+                        <StatCard title="Conso. Eau / mois" value={consumptionAverages['eau']?.avg} unit="m³" icon={Droplets} />
                     </div>
 
                     <div className="grid grid-cols-1 gap-6">
@@ -186,18 +203,18 @@ const StatsPage = () => {
                                 <CardDescription>Évolution de vos dépenses mensuelles en TND.</CardDescription>
                             </CardHeader>
                             <CardContent className="h-[350px] pr-8">
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ChartContainer config={expenseCategoryConfig} className="h-full w-full">
                                     <BarChart data={expenseData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                                         <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'TND', angle: -90, position: 'insideLeft', offset: 10, fill: '#888' }} />
-                                        <Tooltip content={<CustomTooltip unit="TND" />} />
+                                        <ChartTooltip content={<ChartTooltipContent formatter={(value) => `${value.toLocaleString('fr-TN')} TND`} />} />
                                         <Legend />
-                                        {Object.entries(expenseCategoryConfig).map(([key, value]) => (
-                                            <Bar key={key} dataKey={key} fill={value.color} name={key} radius={[4, 4, 0, 0]} stackId="a" />
+                                        {Object.keys(expenseCategoryConfig).map((key) => (
+                                            <Bar key={key} dataKey={key} fill={`var(--color-${key})`} name={key} radius={[4, 4, 0, 0]} stackId="a" />
                                         ))}
                                     </BarChart>
-                                </ResponsiveContainer>
+                                </ChartContainer>
                             </CardContent>
                         </Card>
 
@@ -207,25 +224,21 @@ const StatsPage = () => {
                                 <CardDescription>Évolution de votre consommation en kWh et m³.</CardDescription>
                             </CardHeader>
                             <CardContent className="h-[350px] pr-8">
-                                <style>{`
-                                :root {
-                                    --color-elec: hsl(var(--chart-4));
-                                    --color-gaz: hsl(var(--chart-2));
-                                    --color-eau: hsl(var(--chart-1));
-                                }
-                            `}</style>
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ChartContainer config={consumptionConfig} className="h-full w-full">
                                     <LineChart data={consumptionData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                                         <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                        <Tooltip content={<CustomTooltip />} />
+                                        <ChartTooltip content={<ChartTooltipContent formatter={(value, name) => {
+                                            const config = (consumptionConfig as any)[name];
+                                            return `${value.toLocaleString('fr-TN')} ${config?.unit || ''}`;
+                                        }} />} />
                                         <Legend />
                                         {Object.entries(consumptionConfig).map(([key, value]) => (
-                                            <Line key={key} type="monotone" dataKey={key} stroke={value.color} name={key} unit={value.unit} />
+                                            <Line key={key} type="monotone" dataKey={key} stroke={`var(--color-${key})`} name={key} unit={value.unit} />
                                         ))}
                                     </LineChart>
-                                </ResponsiveContainer>
+                                </ChartContainer>
                             </CardContent>
                         </Card>
                     </div>
@@ -254,38 +267,5 @@ const StatCard = ({ title, value, unit, icon: Icon }: { title: string; value: nu
     )
 }
 
-
-const CustomTooltip = ({ active, payload, label, unit }: any) => {
-    if (active && payload && payload.length) {
-        const total = payload.reduce((sum: number, p: any) => sum + p.value, 0);
-
-        return (
-            <div className="rounded-lg border bg-background p-2 shadow-sm text-xs">
-                <p className="text-sm font-bold text-foreground mb-2">{label}</p>
-                <div className="space-y-1">
-                    {payload.filter((p: any) => p.value > 0).map((pld: any) => (
-                        <div key={pld.dataKey} className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: pld.stroke || pld.fill }}></div>
-                                <span className="text-muted-foreground">{pld.name}:</span>
-                            </div>
-                            <span className="font-semibold ml-4">{pld.value.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {pld.payload.unit || pld.unit || unit || ''}</span>
-                        </div>
-                    ))}
-                </div>
-                {payload.length > 1 && total > 0 && unit && (
-                    <>
-                        <div className="my-2 h-px bg-border" />
-                        <div className="flex items-center justify-between font-bold">
-                            <span>Total:</span>
-                            <span className="ml-4">{total.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {unit || ''}</span>
-                        </div>
-                    </>
-                )}
-            </div>
-        );
-    }
-    return null;
-};
 
 export default StatsPage;
