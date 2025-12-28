@@ -166,7 +166,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       // Save as Document as well
       await addDocument({
         name: `Reçu ${res.storeName || 'Magasin'} - ${res.total ? res.total.toFixed(3) + ' TND' : 'Inconnu'}`,
-        category: 'Autre',
+        category: 'Recus de caisse',
         file: finalFile,
         issueDate: receipt.purchaseAt,
         amount: res.total?.toFixed(3),
