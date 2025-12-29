@@ -38,7 +38,9 @@ const ExtractReceiptDataOutputSchema = z.object({
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
 // ----- Prompt -----
-const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour Tunisie, Monoprix, etc.).
+const getReceiptPrompt = () => {
+  const today = new Date().toISOString().split('T')[0];
+  return `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour Tunisie, Monoprix, etc.).
 Analyse cette image et extrais TOUS les produits listés.
 
 CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
@@ -56,27 +58,16 @@ CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
 - Maison & Divers (Piles, Ampoule, Ustensiles...)
 
 RÈGLES CRITIQUES (TRÈS IMPORTANT) :
-1. DATE : Extraits la date du ticket. Format ISO YYYY-MM-DD.
-   - SI DATE > ${new Date().toISOString().split('T')[0]}, UTILISE AUJOURD'HUI.
+1. DATE (purchaseAt) : 
+   - Extraits la date du ticket au format ISO YYYY-MM-DD.
+   - N'INVENTE JAMAIS DE DATE. Si la date n'est pas clairement visible ou illisible, laisse le champ "purchaseAt" vide ou null.
+   - Ne devine pas une date basée sur le contexte si elle n'est pas écrite.
 2. FORMAT CARREFOUR (ASSOCIATION LIGNE DE QUANTITÉ) :
    - Sur Carrefour, les infos de quantité ("Qté x PrixUnit") sont TOUJOURS écrit sur la ligne JUSTE EN-DESSOUS du libellé du produit.
    - NE JAMAIS associer une ligne de quantité au produit qui suit.
 3. PRODUITS SPÉCIFIQUES :
    - DELIO -> Catégorie "Boissons".
    - PRISTINE, SAFIA, SABRINE -> Catégorie "Eau".
-
-EXEMPLES DE STRUCTURE (SUIS CE MODÈLE) :
-Ticket Carrefour réel :
-  2 L EAU PRISTINE        4.740  <-- Produit A
-  6  x  0.790                    <-- Quantité du produit A (6 * 0.790 = 4.740)
-  25CL DELIO AROMA G     11.400  <-- Produit B
-  12  x  0.950                   <-- Quantité du produit B (12 * 0.950 = 11.400)
-
-Résultat JSON attendu :
-[
-  { "rawLabel": "2 L EAU PRISTINE", "category": "Eau", "quantity": 6, "unitPrice": 0.790, "lineTotal": 4.740 },
-  { "rawLabel": "25CL DELIO AROMA G", "category": "Boissons", "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }
-]
 
 Format de sortie JSON Strict:
 {
@@ -93,10 +84,11 @@ Format de sortie JSON Strict:
     }
   ]
 }`;
+};
 
 // ----- Date Parsing Helper -----
 function parseFlexibleDate(dateStr: string | undefined): Date | null {
-  if (!dateStr) return null;
+  if (!dateStr || dateStr.toLowerCase() === 'null') return null;
   const cleanStr = dateStr.trim();
 
   // ISO (YYYY-MM-DD)
@@ -136,26 +128,31 @@ export async function extractReceiptData(
 ): Promise<ExtractReceiptDataOutput> {
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
   const now = new Date();
+  const todayISO = now.toISOString().split('T')[0]; // Format YYYY-MM-DD pour la cohérence
+
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
 
-  const todayISO = now.toISOString();
+  const prompt = getReceiptPrompt();
 
   const validateDate = (result: ExtractReceiptDataOutput | null) => {
     if (!result) return null;
-    const parsedDate = parseFlexibleDate(result.purchaseAt);
-    if (!parsedDate || parsedDate >= tomorrow) {
-      console.warn('[Validation] Date invalide ou futuriste detectée:', result.purchaseAt, '-> Remplacée par:', todayISO);
+    const rawDate = result.purchaseAt;
+    const parsedDate = parseFlexibleDate(rawDate);
+
+    // Sanity check: pas de date, date invalide, date futuriste (> demain), ou date trop ancienne (< 2020)
+    if (!rawDate || !parsedDate || parsedDate >= tomorrow || parsedDate.getFullYear() < 2020) {
+      console.warn('[Validation] Date absente ou suspecte:', rawDate, '-> Remplacée par:', todayISO);
       result.purchaseAt = todayISO;
     } else {
-      result.purchaseAt = parsedDate.toISOString();
+      result.purchaseAt = parsedDate.toISOString().split('T')[0];
     }
     return result;
   };
 
   try {
-    const groqRes = await extractWithGroqTimeout(input);
+    const groqRes = await extractWithGroqTimeout(input, prompt);
     if (groqRes) {
       console.log('[Groq] Succès.');
       const validated = validateDate(groqRes);
@@ -172,7 +169,7 @@ export async function extractReceiptData(
       const result = await (ai.generate({
         model: 'googleai/gemini-1.5-flash',
         prompt: [
-          { text: RECEIPT_PROMPT },
+          { text: prompt },
           { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } },
         ],
         output: { schema: ExtractReceiptDataOutputSchema },
@@ -204,12 +201,13 @@ export async function extractReceiptData(
 // Helper: Groq with timeout
 async function extractWithGroqTimeout(
   input: ExtractReceiptDataInput,
+  prompt: string,
   timeoutMs: number = 240000
 ): Promise<ExtractReceiptDataOutput | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const result = await extractWithGroq(input);
+    const result = await extractWithGroq(input, prompt);
     return result;
   } catch (e) {
     return null;
@@ -220,7 +218,8 @@ async function extractWithGroqTimeout(
 
 // Groq implementation
 async function extractWithGroq(
-  input: ExtractReceiptDataInput
+  input: ExtractReceiptDataInput,
+  prompt: string
 ): Promise<ExtractReceiptDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) return null;
@@ -239,7 +238,7 @@ async function extractWithGroq(
           {
             role: 'user',
             content: [
-              { type: 'text', text: RECEIPT_PROMPT },
+              { type: 'text', text: prompt },
               { type: 'image_url', image_url: { url: input.receiptDataUri } },
             ],
           },
