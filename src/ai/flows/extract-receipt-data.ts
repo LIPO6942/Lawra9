@@ -38,8 +38,8 @@ const ExtractReceiptDataOutputSchema = z.object({
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
 // ----- Prompt -----
-const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour Tunisie, etc.).
-Analyse cette image et extrais TOUS les produits listés, ligne par ligne.
+const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour Tunisie, Monoprix, etc.).
+Analyse cette image et extrais TOUS les produits listés.
 
 CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
 - Eau (Toute marque d'eau minérale : Sabrine, Safia, Melliti, Aqualine...)
@@ -53,27 +53,30 @@ CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
 - Boucherie & Volaille (Viande, Poulet, Salami...)
 - Hygiène & Soin (Savon, Shampoing, Dentifrice, Coton...)
 - Entretien (Lessive, Javel, Liquide Vaisselle...)
-- Maison & Divers (Piles, Ampoules, Ustensiles...)
+- Maison & Divers (Piles, Ampoule, Ustensiles...)
 
-RÈGLES CRITIQUES :
-1. DATE PAR DÉFAUT : Si tu ne trouves pas de date sur le reçu, utilise IMPÉRATIVEMENT la date d'aujourd'hui (${new Date().toISOString().split('T')[0]}). C'est crucial.
-2. NE JAMAIS utiliser la catégorie "Recus de caisse" ou "Document".
-3. Si un produit est ambigu, utilise "Alimentation / Divers". Minimise son utilisation.
-4. DELIO doit être dans "Boissons", mais l'EAU doit être dans sa propre catégorie "Eau".
-5. ATTENTION AU FORMAT CARREFOUR :
-   - Le libellé du produit est sur une ligne, le PRIX TOTAL de la ligne est souvent aligné à droite de cette même ligne.
-   - Si quantité > 1, elle est sur la ligne EN-DESSOUS : "Qté x PrixUnit" (ex: "2 x 0.850").
-   - Regroupe ces lignes en UN SEUL produit.
+RÈGLES CRITIQUES (TRÈS IMPORTANT) :
+1. DATE : Extraits la date du ticket (cherches-la partout). Format ISO YYYY-MM-DD.
+   - ATTENTION : Si la date extraite semble fausse ou future (ex: 2029), utilise la date d'aujourd'hui (${new Date().toISOString().split('T')[0]}).
+2. FORMAT CARREFOUR (MULTI-LIGNES) :
+   - Ligne 1 : "LIBELLÉ PRODUIT" (à gauche) et "TOTAL PRIX" (à droite).
+   - Ligne 2 (en-dessous) : Parfois "Quantité x PrixUnit" (ex: "12 x 0.950").
+   - RÈGLE D'OR : La ligne de quantité (Ligne 2) appartient TOUJOURS au produit situé JUSTE AU-DESSUS (Ligne 1). 
+   - NE JAMAIS l'attribuer au produit qui suit.
+3. CATÉGORIES :
+   - "Alimentation / Divers" est le dernier recours.
+   - "Delio" -> Boissons. 
+   - "Eau Pristine/Sabrine" -> Eau.
+4. CALCUL : Si Qté > 1 est indiquée, \`lineTotal\` doit correspondre à \`quantity * unitPrice\`.
 
-Format de sortie JSON Strict:
+Format de sortie JSON:
 {
   "storeName": "string",
-  "purchaseAt": "ISO date string",
+  "purchaseAt": "YYYY-MM-DD",
   "total": number,
   "lines": [
     {
       "rawLabel": "string",
-      "normalizedLabel": "string",
       "category": "string",
       "quantity": number,
       "unitPrice": number,
@@ -83,11 +86,120 @@ Format de sortie JSON Strict:
 }
 
 EXEMPLE (Ne te trompe pas):
-Ligne:  370G LAIT CONC       7.900   -> { "rawLabel": "370G LAIT CONC", "category": "Frais", "quantity": 1, "unitPrice": 7.900, "lineTotal": 7.900 }
-Ligne:  25CL DELIO AROMA    11.400   
-Ligne:      12   x   0.950           -> { "rawLabel": "25CL DELIO AROMA", "category": "Boissons", "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }`;
+Vu sur Image:
+  25CL DELIO AROMA G        11.400
+      12  x   0.950
+Extrait:
+  { "rawLabel": "25CL DELIO AROMA G", "category": "Boissons", "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }`;
 
-// ----- Helper: Groq with timeout -----
+// ----- Date Parsing Helper -----
+function parseFlexibleDate(dateStr: string | undefined): Date | null {
+  if (!dateStr) return null;
+  const cleanStr = dateStr.trim();
+
+  // ISO (YYYY-MM-DD)
+  let d = new Date(cleanStr);
+  if (!isNaN(d.getTime()) && cleanStr.includes('-') && cleanStr.split('-')[0].length === 4) {
+    return d;
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmh = cleanStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+  if (dmh) {
+    const day = parseInt(dmh[1], 10);
+    const month = parseInt(dmh[2], 10) - 1;
+    const year = parseInt(dmh[3], 10);
+    const date = new Date(year, month, day);
+    if (!isNaN(date.getTime())) return date;
+  }
+
+  // DD/MM/YY
+  const dmy = cleanStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const month = parseInt(dmy[2], 10) - 1;
+    let year = parseInt(dmy[3], 10);
+    year += (year > 50 ? 1900 : 2000);
+    const date = new Date(year, month, day);
+    if (!isNaN(date.getTime())) return date;
+  }
+
+  const lastResort = new Date(cleanStr);
+  return isNaN(lastResort.getTime()) ? null : lastResort;
+}
+
+// ----- Main extraction flow -----
+export async function extractReceiptData(
+  input: ExtractReceiptDataInput
+): Promise<ExtractReceiptDataOutput> {
+  console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+
+  const todayISO = now.toISOString();
+
+  const validateDate = (result: ExtractReceiptDataOutput | null) => {
+    if (!result) return null;
+    const parsedDate = parseFlexibleDate(result.purchaseAt);
+    if (!parsedDate || parsedDate >= tomorrow) {
+      console.warn('[Validation] Date invalide ou futuriste detectée:', result.purchaseAt, '-> Remplacée par:', todayISO);
+      result.purchaseAt = todayISO;
+    } else {
+      result.purchaseAt = parsedDate.toISOString();
+    }
+    return result;
+  };
+
+  try {
+    const groqRes = await extractWithGroqTimeout(input);
+    if (groqRes) {
+      console.log('[Groq] Succès.');
+      const validated = validateDate(groqRes);
+      return JSON.parse(JSON.stringify(validated));
+    }
+  } catch (err: any) {
+    console.warn('[Groq] Échec:', err.message);
+  }
+
+  if (!process.env.GOOGLE_API_KEY) {
+    console.warn('[Gemini] API Key missing.');
+  } else {
+    try {
+      const result = await (ai.generate({
+        model: 'googleai/gemini-1.5-flash',
+        prompt: [
+          { text: RECEIPT_PROMPT },
+          { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } },
+        ],
+        output: { schema: ExtractReceiptDataOutputSchema },
+      }) as Promise<any>);
+      if (result && result.output) {
+        console.log('[Gemini] Succès.');
+        const validated = validateDate(result.output);
+        return JSON.parse(JSON.stringify(validated));
+      }
+    } catch (err: any) {
+      console.warn('[Gemini] Échec/Timeout:', err.message);
+    }
+  }
+
+  return {
+    storeName: "Échec de l'analyse",
+    lines: [],
+    ocrText: "L'IA n'a pas pu répondre à temps.",
+    confidence: 0,
+    storeId: '',
+    purchaseAt: todayISO,
+    currency: 'TND',
+    total: 0,
+    subtotal: 0,
+    taxTotal: 0,
+  };
+}
+
+// Helper: Groq with timeout
 async function extractWithGroqTimeout(
   input: ExtractReceiptDataInput,
   timeoutMs: number = 240000
@@ -98,26 +210,18 @@ async function extractWithGroqTimeout(
     const result = await extractWithGroq(input);
     return result;
   } catch (e) {
-    if ((e as any).name === 'AbortError') {
-      console.warn('[Groq] Timeout after', timeoutMs, 'ms');
-    } else {
-      console.warn('[Groq] Exception:', e);
-    }
     return null;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-// ----- Original Groq implementation -----
+// Groq implementation
 async function extractWithGroq(
   input: ExtractReceiptDataInput
 ): Promise<ExtractReceiptDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) {
-    console.error('[Groq] GROQ_API_KEY is missing in env');
-    return null;
-  }
+  if (!groqKey) return null;
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -143,11 +247,7 @@ async function extractWithGroq(
       }),
     });
 
-    if (!response.ok) {
-      const errBody = await response.text();
-      console.error('[Groq] API Error Status:', response.status, errBody);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
@@ -160,131 +260,7 @@ async function extractWithGroq(
       };
     }
   } catch (e) {
-    console.error('[Groq] Exception during fetch:', e);
+    console.error('[Groq] Exception:', e);
   }
   return null;
-}
-
-// ----- Date Parsing Helper -----
-function parseFlexibleDate(dateStr: string | undefined): Date | null {
-  if (!dateStr) return null;
-
-  // Clean string
-  const cleanStr = dateStr.trim();
-
-  // Try ISO first (YYYY-MM-DD)
-  let d = new Date(cleanStr);
-  if (!isNaN(d.getTime()) && cleanStr.includes('-') && cleanStr.split('-')[0].length === 4) {
-    return d;
-  }
-
-  // Try DD/MM/YYYY or DD-MM-YYYY
-  const dmh = cleanStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
-  if (dmh) {
-    const day = parseInt(dmh[1], 10);
-    const month = parseInt(dmh[2], 10) - 1;
-    const year = parseInt(dmh[3], 10);
-    const date = new Date(year, month, day);
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  // Try DD/MM/YY or DD-MM-YY
-  const dmy = cleanStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})/);
-  if (dmy) {
-    const day = parseInt(dmy[1], 10);
-    const month = parseInt(dmy[2], 10) - 1;
-    let year = parseInt(dmy[3], 10);
-    year += (year > 50 ? 1900 : 2000);
-    const date = new Date(year, month, day);
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  // Last resort: basic Date constructor
-  const lastResort = new Date(cleanStr);
-  return isNaN(lastResort.getTime()) ? null : lastResort;
-}
-
-// ----- Main extraction flow -----
-export async function extractReceiptData(
-  input: ExtractReceiptDataInput
-): Promise<ExtractReceiptDataOutput> {
-  console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
-  const now = new Date();
-  // On fixe l'heure à la fin de la journée pour la comparaison safe
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
-
-  const todayISO = now.toISOString();
-
-  const validateDate = (result: ExtractReceiptDataOutput | null) => {
-    if (!result) return null;
-
-    const parsedDate = parseFlexibleDate(result.purchaseAt);
-
-    // Si la date est invalide, absente ou dans le futur (> demain 0h00)
-    if (!parsedDate || parsedDate >= tomorrow) {
-      console.warn('[Validation] Date invalide ou futuriste detectée:', result.purchaseAt, '-> Remplacée par:', todayISO);
-      result.purchaseAt = todayISO;
-    } else {
-      // Normalisation en ISO string propre pour Firebase
-      result.purchaseAt = parsedDate.toISOString();
-    }
-    return result;
-  };
-
-  // 1️⃣ Prioritize Groq (240 s timeout)
-  try {
-    const groqRes = await extractWithGroqTimeout(input);
-    if (groqRes) {
-      console.log('[Groq] Succès (prioritaire).');
-      const validated = validateDate(groqRes);
-      return JSON.parse(JSON.stringify(validated));
-    }
-  } catch (err: any) {
-    console.warn('[Groq] Échec:', err.message);
-  }
-
-  // 2️⃣ Fallback to Gemini (4 minutes timeout)
-  if (!process.env.GOOGLE_API_KEY) {
-    console.warn('[Gemini] API Key missing (GOOGLE_API_KEY), skipping Gemini.');
-  } else {
-    try {
-      const geminiPromise = ai.generate({
-        model: 'googleai/gemini-1.5-flash',
-        prompt: [
-          { text: RECEIPT_PROMPT },
-          { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } },
-        ],
-        output: { schema: ExtractReceiptDataOutputSchema },
-      });
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout Gemini (4 minutes)')), 240000)
-      );
-
-      const result = await (Promise.race([geminiPromise, timeoutPromise]) as Promise<any>);
-      if (result && result.output) {
-        console.log('[Gemini] Succès.');
-        const validated = validateDate(result.output);
-        return JSON.parse(JSON.stringify(validated));
-      }
-    } catch (err: any) {
-      console.warn('[Gemini] Échec/Timeout:', err.message);
-    }
-  }
-
-  // 3️⃣ Ultimate fallback 
-  return {
-    storeName: "Échec de l'analyse",
-    lines: [],
-    ocrText: "L'IA n'a pas pu répondre à temps.",
-    confidence: 0,
-    storeId: '',
-    purchaseAt: todayISO,
-    currency: 'TND',
-    total: 0,
-    subtotal: 0,
-    taxTotal: 0,
-  };
 }

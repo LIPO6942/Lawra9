@@ -131,25 +131,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       const receipt: Omit<Receipt, 'id'> = {
         storeName: res.storeName,
         storeId: res.storeId,
-        purchaseAt: (() => {
-          if (!res.purchaseAt) return new Date().toISOString();
-          // Try to parse DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, or DD/MM/YY (allow optional text before/after)
-          const frenchDate = res.purchaseAt.match(/(\d{1,2})[\/\-\.\s](\d{1,2})[\/\-\.\s](\d{2,4})/);
-          if (frenchDate) {
-            let [_, day, month, year] = frenchDate;
-            if (year.length === 2) year = "20" + year; // Handle YY -> 20YY
-            const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00:00.000Z`;
-            return !isNaN(Date.parse(iso)) ? iso : new Date().toISOString();
-          }
-          // Default JS parse check (handles ISO, standard US, etc.)
-          if (!isNaN(Date.parse(res.purchaseAt))) {
-            const d = new Date(res.purchaseAt);
-            // Sanity check: if year is < 2020 or > 2030, fallback to today (AI hallucination prevention)
-            if (d.getFullYear() < 2020 || d.getFullYear() > 2030) return new Date().toISOString();
-            return res.purchaseAt;
-          }
-          return new Date().toISOString();
-        })(),
+        purchaseAt: res.purchaseAt || new Date().toISOString(),
         currency: res.currency,
         total: res.total,
         subtotal: res.subtotal,
