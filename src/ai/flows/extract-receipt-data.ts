@@ -165,26 +165,75 @@ async function extractWithGroq(
   return null;
 }
 
+// ----- Date Parsing Helper -----
+function parseFlexibleDate(dateStr: string | undefined): Date | null {
+  if (!dateStr) return null;
+
+  // Clean string
+  const cleanStr = dateStr.trim();
+
+  // Try ISO first (YYYY-MM-DD)
+  let d = new Date(cleanStr);
+  if (!isNaN(d.getTime()) && cleanStr.includes('-') && cleanStr.split('-')[0].length === 4) {
+    return d;
+  }
+
+  // Try DD/MM/YYYY or DD-MM-YYYY
+  const dmh = cleanStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+  if (dmh) {
+    const day = parseInt(dmh[1], 10);
+    const month = parseInt(dmh[2], 10) - 1;
+    const year = parseInt(dmh[3], 10);
+    const date = new Date(year, month, day);
+    if (!isNaN(date.getTime())) return date;
+  }
+
+  // Try DD/MM/YY or DD-MM-YY
+  const dmy = cleanStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const month = parseInt(dmy[2], 10) - 1;
+    let year = parseInt(dmy[3], 10);
+    year += (year > 50 ? 1900 : 2000);
+    const date = new Date(year, month, day);
+    if (!isNaN(date.getTime())) return date;
+  }
+
+  // Last resort: basic Date constructor
+  const lastResort = new Date(cleanStr);
+  return isNaN(lastResort.getTime()) ? null : lastResort;
+}
+
 // ----- Main extraction flow -----
 export async function extractReceiptData(
   input: ExtractReceiptDataInput
 ): Promise<ExtractReceiptDataOutput> {
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
   const now = new Date();
+  // On fixe l'heure à la fin de la journée pour la comparaison safe
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+
   const todayISO = now.toISOString();
 
   const validateDate = (result: ExtractReceiptDataOutput | null) => {
     if (!result) return null;
-    let d = result.purchaseAt ? new Date(result.purchaseAt) : null;
-    // Si la date est invalide ou dans le futur, on met aujourd'hui
-    if (!d || isNaN(d.getTime()) || d > now) {
+
+    const parsedDate = parseFlexibleDate(result.purchaseAt);
+
+    // Si la date est invalide, absente ou dans le futur (> demain 0h00)
+    if (!parsedDate || parsedDate >= tomorrow) {
       console.warn('[Validation] Date invalide ou futuriste detectée:', result.purchaseAt, '-> Remplacée par:', todayISO);
       result.purchaseAt = todayISO;
+    } else {
+      // Normalisation en ISO string propre pour Firebase
+      result.purchaseAt = parsedDate.toISOString();
     }
     return result;
   };
 
-  // 1️⃣ Prioritize Groq (240 s timeout) - Using Llama-4 Scout for OCR
+  // 1️⃣ Prioritize Groq (240 s timeout)
   try {
     const groqRes = await extractWithGroqTimeout(input);
     if (groqRes) {
@@ -225,11 +274,11 @@ export async function extractReceiptData(
     }
   }
 
-  // 3️⃣ Ultimate fallback – return empty structure
+  // 3️⃣ Ultimate fallback 
   return {
     storeName: "Échec de l'analyse",
     lines: [],
-    ocrText: "L'IA n'a pas pu répondre à temps. Réessayez avec une image plus petite ou vérifiez vos clés API.",
+    ocrText: "L'IA n'a pas pu répondre à temps.",
     confidence: 0,
     storeId: '',
     purchaseAt: todayISO,
