@@ -37,22 +37,19 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 **DÉTERMINATION DU FOURNISSEUR (CRITIQUE) :**
 1. **SONEDE (EAU)** : 
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
-   - PÉRIODE : Repérez "فترة الاستهلاك". Juste après, il y a un code à 4 segments type "2025-08-07-06".
-   - ÉCHÉANCE : Cherchez la date située immédiatement à GAUCHE de "الرجاء الدفع قبل هذا التاريخ".
+   - PÉRIODE : Repérez "فترة الاستهلاك" (souvent en haut/milieu). Juste après, il y a un code à 4 segments type "2025-08-07-06".
+   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع قبل هذا التاريخ" (en bas à gauche). La date (ex: 2025-11-07) se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Si vous voyez le texte arabe, extrayez le nombre/date qui est le plus proche horizontalement vers la gauche.
 2. **STEG (ÉLEC/GAZ)** : 
-   - RECHERCHEZ : "STEG", "Société Tunisienne de l'Electricité et du Gaz", "الشركة التونسية للكهرباء والغاز".
+   - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
-   - ÉCHÉANCE (ATTENTION) : Cherchez "Prière de payer avant le" (الرجاء الدفع قبل). C'est la date limite (ex: 2025.12.11). 
-   - IGNOREZ impérativement la date du prochain relevé "Prochain relevé d'index" (التاريخ المقبل لقراءة العداد) qui est souvent plus tardive (ex: 2026.03.17).
+   - ÉCHÉANCE : Cherchez "Prière de payer avant le" (الرجاء الدفع قبل) en bas à droite. IGNOREZ la date du prochain relevé.
 
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Reçu Bancaire", "Recus de caisse" ou "Autre".
-- **amount** : Montant Total TTC à payer (ex: "72.000").
-- **dueDate** : Date limite de paiement (AAAA-MM-JJ). SOUVENT EN BAS À DROITE POUR STEG, au-dessus de "الرجاء الدفع قبل".
+- **amount** : Montant Total (ex: "72.000").
+- **dueDate** : Date limite (AAAA-MM-JJ). Pour SONEDE, cherchez la date isolée tout en bas à gauche, alignée avec le texte arabe.
 - **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / إلى).
-- **consumptionPeriod** : 
-  - Pour SONEDE : Format "AAAA-MM-MM-MM".
-  - Pour les autres : "Mois Année" ou laissez vide si billingStartDate/EndDate sont présents.
+- **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM".
 
 IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DATE N'EST PAS CLAIRE, LAISSEZ LE CHAMP VIDE.`;
 
