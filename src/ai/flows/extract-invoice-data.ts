@@ -31,26 +31,30 @@ const ExtractInvoiceDataOutputSchema = z.object({
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
-const INVOICE_PROMPT = `Vous êtes un expert en factures et reçus tunisiens (STEG, SONEDE, Orange, Ooredoo, Topnet, etc.).
-Votre mission est d'extraire les données avec une précision absolue. Retournez uniquement du JSON.
+const INVOICE_PROMPT = `Vous êtes un expert en factures tunisiennes (STEG, SONEDE, Orange, Ooredoo, Topnet, etc.).
+Votre mission est d'extraire les données avec une précision chirurgicale.
 
-**RÈGLES D'IDENTIFICATION CRUCIALES :**
+**DÉTERMINATION DU FOURNISSEUR (CRITIQUE) :**
 1. **SONEDE (EAU)** : 
-   - SI vous voyez "SONEDE" ou des consommation d'eau. DocumentType est "SONEDE".
-   - PÉRIODE SONEDE : Elle couvre généralement 3 mois. Format spécifique attendu : "AAAA-MM-MM-MM" (ex: "2024-07-08-09").
-2. **STEG (ÉLEC/GAZ)** : Mots clés "STEG", "KWh". DocumentType est "STEG".
-3. **INTERNET** : Fournisseurs type Orange, Ooredoo, Topnet, TT, Hexabyte. DocumentType est "Internet".
-4. **REÇUS DE CAISSE** : TOUJOURS "Recus de caisse" pour Carrefour, Monoprix, etc.
+   - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
+   - PÉRIODE : Repérez "فترة الاستهلاك". Juste après, il y a un code à 4 segments type "2025-08-07-06".
+   - ÉCHÉANCE : Cherchez "الرجاء الدفع قبل هذا التاريخ" ou une date isolée en bas à gauche.
+2. **STEG (ÉLEC/GAZ)** : 
+   - RECHERCHEZ : "STEG", "Société Tunisienne de l'Electricité et du Gaz", "الشركة التونسية للكهرباء والغاز".
+   - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
+   - ÉCHÉANCE (ATTENTION) : Cherchez "Prière de payer avant le" (الرجاء الدفع قبل). C'est la date limite (ex: 2025.12.11). 
+   - IGNOREZ impérativement la date du prochain relevé "Prochain relevé d'index" (التاريخ المقبل لقراءة العداد) qui est souvent plus tardive (ex: 2026.03.17).
 
-**EXTRACTION DES CHAMPS :**
-- amount: Montant total TTC. Utilisez le point décimal (ex: "24.500").
-- supplier: Le nom exact du fournisseur.
-- consumptionPeriod : 
-  - Pour SONEDE : "Année-Mois1-Mois2-Mois3" (ex: 2024-10-11-12).
-  - Pour les autres : "Mois AAAA" ou "MM/AAAA".
-- billingStartDate / billingEndDate : Dates au format AAAA-MM-JJ si présentes.
+**RÈGLES D'EXTRACTION DES DONNÉES :**
+- **documentType** : "SONEDE", "STEG", "Internet", "Reçu Bancaire", "Recus de caisse" ou "Autre".
+- **amount** : Montant Total TTC à payer (ex: "72.000").
+- **dueDate** : Date limite de paiement (AAAA-MM-JJ). SOUVENT EN BAS À DROITE POUR STEG, au-dessus de "الرجاء الدفع قبل".
+- **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / إلى).
+- **consumptionPeriod** : 
+  - Pour SONEDE : Format "AAAA-MM-MM-MM".
+  - Pour les autres : "Mois Année" ou laissez vide si billingStartDate/EndDate sont présents.
 
-IMPORTANT: Pas de blabla, juste du JSON. Ne pas inventer de données.`;
+IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DATE N'EST PAS CLAIRE, LAISSEZ LE CHAMP VIDE.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;

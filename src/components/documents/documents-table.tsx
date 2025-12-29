@@ -30,8 +30,13 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
     }
 };
 
-const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
+const StatusBadge = ({ dueDate, category }: { dueDate: string | undefined, category: Document['category'] }) => {
+    const isInvoice = category === 'STEG' || category === 'SONEDE' || category === 'Internet';
+
     if (!dueDate) {
+        if (isInvoice) {
+            return <Badge variant="outline" className="border-gray-400 text-gray-500 font-normal">Date manquante</Badge>;
+        }
         return <Badge variant="outline" className="border-green-500/50 text-green-600 bg-green-500/10 font-normal">Payée</Badge>;
     }
 
@@ -197,7 +202,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         </div>
                                         {!isMaison && (
                                             <div className="flex-shrink-0 ml-4">
-                                                <StatusBadge dueDate={doc.dueDate} />
+                                                <StatusBadge dueDate={doc.dueDate} category={doc.category} />
                                             </div>
                                         )}
                                     </div>
