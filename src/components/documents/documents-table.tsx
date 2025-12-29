@@ -19,37 +19,37 @@ import { Checkbox } from '../ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
-  switch (category) {
-    case 'STEG': return <Zap className="h-5 w-5 text-yellow-500" />;
-    case 'SONEDE': return <Droplets className="h-5 w-5 text-blue-500" />;
-    case 'Reçu Bancaire': return <Landmark className="h-5 w-5 text-indigo-500" />;
-    case 'Maison': return <Home className="h-5 w-5 text-green-500" />;
-    case 'Internet': return <Wifi className="h-5 w-5 text-purple-500" />;
-    case 'Assurance': return <Shield className="h-5 w-5 text-red-500" />;
-    default: return <FileText className="h-5 w-5 text-gray-500" />;
-  }
+    switch (category) {
+        case 'STEG': return <Zap className="h-5 w-5 text-yellow-500" />;
+        case 'SONEDE': return <Droplets className="h-5 w-5 text-blue-500" />;
+        case 'Reçu Bancaire': return <Landmark className="h-5 w-5 text-indigo-500" />;
+        case 'Maison': return <Home className="h-5 w-5 text-green-500" />;
+        case 'Internet': return <Wifi className="h-5 w-5 text-purple-500" />;
+        case 'Assurance': return <Shield className="h-5 w-5 text-red-500" />;
+        default: return <FileText className="h-5 w-5 text-gray-500" />;
+    }
 };
 
 const StatusBadge = ({ dueDate }: { dueDate: string | undefined }) => {
-  if (!dueDate) {
-    return <Badge variant="outline" className="border-green-500/50 text-green-600 bg-green-500/10 font-normal">Payée</Badge>;
-  }
-  
-  const date = parseISO(dueDate);
-  if (!isValid(date)) return null;
-  
-  const daysDiff = differenceInDays(date, new Date());
+    if (!dueDate) {
+        return <Badge variant="outline" className="border-green-500/50 text-green-600 bg-green-500/10 font-normal">Payée</Badge>;
+    }
 
-  if (daysDiff < 0) {
-    return <Badge variant="destructive" className="font-normal">En retard</Badge>;
-  }
-  if (daysDiff <= 7) {
-    return <Badge className="bg-red-500 hover:bg-red-500/80 font-normal">Urgent</Badge>;
-  }
-  if (daysDiff <= 30) {
-    return <Badge className="bg-orange-400 hover:bg-orange-400/80 text-black font-normal">À venir</Badge>;
-  }
-  return <Badge variant="secondary" className="font-normal">Normal</Badge>;
+    const date = parseISO(dueDate);
+    if (!isValid(date)) return null;
+
+    const daysDiff = differenceInDays(date, new Date());
+
+    if (daysDiff < 0) {
+        return <Badge variant="destructive" className="font-normal">En retard</Badge>;
+    }
+    if (daysDiff <= 7) {
+        return <Badge className="bg-red-500 hover:bg-red-500/80 font-normal">Urgent</Badge>;
+    }
+    if (daysDiff <= 30) {
+        return <Badge className="bg-orange-400 hover:bg-orange-400/80 text-black font-normal">À venir</Badge>;
+    }
+    return <Badge variant="secondary" className="font-normal">Normal</Badge>;
 };
 
 const formatDateSafe = (dateString?: string, dateFormat = 'd MMM yyyy') => {
@@ -93,15 +93,15 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                 newSelectedIds.add(id);
             }
         });
-        
+
         if (newSelectedIds.size !== selectedIds.size) {
             setSelectedIds(newSelectedIds);
-             if (onSelectionChange) {
+            if (onSelectionChange) {
                 const selectedDocs = documents.filter(doc => newSelectedIds.has(doc.id));
                 onSelectionChange(selectedDocs);
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [docIds]);
 
 
@@ -128,7 +128,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
         setSelectedDocument(doc);
         setIsDetailsModalOpen(true);
     }
-    
+
     const handleViewFile = (docId: string) => {
         router.push(`/view?id=${docId}`);
     }
@@ -146,7 +146,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
         setIsDeleteAlertOpen(false);
         setDocToDelete(null);
     };
-    
+
     const EditDialogComponent = isMaison ? MaisonUploadDialog : UploadDocumentDialog;
     const DetailsDialogComponent = isMaison ? MaisonDetailsDialog : DocumentDetailsDialog;
 
@@ -193,7 +193,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <p className="font-semibold pr-2 break-words">{doc.name}</p>
-                                            
+
                                         </div>
                                         {!isMaison && (
                                             <div className="flex-shrink-0 ml-4">
@@ -202,14 +202,14 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         )}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2 text-muted-foreground">
-                                         {isMaison && doc.amount && (
+                                        {isMaison && doc.amount && (
                                             <div className="flex items-center gap-1.5 font-mono text-foreground">
                                                 <CircleDollarSign className="h-4 w-4" />
                                                 <span>{doc.amount} TND</span>
                                             </div>
                                         )}
                                         {dueDate && !isMaison ? (
-                                            <div className={cn("flex items-center gap-1.5 font-semibold", 
+                                            <div className={cn("flex items-center gap-1.5 font-semibold",
                                                 daysDiff !== null && daysDiff < 0 && "text-destructive",
                                                 daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
                                                 daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
@@ -218,7 +218,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                 <span>Échéance: {dueDate}</span>
                                             </div>
                                         ) : docDate && (
-                                             <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5">
                                                 <CalendarDays className="h-4 w-4" />
                                                 <span>{docDate}</span>
                                             </div>
@@ -235,10 +235,30 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                 <span className="text-green-600 font-medium">{`${periodStart} - ${periodEnd}`}</span>
                                             </div>
                                         )}
+                                        {!isMaison && doc.consumptionPeriod && (
+                                            <div className="flex items-center gap-1.5 text-blue-600 font-medium">
+                                                <CalendarDays className="h-4 w-4" />
+                                                <span>
+                                                    {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
+                                                        (() => {
+                                                            const parts = doc.consumptionPeriod.split('-');
+                                                            const year = parts[0];
+                                                            const months = parts.slice(1).map(m => {
+                                                                try {
+                                                                    const d = new Date(parseInt(year), parseInt(m) - 1, 1);
+                                                                    return format(d, 'MMM', { locale: fr });
+                                                                } catch (e) { return m; }
+                                                            });
+                                                            return `${year} ${months.join('-')}`;
+                                                        })()
+                                                    ) : doc.consumptionPeriod}
+                                                </span>
+                                            </div>
+                                        )}
                                         {isMaison && doc.notes && (
-                                        <div className="flex items-center gap-1.5">
-                                            <MessageSquare className="h-4 w-4" />
-                                        </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <MessageSquare className="h-4 w-4" />
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -253,8 +273,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Ouvrir le menu</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
+                                                        <span className="sr-only">Ouvrir le menu</span>
+                                                        <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
@@ -262,12 +282,12 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         Détails / Modifier
                                                     </DropdownMenuItem>
-                                                    
+
                                                     <DropdownMenuItem onClick={() => handleViewFile(doc.id)}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         Consulter le fichier
                                                     </DropdownMenuItem>
-                                                    
+
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
                                                         <Trash2 className="mr-2 h-4 w-4" />
@@ -283,21 +303,21 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                     })}
                 </div>
             </div>
-            
+
             <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                    <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Cette action est irréversible. Les données du document "{docToDelete?.name}" seront définitivement supprimées.
-                    </AlertDialogDescription>
+                        <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est irréversible. Les données du document "{docToDelete?.name}" seront définitivement supprimées.
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={executeDelete} disabled={!!isDeleting} className="bg-destructive hover:bg-destructive/90">
-                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Supprimer
-                    </AlertDialogAction>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} disabled={!!isDeleting} className="bg-destructive hover:bg-destructive/90">
+                            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Supprimer
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

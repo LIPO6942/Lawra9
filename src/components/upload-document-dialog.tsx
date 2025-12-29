@@ -39,44 +39,64 @@ import { normalizeSupplierKey, compressImage } from '@/lib/utils';
 type AnalysisResult = Partial<ExtractInvoiceDataOutput>;
 
 function formatDocumentName(result: AnalysisResult, originalFileName: string): string {
-  let docType = result.documentType as Document['category'];
+  let docType = (result.documentType || 'Autre') as Document['category'];
+  const amountLabel = result.amount ? ` - ${result.amount} TND` : '';
 
-  // Heuristic: if period matches SONEDE format (YYYY-MM-MM-MM), it's SONEDE
+  // Heuristic: if period matches SONEDE format (YYYY-MM-MM-MM), ensure it's SONEDE
   if (result.consumptionPeriod?.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/)) {
     docType = 'SONEDE';
   }
 
-  if ((docType === 'STEG' || docType === 'SONEDE' || docType === 'Internet') && result.supplier && result.amount) {
-    let period = '';
-    const supplierName = docType === 'SONEDE' ? 'SONEDE' : result.supplier;
+  // Supplier logic
+  let supplierName = result.supplier || '';
+  if (docType === 'SONEDE') supplierName = 'SONEDE';
+  if (docType === 'STEG' && !supplierName) supplierName = 'STEG';
 
-    if (docType === 'SONEDE' && result.consumptionPeriod) {
-      period = result.consumptionPeriod;
-    } else if (docType !== 'SONEDE' && result.billingStartDate && result.billingEndDate) {
+  // Specific SONEDE Period Formatting: YYYY-MM-MM-MM -> YYYY Mois-Mois-Mois
+  let formattedPeriod = result.consumptionPeriod || '';
+  if (docType === 'SONEDE' && result.consumptionPeriod?.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/)) {
+    const parts = result.consumptionPeriod.split('-');
+    const year = parts[0];
+    const months = parts.slice(1).map(m => {
       try {
-        const startDate = parseISO(result.billingStartDate);
-        const endDate = parseISO(result.billingEndDate);
-        if (isValid(startDate) && isValid(endDate)) {
-          period = `${format(startDate, 'dd/MM/yy', { locale: fr })} au ${format(endDate, 'dd/MM/yy', { locale: fr })}`;
-        }
-      } catch (e) { /* Ignore formatting error */ }
-    }
-    return `Facture ${supplierName}${period ? ` (${period})` : ''} - ${result.amount} TND`;
+        const d = new Date(parseInt(year), parseInt(m) - 1, 1);
+        return format(d, 'MMMM', { locale: fr });
+      } catch (e) { return m; }
+    });
+    formattedPeriod = `${year} ${months.join('-')}`;
+  } else if (result.billingStartDate && result.billingEndDate) {
+    try {
+      const startDate = parseISO(result.billingStartDate);
+      const endDate = parseISO(result.billingEndDate);
+      if (isValid(startDate) && isValid(endDate)) {
+        formattedPeriod = `${format(startDate, 'MMM yy', { locale: fr })} - ${format(endDate, 'MMM yy', { locale: fr })}`;
+      }
+    } catch (e) { /* fallback to default result.consumptionPeriod */ }
   }
 
-  if ((docType === 'Reçu Bancaire' || docType === 'Recus de caisse') && result.amount) {
-    try {
-      const supplierPart = result.supplier ? `${result.supplier} ` : '';
-      const dateStr = result.issueDate || result.dueDate || '';
-      const date = parseISO(dateStr);
-      const formattedDate = isValid(date) ? ` du ${format(date, 'dd/MM/yyyy', { locale: fr })}` : '';
-      const typeLabel = docType === 'Recus de caisse' ? 'Reçu de caisse' : 'Reçu Bancaire';
-      return `${typeLabel} ${supplierPart}${formattedDate} - ${result.amount} TND`;
-    } catch (e) {
-      return `${docType === 'Recus de caisse' ? 'Reçu de caisse' : 'Reçu Bancaire'} - ${result.amount} TND`;
-    }
+  // Final naming logic for core bills
+  if (supplierName) {
+    const periodSuffix = formattedPeriod ? ` (${formattedPeriod})` : '';
+    return `${supplierName}${periodSuffix}${amountLabel}`;
   }
-  return originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
+
+  // Formatting for receipts
+  if ((docType === 'Reçu Bancaire' || docType === 'Recus de caisse') && result.amount) {
+    const supplierPart = result.supplier ? `${result.supplier} ` : '';
+    const dateStr = result.issueDate || result.dueDate || '';
+    const date = parseISO(dateStr);
+    const formattedDate = isValid(date) ? ` du ${format(date, 'dd/MM/yyyy', { locale: fr })}` : '';
+    const typeLabel = docType === 'Recus de caisse' ? 'Reçu de caisse' : 'Reçu Bancaire';
+    return `${typeLabel} ${supplierPart}${formattedDate}${amountLabel}`;
+  }
+
+  // Fallback to original filename but try to prepend docType if common
+  const baseName = originalFileName.split('.').slice(0, -1).join('.') || originalFileName;
+  if (docType && docType !== 'Autre') {
+    return `${docType} - ${baseName}${amountLabel}`;
+  }
+
+  return baseName;
 }
 
 const frenchCategories: Record<string, Document['category']> = {
