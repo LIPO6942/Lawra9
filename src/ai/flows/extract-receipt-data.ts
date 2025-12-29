@@ -170,13 +170,27 @@ export async function extractReceiptData(
   input: ExtractReceiptDataInput
 ): Promise<ExtractReceiptDataOutput> {
   console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
+  const now = new Date();
+  const todayISO = now.toISOString();
+
+  const validateDate = (result: ExtractReceiptDataOutput | null) => {
+    if (!result) return null;
+    let d = result.purchaseAt ? new Date(result.purchaseAt) : null;
+    // Si la date est invalide ou dans le futur, on met aujourd'hui
+    if (!d || isNaN(d.getTime()) || d > now) {
+      console.warn('[Validation] Date invalide ou futuriste detectée:', result.purchaseAt, '-> Remplacée par:', todayISO);
+      result.purchaseAt = todayISO;
+    }
+    return result;
+  };
 
   // 1️⃣ Prioritize Groq (240 s timeout) - Using Llama-4 Scout for OCR
   try {
     const groqRes = await extractWithGroqTimeout(input);
     if (groqRes) {
       console.log('[Groq] Succès (prioritaire).');
-      return JSON.parse(JSON.stringify(groqRes));
+      const validated = validateDate(groqRes);
+      return JSON.parse(JSON.stringify(validated));
     }
   } catch (err: any) {
     console.warn('[Groq] Échec:', err.message);
@@ -203,7 +217,8 @@ export async function extractReceiptData(
       const result = await (Promise.race([geminiPromise, timeoutPromise]) as Promise<any>);
       if (result && result.output) {
         console.log('[Gemini] Succès.');
-        return JSON.parse(JSON.stringify(result.output));
+        const validated = validateDate(result.output);
+        return JSON.parse(JSON.stringify(validated));
       }
     } catch (err: any) {
       console.warn('[Gemini] Échec/Timeout:', err.message);
@@ -217,7 +232,7 @@ export async function extractReceiptData(
     ocrText: "L'IA n'a pas pu répondre à temps. Réessayez avec une image plus petite ou vérifiez vos clés API.",
     confidence: 0,
     storeId: '',
-    purchaseAt: new Date().toISOString(),
+    purchaseAt: todayISO,
     currency: 'TND',
     total: 0,
     subtotal: 0,
