@@ -38,7 +38,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 1. **SONEDE (EAU)** : 
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
    - PÉRIODE : Repérez "فترة الاستهلاك". Juste après, il y a un code à 4 segments type "2025-08-07-06".
-   - ÉCHÉANCE : Cherchez "الرجاء الدفع قبل هذا التاريخ" ou une date isolée en bas à gauche.
+   - ÉCHÉANCE : Cherchez la date située immédiatement à GAUCHE de "الرجاء الدفع قبل هذا التاريخ".
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "Société Tunisienne de l'Electricité et du Gaz", "الشركة التونسية للكهرباء والغاز".
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
