@@ -104,28 +104,33 @@ export function groupHistoryByProduct(purchases: ProductPurchase[]) {
 // -------------------------------
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Eau': ['eau', 'pristine', 'prestine', 'jannet', 'dima', 'marwa', 'safia'],
-  'Pâtes': ['pâtes', 'pates', 'spaghetti', 'macaroni', 'penne', 'coquille', 'coquillage', 'randa', 'twist', 'fell', 'warda', 'babbouche', 'vermicelle', 'vermicelles', 'papill', 'papillon', 'lasagne'],
-  'Frais': ['lait', 'yaourt', 'fromage', 'beurre', 'oeuf', 'crème'],
-  'Boucherie': ['viande', 'poulet', 'dinde', 'boeuf', 'steak', 'escalope', 'hache'],
-  'Poisson': ['poisson', 'thon', 'saumon', 'sardine'],
-  'Boulangerie': ['pain', 'baguette', 'croissant', 'pâtisserie', 'brioche'],
-  'Boissons': ['eau', 'jus', 'soda', 'cola', 'boisson', 'thé', 'café'],
-  'Hygiène': ['shampoo', 'gel', 'savon', 'dentifrice', 'coton', 'couches'],
-  'Entretien': ['lessive', 'détergent', 'eponge', 'essuie', 'javel', 'nettoyant'],
-  'Bébé': ['bébé', 'biberon', 'lingette'],
-  'Animaux': ['chien', 'chat', 'croquette', 'litière'],
-  'Maison': ['ustensile', 'vaisselle', 'bougie', 'batterie', 'piles'],
-  'Électronique': ['câble', 'chargeur', 'usb', 'écouteur'],
-  'Epicerie': ['pâtes', 'riz', 'huile', 'sucre', 'sel', 'farine', 'conserve', 'harissa', 'tomate'],
+  'Eau': ['eau', 'pristine', 'prestine', 'jannet', 'dima', 'marwa', 'safia', 'sabrine', 'melliti', 'hayet', 'aqualine'],
+  'Boissons': ['jus', 'soda', 'cola', 'boisson', 'thé', 'the', 'café', 'cafe', 'schweppes', 'delio', 'boga', 'coca', 'fanta', 'sprite', 'apla', 'viva', 'sirop', 'gaz', 'arom'],
+  'Pâtes': ['pâtes', 'pates', 'spaghetti', 'macaroni', 'penne', 'coquille', 'coquillage', 'randa', 'twist', 'fell', 'warda', 'babbouche', 'vermicelle', 'vermicelles', 'papill', 'papillon', 'lasagne', 'canellon'],
+  'Epicerie Salée': ['riz', 'huile', 'sucre', 'sel', 'farine', 'conserve', 'harissa', 'tomate', 'thon', 'sardine', 'olive', 'pois', 'chiche', 'lentille', 'fève', 'feve', 'semoule', 'couscous', 'mhirmsa', 'epice', 'poivre', 'sel', 'mayonnaise', 'ketchup', 'moutarde', 'vinaigre', 'sauce'],
+  'Epicerie Sucrée': ['biscuit', 'gaufre', 'chocolat', 'confis', 'gaufrette', 'halva', 'chamia', 'miel', 'confiture', 'cake', 'madeleine', 'bonbon', 'chewing', 'gum'],
+  'Frais': ['lait', 'yaourt', 'fromage', 'beurre', 'oeuf', 'crème', 'creme', 'lebne', 'ricotta', 'mozzarella', 'danino', 'yogo', 'delice', 'natilait', 'vitalait'],
+  'Fruits & Légumes': ['pomme', 'banane', 'orange', 'citron', 'fraise', 'peche', 'abricot', 'datte', 'oignon', 'batata', 'carotte', 'poivron', 'piment', 'salade', 'tomate fraiche', 'ail'],
+  'Boucherie & Volaille': ['viande', 'poulet', 'dinde', 'boeuf', 'steak', 'escalope', 'hache', 'merguez', 'salami', 'jambon'],
+  'Poisson': ['poisson', 'daurade', 'loup', 'crevette'],
+  'Boulangerie': ['pain', 'baguette', 'croissant', 'pâtisserie', 'patisserie', 'brioche', 'toast'],
+  'Hygiène': ['shampoo', 'gel', 'savon', 'dentifrice', 'coton', 'couches', 'hygi', 'rasoir', 'serviette', 'shampoing'],
+  'Entretien': ['lessive', 'détergent', 'detergent', 'eponge', 'essuie', 'javel', 'nettoyant', 'assouplissant', 'vaisselle'],
+  'Maison & Divers': ['bougie', 'batterie', 'piles', 'ampoule', 'ustensile', 'bazar', 'bebe', 'animal', 'croquette', 'chat', 'chien'],
 };
 
 export function mapCategoryHeuristic(label: string): string {
-  const text = (label || '').toLowerCase();
+  const text = (label || '').toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+
+  // Priorité spécifique demandée : Delio -> Boissons
+  if (text.includes('delio')) return 'Boissons';
+
   for (const [cat, words] of Object.entries(CATEGORY_KEYWORDS)) {
     if (words.some(w => text.includes(w))) return cat;
   }
-  return 'Recus de caisse';
+  return 'Alimentation / Divers';
 }
 
 // -------------------------------

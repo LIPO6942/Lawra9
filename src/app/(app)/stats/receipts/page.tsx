@@ -192,23 +192,40 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Détails par catégorie</CardTitle></CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile View */}
+            <div className="space-y-4 sm:hidden">
+              {catStats.map((c) => (
+                <div key={c.category} className="flex flex-col p-3 border rounded-md bg-muted/30">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-bold text-sm">{c.category}</span>
+                    <span className="font-semibold text-accent">{(c.totalSpend || 0).toFixed(3)} TND</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{c.itemsCount} articles</span>
+                    <span>Qté: {c.totalQty}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden sm:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Catégorie</TableHead>
                     <TableHead className="text-right">Dépense</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">Quantité</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">Articles</TableHead>
+                    <TableHead className="text-right">Quantité</TableHead>
+                    <TableHead className="text-right">Articles</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {catStats.map((c) => (
                     <TableRow key={c.category}>
-                      <TableCell className="font-medium text-xs sm:text-sm">{c.category}</TableCell>
-                      <TableCell className="text-right text-xs sm:text-sm">{(c.totalSpend || 0).toFixed(3)} TND</TableCell>
-                      <TableCell className="text-right hidden sm:table-cell">{c.totalQty}</TableCell>
-                      <TableCell className="text-right hidden sm:table-cell">{c.itemsCount}</TableCell>
+                      <TableCell className="font-medium">{c.category}</TableCell>
+                      <TableCell className="text-right font-semibold">{(c.totalSpend || 0).toFixed(3)} TND</TableCell>
+                      <TableCell className="text-right">{c.totalQty}</TableCell>
+                      <TableCell className="text-right">{c.itemsCount}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -220,14 +237,39 @@ export default function ReceiptStatsPage() {
         <Card>
           <CardHeader><CardTitle>Produits (3 derniers mois)</CardTitle></CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile View */}
+            <div className="space-y-4 sm:hidden">
+              {productInsights.map((p) => {
+                const dateStr = p.lastPurchasedAt;
+                let dateDisp = '-';
+                if (dateStr) {
+                  const d = parseISO(dateStr);
+                  dateDisp = isValidDate(d) ? formatDate(d, 'dd/MM/yyyy') : dateStr;
+                }
+                return (
+                  <div key={p.productKey} className="flex flex-col p-3 border rounded-md bg-muted/30">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-bold text-sm leading-tight flex-1 mr-2">{p.normalizedLabel || p.rawLabel || p.productKey}</span>
+                      <span className="font-semibold text-accent text-sm whitespace-nowrap">{p.lastUnitPrice != null ? `${p.lastUnitPrice.toFixed(3)}` : '-'} TND</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-muted">
+                      <span>Acheté le: <span className="text-foreground">{dateDisp}</span></span>
+                      <span>Fréquence: <span className="text-foreground">{p.frequencyCount}x</span></span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden sm:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produit</TableHead>
                     <TableHead className="text-right">Dernier prix</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">Dernier achat</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">Fréquence (3m)</TableHead>
+                    <TableHead className="text-right">Dernier achat</TableHead>
+                    <TableHead className="text-right">Fréquence (3m)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -240,10 +282,12 @@ export default function ReceiptStatsPage() {
                     }
                     return (
                       <TableRow key={p.productKey}>
-                        <TableCell className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none" title={p.normalizedLabel || p.rawLabel || p.productKey}>{p.normalizedLabel || p.rawLabel || p.productKey}</TableCell>
-                        <TableCell className="text-right text-xs sm:text-sm">{p.lastUnitPrice != null ? `${p.lastUnitPrice.toFixed(3)}` : '-'}</TableCell>
-                        <TableCell className="text-right hidden sm:table-cell">{dateDisp}</TableCell>
-                        <TableCell className="text-right hidden sm:table-cell">{p.frequencyCount}</TableCell>
+                        <TableCell className="font-medium max-w-[200px] truncate" title={p.normalizedLabel || p.rawLabel || p.productKey}>
+                          {p.normalizedLabel || p.rawLabel || p.productKey}
+                        </TableCell>
+                        <TableCell className="text-right">{p.lastUnitPrice != null ? `${p.lastUnitPrice.toFixed(3)}` : '-'}</TableCell>
+                        <TableCell className="text-right">{dateDisp}</TableCell>
+                        <TableCell className="text-right">{p.frequencyCount}</TableCell>
                       </TableRow>
                     );
                   })}

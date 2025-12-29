@@ -38,29 +38,34 @@ const ExtractReceiptDataOutputSchema = z.object({
 export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSchema>;
 
 // ----- Prompt -----
-const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour, Monoprix, MG, etc.).
+const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour Tunisie, etc.).
 Analyse cette image et extrais TOUS les produits listés, ligne par ligne.
 
-ATTENTION AU FORMAT CARREFOUR :
-- Le libellé du produit est sur une ligne, le PRIX TOTAL de la ligne est souvent aligné à droite de cette même ligne.
-- S'il y a une quantité > 1, elle est souvent indiquée sur la ligne EN-DESSOUS du libellé, sous la forme "Quantité x Prix Unitaire" (ex: "2 x 0.850").
-- Dans ce cas (multi-ligne):
-    *   Quantité = le premier chiffre (ex: 2).
-    *   Prix Unitaire = le deuxième chiffre (ex: 0.850).
-    *   Total Ligne = le montant à droite de la PREMIÈRE ligne (celle du libellé).
-    *   Vérification : Quantité x Prix Unitaire ≈ Total Ligne.
-- Si tout est sur une seule ligne (Quantité = 1), le Prix Unitaire = Total Ligne = le montant à droite.
+CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
+- Boissons (Eau, Jus, Soda, Café, Thé, Delio, Schweppes...)
+- Frais (Lait, Yaourt, Fromage, Oeufs, Beurre...)
+- Pâtes (Spaghetti, Macaroni, Couscous...)
+- Epicerie Salée (Huile, Tomate, Harissa, Thon, Riz, Farine, Sel...)
+- Epicerie Sucrée (Biscuits, Gaufres, Chocolat, Chamia, Confiture...)
+- Fruits & Légumes (Pommes, Bananes, Oignons, Pommes de terre...)
+- Boulangerie & Pâtisserie (Pain, Baguettes, Croissants...)
+- Boucherie & Volaille (Viande, Poulet, Salami...)
+- Hygiène & Soin (Savon, Shampoing, Dentifrice, Coton...)
+- Entretien (Lessive, Javel, Liquide Vaisselle...)
+- Maison & Divers (Piles, Ampoules, Ustensiles...)
 
-Instructions obligatoires:
-1.  **Liste des Produits ("lines")**: Pour CHAQUE article:
-    -   "rawLabel": Texte du libellé (ex: "25CL DELIO AROMA G").
-    -   "normalizedLabel": Libellé propre (ex: "25cl Delio Aroma Gaz").
-    -   "quantity": La quantité achetée (par défaut 1).
-    -   "unitPrice": Le prix unitaire.
-    -   "lineTotal": Le montant total payé pour cet article.
-2.  **Date ("purchaseAt")**: Format ISO 8601 (YYYY-MM-DDTHH:mm:ss).
-3.  **Magasin ("storeName")**: Le nom du supermarché.
-4.  **Totaux**: "total", "subtotal".
+RÈGLES CRITIQUES :
+1. NE JAMAIS utiliser la catégorie "Recus de caisse" ou "Document".
+2. Si un produit est amibgu, utilise "Alimentation / Divers". Minimise son utilisation.
+3. DELIO doit TOUJOURS être dans "Boissons".
+4. ATTENTION AU FORMAT CARREFOUR :
+   - Le libellé du produit est sur une ligne, le PRIX TOTAL de la ligne est souvent aligné à droite de cette même ligne.
+   - S'il y a une quantité > 1, elle est souvent indiquée sur la ligne EN-DESSOUS du libellé, sous la forme "Quantité x Prix Unitaire" (ex: "2 x 0.850").
+   - Dans ce cas (multi-ligne):
+       * Quantité = le premier chiffre (ex: 2).
+       * Prix Unitaire = le deuxième chiffre (ex: 0.850).
+       * Total Ligne = le montant à droite de la PREMIÈRE ligne (celle du libellé).
+   - Regroupe ces lignes en UN SEUL produit.
 
 Format de sortie JSON Strict:
 {
@@ -71,6 +76,7 @@ Format de sortie JSON Strict:
     {
       "rawLabel": "string",
       "normalizedLabel": "string",
+      "category": "string",
       "quantity": number,
       "unitPrice": number,
       "lineTotal": number
@@ -78,44 +84,10 @@ Format de sortie JSON Strict:
   ]
 }
 
-EXEMPLE CONCRET (Ce que tu vois -> Ce que tu dois extraire):
-IMAGE:
-  25CL DELIO AROMA G        11.400
-      12  x   0.950
-
-JSON ATTENDU:
-  {
-    "rawLabel": "25CL DELIO AROMA G",
-    "quantity": 12,
-    "unitPrice": 0.950,
-    "lineTotal": 11.400
-  }
-
-IMPORTANT - ALGORITHME DE LECTURE (Suis cela à la lettre):
-1.  **Scanning**: Lis le ticket ligne par ligne du haut vers le bas.
-2.  **Product Line**: Si une ligne contient du texte (ex: "DELIO") et un prix à droite (ex: "11.400"), c'est un produit.
-    -   Stocke "11.400" comme \`lineTotal\`.
-    -   Stocke "DELIO" comme \`rawLabel\`.
-3.  **Check Next Line**: REGARDE IMMÉDIATEMENT LA LIGNE DU DESSOUS.
-4.  **Quantity Pattern**: Si la ligne du dessous contient un motif comme "12 x 0.950" ou "2 x 0.840" :
-    -   C'est la QUANTITÉ et le PRIX UNITAIRE de l'article du dessus.
-    -   Mets \`quantity\` = 12.
-    -   Mets \`unitPrice\` = 0.950.
-    -   Ignore cette ligne "12 x 0.950" en tant que produit séparé (c'est un détail).
-5.  **Default**: Si la ligne du dessous est un autre produit (ex: "LAIT..."), alors l'article du dessus a \`quantity\` = 1 et \`unitPrice\` = \`lineTotal\`.
-6.  **Date**: Cherche la date exacte (ex: "26/12/2024"). Elle est souvent tout en haut ou tout en bas du ticket. Renvoie-la au format YYYY-MM-DD. Si tu ne trouves ABSOLUMENT rien qui ressemble à une date, renvoie null.
-
 EXEMPLE (Ne te trompe pas):
-Ligne 1:  370G LAIT CONC       7.900   -> Produit (Total=7.900)
-Ligne 2:  100G GAUFRE          1.350   -> Produit (Total=1.350)
-Ligne 3:  25CL DELIO AROMA    11.400   -> Produit (Total=11.400)
-Ligne 4:      12   x   0.950           -> DÉTAIL pour DELIO (Qté=12, PU=0.950)
-Ligne 5:  2L AQUALINE          4.560   -> Produit suivant...
-
-Résultat pour DELIO: { "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }
-Résultat pour LAIT:  { "quantity": 1, "unitPrice": 7.900, "lineTotal": 7.900 }
-
-DATE IMPORTANTE: La date est cruciale pour les statistiques. Si tu vois "26/12/24", c'est 2024-12-26.`;
+Ligne:  370G LAIT CONC       7.900   -> { "rawLabel": "370G LAIT CONC", "category": "Frais", "quantity": 1, "unitPrice": 7.900, "lineTotal": 7.900 }
+Ligne:  25CL DELIO AROMA    11.400   
+Ligne:      12   x   0.950           -> { "rawLabel": "25CL DELIO AROMA", "category": "Boissons", "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }`;
 
 // ----- Helper: Groq with timeout -----
 async function extractWithGroqTimeout(
