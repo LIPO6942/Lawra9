@@ -42,7 +42,8 @@ const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus
 Analyse cette image et extrais TOUS les produits listés, ligne par ligne.
 
 CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
-- Boissons (Eau, Jus, Soda, Café, Thé, Delio, Schweppes...)
+- Eau (Toute marque d'eau minérale : Sabrine, Safia, Melliti, Aqualine...)
+- Boissons (Jus, Soda, Café, Thé, Delio, Schweppes...)
 - Frais (Lait, Yaourt, Fromage, Oeufs, Beurre...)
 - Pâtes (Spaghetti, Macaroni, Couscous...)
 - Epicerie Salée (Huile, Tomate, Harissa, Thon, Riz, Farine, Sel...)
@@ -55,16 +56,13 @@ CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
 - Maison & Divers (Piles, Ampoules, Ustensiles...)
 
 RÈGLES CRITIQUES :
-1. NE JAMAIS utiliser la catégorie "Recus de caisse" ou "Document".
-2. Si un produit est amibgu, utilise "Alimentation / Divers". Minimise son utilisation.
-3. DELIO doit TOUJOURS être dans "Boissons".
-4. ATTENTION AU FORMAT CARREFOUR :
+1. DATE PAR DÉFAUT : Si tu ne trouves pas de date sur le reçu, utilise IMPÉRATIVEMENT la date d'aujourd'hui (${new Date().toISOString().split('T')[0]}). C'est crucial.
+2. NE JAMAIS utiliser la catégorie "Recus de caisse" ou "Document".
+3. Si un produit est ambigu, utilise "Alimentation / Divers". Minimise son utilisation.
+4. DELIO doit être dans "Boissons", mais l'EAU doit être dans sa propre catégorie "Eau".
+5. ATTENTION AU FORMAT CARREFOUR :
    - Le libellé du produit est sur une ligne, le PRIX TOTAL de la ligne est souvent aligné à droite de cette même ligne.
-   - S'il y a une quantité > 1, elle est souvent indiquée sur la ligne EN-DESSOUS du libellé, sous la forme "Quantité x Prix Unitaire" (ex: "2 x 0.850").
-   - Dans ce cas (multi-ligne):
-       * Quantité = le premier chiffre (ex: 2).
-       * Prix Unitaire = le deuxième chiffre (ex: 0.850).
-       * Total Ligne = le montant à droite de la PREMIÈRE ligne (celle du libellé).
+   - Si quantité > 1, elle est sur la ligne EN-DESSOUS : "Qté x PrixUnit" (ex: "2 x 0.850").
    - Regroupe ces lignes en UN SEUL produit.
 
 Format de sortie JSON Strict:
