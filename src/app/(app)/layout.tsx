@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { UserPreferencesProvider, useUserPreferences, ISP } from '@/contexts/user-preferences-context';
 import { DocumentProvider } from '@/contexts/document-context';
 import { ReceiptProvider } from '@/contexts/receipt-context';
+import { LearningProvider } from '@/contexts/learning-context';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -276,7 +277,9 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
         <UserPreferencesProvider>
             <DocumentProvider>
                 <ReceiptProvider>
-                    <ProtectedLayout>{children}</ProtectedLayout>
+                    <LearningProvider>
+                        <ProtectedLayout>{children}</ProtectedLayout>
+                    </LearningProvider>
                 </ReceiptProvider>
             </DocumentProvider>
         </UserPreferencesProvider>

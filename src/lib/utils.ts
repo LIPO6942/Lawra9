@@ -330,7 +330,7 @@ export function computeTopProducts(receipts: Receipt[]): TopProductStat[] {
 }
 
 // -------------------------------
-// Quantity inference & lightweight learning
+// Quantité inference & lightweight learning (Legacy local removed, now in LearningContext)
 // -------------------------------
 
 type InferredLine = { quantity?: number; unit?: string; unitPrice?: number; lineTotal?: number };
@@ -362,40 +362,6 @@ export function inferQuantityFromLabel(
     }
   }
   return out;
-}
-
-const LEARNING_KEY = 'receipt_learning_packqty';
-// Keying strategy: `${storeName || 'ALL'}|${productKey}` for store-specific, legacy keys are just productKey
-type LearningMap = Record<string, number>;
-
-function loadLearning(): LearningMap {
-  if (typeof window === 'undefined') return {};
-  try {
-    const s = window.localStorage.getItem(LEARNING_KEY);
-    return s ? JSON.parse(s) as LearningMap : {};
-  } catch { return {}; }
-}
-
-function saveLearning(map: LearningMap) {
-  if (typeof window === 'undefined') return;
-  try { window.localStorage.setItem(LEARNING_KEY, JSON.stringify(map)); } catch { }
-}
-
-export function getLearnedPackQty(productKey: string, storeName?: string): number | undefined {
-  const m = loadLearning();
-  const storeKey = `${storeName || 'ALL'}|${productKey}`;
-  return m[storeKey] ?? m[productKey]; // fallback to legacy/global
-}
-
-export function learnPackQty(productKey: string, qty: number, storeName?: string) {
-  if (!productKey || !Number.isFinite(qty) || qty <= 1) return;
-  const m = loadLearning();
-  const storeKey = `${storeName || 'ALL'}|${productKey}`;
-  // Update store-specific
-  if (!m[storeKey] || m[storeKey] < qty) m[storeKey] = qty;
-  // Also maintain/global legacy as max for broad reuse
-  if (!m[productKey] || m[productKey] < qty) m[productKey] = qty;
-  saveLearning(m);
 }
 
 /**

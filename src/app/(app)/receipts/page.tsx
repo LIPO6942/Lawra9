@@ -10,7 +10,8 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Pencil, Save, X, Receipt, Trash2, ListChecks } from 'lucide-react';
 import { useState } from 'react';
-import { inferQuantityFromLabel, learnPackQty, normalizeProductKey } from '@/lib/utils';
+import { inferQuantityFromLabel, normalizeProductKey } from '@/lib/utils';
+import { useLearning } from '@/contexts/learning-context';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,6 +19,7 @@ type ProposedChange = { receiptId: string; storeName?: string; linesUpdated: num
 
 export default function ReceiptsPage() {
   const { receipts, updateReceipt, deleteReceipt } = useReceipts();
+  const { learnPackQty } = useLearning();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [previewOpen, setPreviewOpen] = useState(false);

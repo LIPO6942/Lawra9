@@ -9,7 +9,8 @@ import { useReceipts } from '@/contexts/receipt-context';
 import { extractReceiptData } from '@/ai/flows/extract-receipt-data';
 import { Receipt } from '@/lib/types';
 import { useDocuments } from '@/contexts/document-context';
-import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normalizeProductKey, getLearnedPackQty, compressImage } from '@/lib/utils';
+import { mapCategoryHeuristic, normalizeUnit, computeStandardUnitPrice, normalizeProductKey, compressImage } from '@/lib/utils';
+import { useLearning } from '@/contexts/learning-context';
 
 
 
@@ -28,6 +29,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
   const [processingMessage, setProcessingMessage] = useState('');
   const { addReceipt } = useReceipts();
   const { addDocument } = useDocuments();
+  const { getLearnedPackQty } = useLearning();
 
   const handleOpenChange = (v: boolean) => {
     setOpen(v);

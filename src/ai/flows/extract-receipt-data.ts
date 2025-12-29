@@ -42,7 +42,7 @@ const RECEIPT_PROMPT = `Tu es un expert en extraction de donnés OCR pour reçus
 Analyse cette image et extrais TOUS les produits listés.
 
 CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
-- Eau (Toute marque d'eau minérale : Sabrine, Safia, Melliti, Aqualine...)
+- Eau (Sabrine, Safia, Melliti, Pristine, Aqualine, Marwa...)
 - Boissons (Jus, Soda, Café, Thé, Delio, Schweppes...)
 - Frais (Lait, Yaourt, Fromage, Oeufs, Beurre...)
 - Pâtes (Spaghetti, Macaroni, Couscous...)
@@ -56,20 +56,29 @@ CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
 - Maison & Divers (Piles, Ampoule, Ustensiles...)
 
 RÈGLES CRITIQUES (TRÈS IMPORTANT) :
-1. DATE : Extraits la date du ticket (cherches-la partout). Format ISO YYYY-MM-DD.
-   - ATTENTION : Si la date extraite semble fausse ou future (ex: 2029), utilise la date d'aujourd'hui (${new Date().toISOString().split('T')[0]}).
-2. FORMAT CARREFOUR (MULTI-LIGNES) :
-   - Ligne 1 : "LIBELLÉ PRODUIT" (à gauche) et "TOTAL PRIX" (à droite).
-   - Ligne 2 (en-dessous) : Parfois "Quantité x PrixUnit" (ex: "12 x 0.950").
-   - RÈGLE D'OR : La ligne de quantité (Ligne 2) appartient TOUJOURS au produit situé JUSTE AU-DESSUS (Ligne 1). 
-   - NE JAMAIS l'attribuer au produit qui suit.
-3. CATÉGORIES :
-   - "Alimentation / Divers" est le dernier recours.
-   - "Delio" -> Boissons. 
-   - "Eau Pristine/Sabrine" -> Eau.
-4. CALCUL : Si Qté > 1 est indiquée, \`lineTotal\` doit correspondre à \`quantity * unitPrice\`.
+1. DATE : Extraits la date du ticket. Format ISO YYYY-MM-DD.
+   - SI DATE > ${new Date().toISOString().split('T')[0]}, UTILISE AUJOURD'HUI.
+2. FORMAT CARREFOUR (ASSOCIATION LIGNE DE QUANTITÉ) :
+   - Sur Carrefour, les infos de quantité ("Qté x PrixUnit") sont TOUJOURS écrit sur la ligne JUSTE EN-DESSOUS du libellé du produit.
+   - NE JAMAIS associer une ligne de quantité au produit qui suit.
+3. PRODUITS SPÉCIFIQUES :
+   - DELIO -> Catégorie "Boissons".
+   - PRISTINE, SAFIA, SABRINE -> Catégorie "Eau".
 
-Format de sortie JSON:
+EXEMPLES DE STRUCTURE (SUIS CE MODÈLE) :
+Ticket Carrefour réel :
+  2 L EAU PRISTINE        4.740  <-- Produit A
+  6  x  0.790                    <-- Quantité du produit A (6 * 0.790 = 4.740)
+  25CL DELIO AROMA G     11.400  <-- Produit B
+  12  x  0.950                   <-- Quantité du produit B (12 * 0.950 = 11.400)
+
+Résultat JSON attendu :
+[
+  { "rawLabel": "2 L EAU PRISTINE", "category": "Eau", "quantity": 6, "unitPrice": 0.790, "lineTotal": 4.740 },
+  { "rawLabel": "25CL DELIO AROMA G", "category": "Boissons", "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }
+]
+
+Format de sortie JSON Strict:
 {
   "storeName": "string",
   "purchaseAt": "YYYY-MM-DD",
@@ -83,14 +92,7 @@ Format de sortie JSON:
       "lineTotal": number
     }
   ]
-}
-
-EXEMPLE (Ne te trompe pas):
-Vu sur Image:
-  25CL DELIO AROMA G        11.400
-      12  x   0.950
-Extrait:
-  { "rawLabel": "25CL DELIO AROMA G", "category": "Boissons", "quantity": 12, "unitPrice": 0.950, "lineTotal": 11.400 }`;
+}`;
 
 // ----- Date Parsing Helper -----
 function parseFlexibleDate(dateStr: string | undefined): Date | null {
