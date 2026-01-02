@@ -172,7 +172,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                         const fileCount = doc.files?.length || 0;
                         const daysDiff = doc.dueDate && isValid(parseISO(doc.dueDate)) ? differenceInDays(parseISO(doc.dueDate), new Date()) : null;
 
-                        const isCoreBill = (doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && doc.consumptionPeriod;
+                        const isCoreBill = (doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && (doc.consumptionPeriod || (doc.billingStartDate && doc.billingEndDate));
 
                         return (
                             <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">
@@ -199,17 +199,24 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                     <div className="shrink-0 opacity-80"><CategoryIcon category={doc.category} /></div>
                                                     <span className="truncate">
                                                         {(() => {
-                                                            const parts = doc.consumptionPeriod!.split('-');
-                                                            if (parts.length < 2) return doc.consumptionPeriod;
-                                                            const year = parts[0];
-                                                            const months = parts.slice(1).map(m => {
-                                                                try {
-                                                                    const d = new Date(parseInt(year), parseInt(m) - 1, 1);
-                                                                    return format(d, 'MMM', { locale: fr }).replace('.', '');
-                                                                } catch (e) { return m; }
-                                                            });
-                                                            const formattedMonths = months.join('-');
-                                                            return formattedMonths.charAt(0).toUpperCase() + formattedMonths.slice(1) + ' ' + year;
+                                                            if (doc.consumptionPeriod) {
+                                                                const parts = doc.consumptionPeriod.split('-');
+                                                                if (parts.length < 2) return doc.consumptionPeriod;
+                                                                const year = parts[0];
+                                                                const months = parts.slice(1).map(m => {
+                                                                    try {
+                                                                        const d = new Date(parseInt(year), parseInt(m) - 1, 1);
+                                                                        return format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                                    } catch (e) { return m; }
+                                                                });
+                                                                const formattedMonths = months.join('-');
+                                                                return formattedMonths.charAt(0).toUpperCase() + formattedMonths.slice(1) + ' ' + year;
+                                                            } else if (doc.billingStartDate && doc.billingEndDate) {
+                                                                const start = formatDateSafe(doc.billingStartDate, 'MMM');
+                                                                const end = formatDateSafe(doc.billingEndDate, 'MMM yy');
+                                                                return `${start}-${end}`;
+                                                            }
+                                                            return doc.name;
                                                         })()}
                                                     </span>
                                                     <div className="shrink-0 opacity-80"><CategoryIcon category={doc.category} /></div>
@@ -282,9 +289,9 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             <div className="flex items-center gap-1 text-foreground font-medium shrink-0 bg-secondary/40 px-1.5 rounded border border-secondary/50">
                                                 {doc.category === 'STEG' ? <Zap className="h-2.5 w-2.5 text-yellow-500" /> : <Droplets className="h-2.5 w-2.5 text-blue-500" />}
                                                 <span>
-                                                    {doc.consumptionQuantity && `${doc.consumptionQuantity}kWh`}
+                                                    {doc.consumptionQuantity && `${doc.consumptionQuantity}${doc.category === 'SONEDE' ? 'm³' : 'kWh'}`}
                                                     {doc.consumptionQuantity && doc.gasConsumptionQuantity && '·'}
-                                                    {doc.gasConsumptionQuantity && `${doc.gasConsumptionQuantity}m3`}
+                                                    {doc.gasConsumptionQuantity && `${doc.gasConsumptionQuantity}m³`}
                                                 </span>
                                             </div>
                                         )}

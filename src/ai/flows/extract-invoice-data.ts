@@ -39,10 +39,10 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
    - PÉRIODE : Repérez "فترة الاستهلاك" (souvent en haut/milieu). Juste après, il y a un code à 4 segments type "2025-08-07-06".
    - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع", "تاريخ الاستخلاص", "Prière de payer" ou "Avant le" (en bas à gauche). La date d'échéance se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Cherchez une date isolée dans le coin inférieur GAUCHE. **IMPORTANT : Cette date peut être dans le passé (2024, 2025, etc.), extrayez-la telle quelle.**
-    - CONSOMMATION (EAU) : Cherchez "كمية الإستهلاك", "الكمية", "Quantité consommée", "Le volume consommé", "Volume" ou "Consommation" en m3. Elle se trouve TOUJOURS dans une case dédiée sous "كمية الإستهلاك". Si vous voyez deux index (ancien/nouveau), la consommation est la différence (ex: 384-371=13). Priorisez le petit nombre (ex: 13).
+    - CONSOMMATION (EAU) : Cherchez "كمية الإستهلاك", "الكمية", "Quantité consommée", "Le volume consommé", "Volume" ou "Consommation" en m3. Elle se trouve TOUJOURS dans une case dédiée sous "كمية الإستهلاك". Si vous voyez deux index (ancien/nouveau), la consommation est la différence (ex: 384-371=13). Priorisez le petit nombre (ex: 13). Extrayez UNIQUEMENT le nombre (ex: "13"). L'unité est toujours m3 pour l'eau.
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
-   - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
+   - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite. Ces dates correspondent à billingStartDate et billingEndDate.
    - ÉCHÉANCE (CRITIQUE/CHIRURGICAL) : En bas à droite de la facture, il y a DEUX cadres avec des dates. 
      - **Date de GAUCHE** : Dans le cadre "Prière de payer avant le" (الرجاء الدفع قبل). **C'EST CELLE-LÀ QUE VOUS DEVEZ EXTRAIRE.** (Ex: 11/12/2025).
      - **Date de DROITE** : Dans le cadre "Prochain relevé d'index" (التاريخ المقبل لقراءة العداد). **IGNOREZ-LA ABSOLUMENT.** (Ex: 17/03/2026).
@@ -60,9 +60,9 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 - **DATES STEG** : Dans le bloc "Echéance/Prochain relevé" en bas, priorisez TOUJOURS le bloc le plus à gauche ou celui titré "Prière de payer".
 - **NON-DUPLICATION** : Ne répétez JAMAIS un chiffre s'il apparaît plusieurs fois (ex: si "13" est écrit deux fois, extrayez "13", pas "133" ou "26").
 - **DATES PASSÉES** : Acceptez et extrayez TOUTES les dates, même si elles sont en 2024, 2025 ou avant.
-- **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez la case "الكمية". Si plusieurs paliers, prenez le TOTAL des quantités uniquement.
-- **UNITÉS** : Extrayez le nombre pur ou avec l'unitée (ex: "501", "19").
-- **RÉALISME** : Une consommation d'eau domestique est souvent un petit nombre (ex: 13). Ne confondez pas avec l'index ou le montant.
+- **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez la case "الكمية". Si plusieurs paliers, prenez le TOTAL des quantités uniquement. Pour l'électricité, utilisez le champ 'consumptionQuantity'.
+- **UNITÉS** : Extrayez le nombre pur sans l'unité (ex: "501", "13"). Le système se chargera de l'unité selon le type.
+- **RÉALISME** : Une consommation d'eau domestique est souvent un petit nombre (ex: 13). Ne confondez pas avec l'index ou le montant. Une consommation d'électricité est souvent un nombre à 2 ou 3 chiffres (ex: 501).
 
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".

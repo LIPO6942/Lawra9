@@ -344,6 +344,17 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
       const aiCategory = finalCategory;
 
+      let finalConsumptionPeriod = result.consumptionPeriod;
+      if (!finalConsumptionPeriod && result.billingStartDate && result.billingEndDate) {
+        try {
+          const start = parseISO(result.billingStartDate);
+          const end = parseISO(result.billingEndDate);
+          if (isValid(start) && isValid(end)) {
+            finalConsumptionPeriod = `${format(start, 'yyyy-MM', { locale: fr })}-${format(end, 'MM', { locale: fr })}`;
+          }
+        } catch (e) { /* ignore */ }
+      }
+
       const newDocData: DocumentWithFile = {
         name: formatDocumentName(result, finalFile.name),
         category: aiCategory,
@@ -354,7 +365,7 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         invoiceNumber: result.invoiceNumber,
         billingStartDate: result.billingStartDate,
         billingEndDate: result.billingEndDate,
-        consumptionPeriod: result.consumptionPeriod,
+        consumptionPeriod: finalConsumptionPeriod,
         consumptionQuantity: result.consumptionQuantity,
         gasAmount: result.gasAmount,
         gasConsumptionQuantity: result.gasConsumptionQuantity,
