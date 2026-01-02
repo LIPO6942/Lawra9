@@ -206,7 +206,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm mt-1.5 text-muted-foreground">
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm mt-2 text-muted-foreground/90">
                                         {isMaison && doc.amount && (
                                             <div className="flex items-center gap-1.5 font-mono text-foreground whitespace-nowrap">
                                                 <CircleDollarSign className="h-3.5 w-3.5" />
@@ -241,9 +241,9 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             </div>
                                         )}
                                         {!isMaison && doc.consumptionPeriod && (
-                                            <div className="flex items-center gap-1.5 text-blue-600 font-medium whitespace-nowrap">
-                                                <CalendarDays className="h-3.5 w-3.5" />
-                                                <span>
+                                            <div className="flex items-center gap-1.5 text-blue-600 font-medium whitespace-nowrap min-w-max">
+                                                <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="truncate">
                                                     {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
                                                         (() => {
                                                             const parts = doc.consumptionPeriod.split('-');

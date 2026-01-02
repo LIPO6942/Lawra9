@@ -43,9 +43,10 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
-   - ÉCHÉANCE : Cherchez "Prière de payer avant le" (الرجاء الدفع avant le) en bas à droite. **Cette date peut être dans le passé.**
-   - CONSOMMATION (ÉLEC) : Cherchez "Consommation Électricité", "Total Électricité", "Consommation facturée", "Qté" ou "Quantité" associée à l'électricité (kWh).
-   - CONSOMMATION (GAZ) : Cherchez "Consommation Gaz", "Total Gaz", "Consommation facturée", "Qté" ou "Quantité" associée au Gaz (m3).
+   - ÉCHÉANCE (CRITIQUE) : Cherchez "Prière de payer avant le" ou "الرجاء الدفع قبل" (en bas à droite). **C'est la SEULE date d'échéance.**
+   - IGNOREZ : Ne confondez JAMAIS avec "التاريخ المقبل لقراءة العداد" ou "Prochain relevé d'index" (souvent en bas à droite aussi). C'est une date futuriste de relevé, PAS l'échéance.
+   - CONSOMMATION (ÉLEC) : Cherchez la ligne "Électricité" (كهرباء) et extrayez la valeur sous la colonne "الكمية" ou "Quantité" (entête (1), c'est la 5ème colonne en partant de la gauche).
+   - CONSOMMATION (GAZ) : Cherchez la ligne "Gaz" (غاز) et extrayez la valeur sous la colonne "الكمية" ou "Quantité" (entête (1), c'est la 5ème colonne en partant de la gauche). **EXTRAYEZ LA VALEUR "19" (EXEMPLE) ET SURTOUT PAS LA MOYENNE MENSUELLE "4" (COLONNE 4).**
 
 **RÈGLES D'OR (CRITIQUE) :**
 - **NON-DUPLICATION** : Ne répétez JAMAIS un chiffre s'il apparaît plusieurs fois (ex: si "13" est écrit deux fois, extrayez "13", pas "133" ou "26").
