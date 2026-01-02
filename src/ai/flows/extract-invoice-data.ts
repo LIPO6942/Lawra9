@@ -48,8 +48,9 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - CONSOMMATION (GAZ) : Cherchez "Consommation Gaz", "Total Gaz", "Consommation facturée", "Qté" ou "Quantité" associée au Gaz (m3).
 
 **RÈGLES D'OR (CRITIQUE) :**
+- **NON-DUPLICATION** : Ne répétez JAMAIS un chiffre s'il apparaît plusieurs fois (ex: si "13" est écrit deux fois, extrayez "13", pas "133" ou "26").
 - **DATES PASSÉES** : Acceptez et extrayez TOUTES les dates, même si elles sont en 2024, 2025 ou avant. Ne les ignorez jamais parce qu'elles sont passées.
-- **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez dans les tableaux de détails, colonnes "Qté", "Consommation", "Volume", ou calculée via "Index Nouveau - Index Ancien".
+- **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez la case "Consommation" ou "كمية الإستهلاك". Si plusieurs paliers, prenez le TOTAL.
 - **UNITÉS** : Extrayez le nombre pur ou avec l'unité (ex: "145", "145 kWh", "22 m3").
 - **RÉALISME** : Une consommation d'eau domestique est souvent un petit nombre (ex: 13). Ne confondez pas avec l'index du compteur (ex: 384) ou le montant total.
 
@@ -57,7 +58,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
 - **dueDate** : Date limite (AAAA-MM-JJ). **EXTRAYEZ MÊME SI LA DATE EST PASSÉE.** Pour SONEDE, elle est TOUJOURS en bas à gauche.
-- **consumptionQuantity** : VOLUME D'EAU (m3) pour SONEDE, ou ÉLECTRICITÉ (kWh) pour STEG.
+- **consumptionQuantity** : VOLUME D'EAU (m3) pour SONEDE, ou ÉLECTRICITÉ (kWh) pour STEG. Prenez la valeur UNIQUE (ex: "13") même si répétée sur la facture.
 - **gasConsumptionQuantity** : VOLUME DE GAZ (m3) pour STEG.
 - **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / à / Du / Au).
 - **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM".
