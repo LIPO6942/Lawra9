@@ -34,7 +34,7 @@ interface DocumentContextType {
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
 
 const getDocumentDate = (doc: Document): Date | null => {
-  const datePriority = [doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
+  const datePriority = [doc.paymentDate, doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
   for (const dateStr of datePriority) {
     if (dateStr) {
       const date = parseISO(dateStr);

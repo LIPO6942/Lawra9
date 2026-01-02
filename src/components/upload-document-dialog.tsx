@@ -531,6 +531,10 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
                 <Input type="date" value={formData.issueDate || ''} onChange={e => handleFormChange('issueDate', e.target.value)} />
               </div>
               <div className="space-y-2">
+                <Label>Date de paiement</Label>
+                <Input type="date" value={formData.paymentDate || ''} onChange={e => handleFormChange('paymentDate', e.target.value)} />
+              </div>
+              <div className="space-y-2">
                 <Label>Numéro de facture</Label>
                 <Input value={formData.invoiceNumber || ''} onChange={e => handleFormChange('invoiceNumber', e.target.value)} />
               </div>

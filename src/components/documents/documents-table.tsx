@@ -206,43 +206,43 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2 text-muted-foreground">
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm mt-1.5 text-muted-foreground">
                                         {isMaison && doc.amount && (
-                                            <div className="flex items-center gap-1.5 font-mono text-foreground">
-                                                <CircleDollarSign className="h-4 w-4" />
+                                            <div className="flex items-center gap-1.5 font-mono text-foreground whitespace-nowrap">
+                                                <CircleDollarSign className="h-3.5 w-3.5" />
                                                 <span>{doc.amount} TND</span>
                                             </div>
                                         )}
                                         {dueDate && !isMaison ? (
-                                            <div className={cn("flex items-center gap-1.5 font-semibold",
+                                            <div className={cn("flex items-center gap-1.5 font-semibold whitespace-nowrap",
                                                 daysDiff !== null && daysDiff < 0 && "text-destructive",
                                                 daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
                                                 daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
                                             )}>
-                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertTriangle className="h-3.5 w-3.5" />
                                                 <span>Échéance: {dueDate}</span>
                                             </div>
                                         ) : docDate && (
-                                            <div className="flex items-center gap-1.5">
-                                                <CalendarDays className="h-4 w-4" />
+                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                <CalendarDays className="h-3.5 w-3.5" />
                                                 <span>{docDate}</span>
                                             </div>
                                         )}
                                         {isMaison && fileCount > 0 && (
-                                            <div className="flex items-center gap-1.5">
-                                                <FileText className="h-4 w-4" />
+                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                <FileText className="h-3.5 w-3.5" />
                                                 <span>{fileCount} fichier{fileCount > 1 ? 's' : ''}</span>
                                             </div>
                                         )}
                                         {isMaison && periodStart && periodEnd && (
-                                            <div className="flex items-center gap-1.5">
-                                                <CalendarDays className="h-4 w-4 text-green-500" />
+                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                <CalendarDays className="h-3.5 w-3.5 text-green-500" />
                                                 <span className="text-green-600 font-medium">{`${periodStart} - ${periodEnd}`}</span>
                                             </div>
                                         )}
                                         {!isMaison && doc.consumptionPeriod && (
-                                            <div className="flex items-center gap-1.5 text-blue-600 font-medium">
-                                                <CalendarDays className="h-4 w-4" />
+                                            <div className="flex items-center gap-1.5 text-blue-600 font-medium whitespace-nowrap">
+                                                <CalendarDays className="h-3.5 w-3.5" />
                                                 <span>
                                                     {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
                                                         (() => {
@@ -262,7 +262,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         )}
                                         {isMaison && doc.notes && (
                                             <div className="flex items-center gap-1.5">
-                                                <MessageSquare className="h-4 w-4" />
+                                                <MessageSquare className="h-3.5 w-3.5" />
                                             </div>
                                         )}
                                     </div>

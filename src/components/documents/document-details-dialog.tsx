@@ -86,6 +86,7 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
                     <DetailItem icon={CircleDollarSign} label="Montant Total" value={document.amount ? `${document.amount} TND` : null} />
                     <DetailItem icon={Calendar} label="Date d'émission" value={issueDate} />
                     <DetailItem icon={Calendar} label="Date d'échéance" value={dueDate} />
+                    <DetailItem icon={Calendar} label="Date de paiement" value={formatDateSafe(document.paymentDate)} />
                     <DetailItem icon={Calendar} label="Période de facturation" value={period} />
                     <DetailItem icon={Hash} label="Numéro de facture" value={document.invoiceNumber} />
 

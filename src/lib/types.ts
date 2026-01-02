@@ -28,6 +28,7 @@ export type Document = {
   subCategory?: string; // For 'Maison' section categories like 'Contrat acquisition'
   status?: 'pending' | 'paid' | 'expired';
   notes?: string; // Free text notes
+  paymentDate?: string; // ISO date string when the bill was actually paid
 };
 
 export type DocumentWithFile = Omit<Document, 'id' | 'createdAt'> & {
