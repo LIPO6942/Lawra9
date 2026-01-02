@@ -29,31 +29,31 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
     }
 };
 
-const StatusBadge = ({ dueDate, category }: { dueDate: string | undefined, category: Document['category'] }) => {
-    const isInvoice = category === 'STEG' || category === 'SONEDE' || category === 'Internet';
+const StatusIndicator = ({ doc }: { doc: Document }) => {
+    const isPaid = !!doc.paymentDate;
+    const dueDate = doc.dueDate;
 
-    if (!dueDate) {
-        if (isInvoice) {
-            return <Badge variant="outline" className="border-gray-400 text-gray-500 font-normal">Date manquante</Badge>;
-        }
-        return <Badge variant="outline" className="border-green-500/50 text-green-600 bg-green-500/10 font-normal">Payée</Badge>;
+    if (isPaid) {
+        return <div className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" title="Payé" />;
     }
+
+    if (!dueDate) return <div className="h-2.5 w-2.5 rounded-full bg-slate-200" title="Pas de date" />;
 
     const date = parseISO(dueDate);
     if (!isValid(date)) return null;
 
     const daysDiff = differenceInDays(date, new Date());
 
+    if (daysDiff < -3) {
+        return <div className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" title="En retard" />;
+    }
     if (daysDiff < 0) {
-        return <Badge variant="destructive" className="font-normal">En retard</Badge>;
+        return <div className="h-2.5 w-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]" title="Légèrement en retard" />;
     }
-    if (daysDiff <= 7) {
-        return <Badge className="bg-red-500 hover:bg-red-500/80 font-normal">Urgent</Badge>;
+    if (daysDiff <= 3) {
+        return <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" title="À payer bientôt" />;
     }
-    if (daysDiff <= 30) {
-        return <Badge className="bg-orange-400 hover:bg-orange-400/80 text-black font-normal">À venir</Badge>;
-    }
-    return <Badge variant="secondary" className="font-normal">Normal</Badge>;
+    return <div className="h-2.5 w-2.5 rounded-full bg-green-500/40" title="Normal" />;
 };
 
 const formatDateSafe = (dateString?: string, dateFormat = 'd MMM yyyy') => {
@@ -172,6 +172,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                         const fileCount = doc.files?.length || 0;
                         const daysDiff = doc.dueDate && isValid(parseISO(doc.dueDate)) ? differenceInDays(parseISO(doc.dueDate), new Date()) : null;
 
+                        const isCoreBill = (doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && doc.consumptionPeriod;
+
                         return (
                             <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">
                                 {!isMaison && onSelectionChange && (
@@ -183,34 +185,42 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                     />
                                 )}
 
-                                <div className="shrink-0">
-                                    <CategoryIcon category={doc.category} />
-                                </div>
+                                {!isCoreBill && (
+                                    <div className="shrink-0">
+                                        <CategoryIcon category={doc.category} />
+                                    </div>
+                                )}
 
                                 <div className="flex-1 min-w-0 flex flex-col gap-1 cursor-pointer" onClick={() => handleViewFile(doc.id)}>
                                     <div className="flex items-center justify-between gap-2 overflow-hidden">
-                                        <p className="font-semibold truncate text-[13px] sm:text-base leading-tight flex-1">
-                                            {((doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && doc.consumptionPeriod) ? (
-                                                (() => {
-                                                    const parts = doc.consumptionPeriod.split('-');
-                                                    if (parts.length < 2) return doc.consumptionPeriod;
-                                                    const year = parts[0];
-                                                    const months = parts.slice(1).map(m => {
-                                                        try {
-                                                            const d = new Date(parseInt(year), parseInt(m) - 1, 1);
-                                                            return format(d, 'MMM', { locale: fr }).replace('.', '');
-                                                        } catch (e) { return m; }
-                                                    });
-                                                    const formattedMonths = months.join('-');
-                                                    return formattedMonths.charAt(0).toUpperCase() + formattedMonths.slice(1) + ' ' + year;
-                                                })()
+                                        <div className="font-semibold truncate text-[13px] sm:text-base leading-tight flex-1 flex items-center gap-2">
+                                            {isCoreBill ? (
+                                                <div className="flex items-center gap-1.5 w-full overflow-hidden">
+                                                    <div className="shrink-0 opacity-80"><CategoryIcon category={doc.category} /></div>
+                                                    <span className="truncate">
+                                                        {(() => {
+                                                            const parts = doc.consumptionPeriod!.split('-');
+                                                            if (parts.length < 2) return doc.consumptionPeriod;
+                                                            const year = parts[0];
+                                                            const months = parts.slice(1).map(m => {
+                                                                try {
+                                                                    const d = new Date(parseInt(year), parseInt(m) - 1, 1);
+                                                                    return format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                                } catch (e) { return m; }
+                                                            });
+                                                            const formattedMonths = months.join('-');
+                                                            return formattedMonths.charAt(0).toUpperCase() + formattedMonths.slice(1) + ' ' + year;
+                                                        })()}
+                                                    </span>
+                                                    <div className="shrink-0 opacity-80"><CategoryIcon category={doc.category} /></div>
+                                                </div>
                                             ) : (
                                                 doc.name
                                             )}
-                                        </p>
+                                        </div>
                                         {!isMaison && (
-                                            <div className="shrink-0 scale-90 origin-right">
-                                                <StatusBadge dueDate={doc.dueDate} category={doc.category} />
+                                            <div className="shrink-0 flex items-center pr-1">
+                                                <StatusIndicator doc={doc} />
                                             </div>
                                         )}
                                     </div>
@@ -247,7 +257,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         )}
 
                                         {/* Period badge - Only show if it wasn't used as title */}
-                                        {!isMaison && doc.consumptionPeriod && !(doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && (
+                                        {!isMaison && doc.consumptionPeriod && !isCoreBill && (
                                             <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50/80 px-1.5 rounded border border-blue-100/50">
                                                 <CalendarDays className="h-2.5 w-2.5 shrink-0" />
                                                 <span>
