@@ -15,7 +15,7 @@ const ExtractInvoiceDataInputSchema = z.object({
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
 const ExtractInvoiceDataOutputSchema = z.object({
-  documentType: z.string().describe('Type de document (STEG, SONEDE, Reçu Bancaire, Maison, Internet, Assurance, Contrat, Autre).'),
+  documentType: z.string().describe('Type de document (STEG, SONEDE, Maison, Internet, Assurance, Contrat, Autre).'),
   supplier: z.string().describe('Fournisseur (ex: STEG, SONEDE, Orange).'),
   amount: z.string().describe('Montant total.'),
   dueDate: z.string().optional().describe('Date d\'échéance AAAA-MM-JJ.'),
@@ -48,7 +48,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - CONSOMMATION (GAZ) : Cherchez "Consommation Gaz" ou "Total Gaz" en m3. Extrayez le nombre.
 
 **RÈGLES D'EXTRACTION DES DONNÉES :**
-- **documentType** : "SONEDE", "STEG", "Internet", "Reçu Bancaire", "Recus de caisse" ou "Autre".
+- **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
 - **dueDate** : Date limite (AAAA-MM-JJ). Pour SONEDE, cherchez la date isolée tout en bas à gauche, alignée avec le texte arabe.
 - **consumptionQuantity** : Quantité d'eau (m3) pour SONEDE, ou Électricité (kWh) pour STEG.

@@ -26,9 +26,7 @@ const categoryMap: Record<string, string> = {
     "STEG": "steg",
     "SONEDE": "sonede",
     "Internet": "internet",
-    "Reçu Bancaire": "bancaire",
     "Recus de caisse": "caisse",
-    "Autre": "autre"
 };
 
 const consumptionConfig = {
