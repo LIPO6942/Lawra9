@@ -53,10 +53,12 @@ const getDocumentDate = (doc: Document): Date | null => {
     return null;
 }
 
-const parseQuantity = (quantityStr: string | undefined): number => {
-    if (!quantityStr) return 0;
+const parseQuantity = (quantityStr: string | number | undefined): number => {
+    if (quantityStr === undefined || quantityStr === null) return 0;
+    if (typeof quantityStr === 'number') return quantityStr;
     // Remove all non-numeric characters except for the decimal separator (dot or comma)
     const cleaned = quantityStr.replace(/[^\d.,]/g, '').replace(',', '.');
+    if (!cleaned) return 0;
     const value = parseFloat(cleaned);
     return isNaN(value) ? 0 : value;
 };
@@ -207,7 +209,7 @@ const StatsPage = () => {
                                         <ChartTooltip content={<ChartTooltipContent formatter={(value) => `${value.toLocaleString('fr-TN')} TND`} />} />
                                         <Legend />
                                         {Object.keys(expenseCategoryConfig).map((key) => (
-                                            <Bar key={key} dataKey={key} fill={`var(--color-${key})`} name={key} radius={[4, 4, 0, 0]} stackId="a" />
+                                            <Bar key={key} dataKey={key} fill={`var(--color-${key})`} name={key} radius={[4, 4, 0, 0]} stackId="a" barSize={32} maxBarSize={40} />
                                         ))}
                                     </BarChart>
                                 </ChartContainer>

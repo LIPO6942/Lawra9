@@ -84,9 +84,7 @@ export function ExpensesChartCard({ data }: ExpensesChartCardProps) {
                 iconSize={8}
                 wrapperStyle={{ fontSize: "12px", paddingTop: '10px' }}
               />
-              {Object.keys(chartConfig).filter(key => key !== 'Maison' && key !== 'Assurance' && key !== 'Contrat').map(key => (
-                <Bar key={key} dataKey={key} fill={chartConfig[key as keyof typeof chartConfig].color} radius={[4, 4, 0, 0]} stackId="a" />
-              ))}
+              <Bar key={key} dataKey={key} fill={chartConfig[key as keyof typeof chartConfig].color} radius={[4, 4, 0, 0]} stackId="a" barSize={32} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
