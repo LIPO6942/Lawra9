@@ -18,7 +18,6 @@ const expenseCategoryConfig = {
     steg: { label: "STEG", color: "hsl(var(--chart-4))" },
     sonede: { label: "SONEDE", color: "hsl(var(--chart-1))" },
     internet: { label: "Internet", color: "hsl(var(--chart-3))" },
-    bancaire: { label: "Banque", color: "hsl(var(--chart-2))" },
     caisse: { label: "Recus de caisse", color: "hsl(var(--chart-6))" },
 };
 
