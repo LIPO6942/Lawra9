@@ -38,7 +38,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 1. **SONEDE (EAU)** : 
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
    - PÉRIODE : Repérez "فترة الاستهلاك" (souvent en haut/milieu). Juste après, il y a un code à 4 segments type "2025-08-07-06".
-   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع قبل هذا التاريخ" (en bas à gauche).
+   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع" ou "Prière de payer" (en bas à gauche). La date d'échéance se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Cherchez une date isolée dans le coin inférieur GAUCHE.
    - CONSOMMATION (EAU) : Cherchez "Quantité consommée" ou "Le volume consommé" en m3. Extrayez le nombre.
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
@@ -50,7 +50,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
-- **dueDate** : Date limite (AAAA-MM-JJ). Pour SONEDE, cherchez la date isolée tout en bas à gauche, alignée avec le texte arabe.
+- **dueDate** : Date limite (AAAA-MM-JJ). Pour SONEDE, cherchez la date isolée tout en bas à gauche, près de "الرجاء الدفع" ou "Prière de payer".
 - **consumptionQuantity** : Quantité d'eau (m3) pour SONEDE, ou Électricité (kWh) pour STEG.
 - **gasConsumptionQuantity** : Quantité de Gaz (m3) pour STEG.
 - **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / إلى).
