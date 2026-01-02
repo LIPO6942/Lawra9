@@ -39,7 +39,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
    - PÉRIODE : Repérez "فترة الاستهلاك" (souvent en haut/milieu). Juste après, il y a un code à 4 segments type "2025-08-07-06".
    - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع", "تاريخ الاستخلاص", "Prière de payer" ou "Avant le" (en bas à gauche). La date d'échéance se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Cherchez une date isolée dans le coin inférieur GAUCHE. **IMPORTANT : Cette date peut être dans le passé (2024, 2025, etc.), extrayez-la telle quelle.**
-   - CONSOMMATION (EAU) : Cherchez "Quantité consommée", "Le volume consommé", "Volume", "Consommation" ou "Index" en m3. Extrayez le nombre de m3.
+    - CONSOMMATION (EAU) : Cherchez "كمية الإستهلاك", "الكمية", "Quantité consommée", "Le volume consommé", "Volume" ou "Consommation" en m3. Elle se trouve TOUJOURS dans une case dédiée sous "كمية الإستهلاك". Si vous voyez deux index (ancien/nouveau), la consommation est la différence (ex: 384-371=13). Priorisez le petit nombre (ex: 13).
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
@@ -51,6 +51,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 - **DATES PASSÉES** : Acceptez et extrayez TOUTES les dates, même si elles sont en 2024, 2025 ou avant. Ne les ignorez jamais parce qu'elles sont passées.
 - **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez dans les tableaux de détails, colonnes "Qté", "Consommation", "Volume", ou calculée via "Index Nouveau - Index Ancien".
 - **UNITÉS** : Extrayez le nombre pur ou avec l'unité (ex: "145", "145 kWh", "22 m3").
+- **RÉALISME** : Une consommation d'eau domestique est souvent un petit nombre (ex: 13). Ne confondez pas avec l'index du compteur (ex: 384) ou le montant total.
 
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
