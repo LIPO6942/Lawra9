@@ -38,20 +38,25 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 1. **SONEDE (EAU)** : 
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
    - PÉRIODE : Repérez "فترة الاستهلاك" (souvent en haut/milieu). Juste après, il y a un code à 4 segments type "2025-08-07-06".
-   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع قبل هذا التاريخ" (en bas à gauche). La date (ex: 2025-11-07) se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Si vous voyez le texte arabe, extrayez le nombre/date qui est le plus proche horizontalement vers la gauche.
+   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع قبل هذا التاريخ" (en bas à gauche).
+   - CONSOMMATION (EAU) : Cherchez "Quantité consommée" ou "Le volume consommé" en m3. Extrayez le nombre.
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
-   - ÉCHÉANCE : Cherchez "Prière de payer avant le" (الرجاء الدفع قبل) en bas à droite. IGNOREZ la date du prochain relevé.
+   - ÉCHÉANCE : Cherchez "Prière de payer avant le" (الرجاء الدفع avant le) en bas à droite.
+   - CONSOMMATION (ÉLEC) : Cherchez "Consommation Électricité" ou "Total Électricité" en kWh. Extrayez le nombre.
+   - CONSOMMATION (GAZ) : Cherchez "Consommation Gaz" ou "Total Gaz" en m3. Extrayez le nombre.
 
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Reçu Bancaire", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
 - **dueDate** : Date limite (AAAA-MM-JJ). Pour SONEDE, cherchez la date isolée tout en bas à gauche, alignée avec le texte arabe.
+- **consumptionQuantity** : Quantité d'eau (m3) pour SONEDE, ou Électricité (kWh) pour STEG.
+- **gasConsumptionQuantity** : Quantité de Gaz (m3) pour STEG.
 - **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / إلى).
 - **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM".
 
-IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DATE N'EST PAS CLAIRE, LAISSEZ LE CHAMP VIDE.`;
+IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DONNEE N'EST PAS CLAIRE, LAISSEZ LE CHAMP VIDE.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;

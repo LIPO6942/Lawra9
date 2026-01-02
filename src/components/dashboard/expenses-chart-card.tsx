@@ -11,7 +11,7 @@ const chartConfig = {
   SONEDE: { label: "SONEDE", color: "#3b82f6" }, // bright blue
   "Reçu Bancaire": { label: "Banque", color: "#10b981" }, // emerald green
   Internet: { label: "Internet", color: "#8b5cf6" }, // violet
-  Autre: { label: "Autre", color: "#f43f5e" }, // rose 
+  "Recus de caisse": { label: "Reçus", color: "#64748b" }, // slate grey
 } satisfies import("@/components/ui/chart").ChartConfig;
 
 interface ExpensesChartCardProps {

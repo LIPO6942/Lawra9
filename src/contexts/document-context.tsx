@@ -201,7 +201,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
     const result: MonthlyExpense[] = monthOrder.slice(0, getMonth(new Date()) + 1).map(monthName => {
       const monthData: MonthlyExpense = { month: `${monthName}.` };
-      const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Maison', 'Assurance', 'Contrat', 'Recus de caisse', 'Autre'];
+      const categories = ['STEG', 'SONEDE', 'Reçu Bancaire', 'Internet', 'Maison', 'Assurance', 'Contrat', 'Recus de caisse'];
 
       categories.forEach(cat => {
         monthData[cat] = expensesByMonth[monthName]?.[cat] || 0;
