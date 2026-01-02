@@ -46,14 +46,14 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - ÉCHÉANCE (CRITIQUE/CHIRURGICAL) : En bas à droite de la facture, il y a DEUX cadres avec des dates. 
      - **Date de GAUCHE** : Dans le cadre "Prière de payer avant le" (الرجاء الدفع قبل). **C'EST CELLE-LÀ QUE VOUS DEVEZ EXTRAIRE.** (Ex: 11/12/2025).
      - **Date de DROITE** : Dans le cadre "Prochain relevé d'index" (التاريخ المقبل لقراءة العداد). **IGNOREZ-LA ABSOLUMENT.** (Ex: 17/03/2026).
-   - STRUCTURE TABLEAU "CONSOMMATION & SERVICES" :
-     - Colonne 1 (à gauche) : TVA (%)
+   - STRUCTURE TABLEAU "CONSOMMATION & SERVICES" (DE GAUCHE À DROITE) :
+     - Colonne 1 : TVA (%) (ex: 7 ou 19)
      - Colonne 2 : Montant Hors taxes (4) -> **IGNOREZ POUR LA CONSOMMATION**
      - Colonne 3 : Prix unitaire (3) -> **IGNOREZ POUR LA CONSOMMATION**
-     - Colonne 4 : Moyenne mensuelle (2) -> **IGNOREZ POUR LA CONSOMMATION**
-     - Colonne 5 : **Quantité (1) -> C'EST ICI QU'EST LA CONSOMMATION (EX: 501, 19)**
-   - CONSOMMATION (ÉLEC) : Cherchez la ligne qui commence par "Électricité" (كهرباء). Prenez la valeur dans la Colonne 5 (ex: "501"). **NE PRENEZ PAS "99.376"** (colonne 2).
-   - CONSOMMATION (GAZ) : Cherchez la ligne qui commence par "Gaz" (غاز). Prenez la valeur dans la Colonne 5 (ex: "19"). **NE PRENEZ PAS "7.389"** (colonne 2).
+     - Colonne 4 : Moyenne mensuelle (2) -> **SURTOUT NE PAS PRENDRE** (ex: 4).
+     - Colonne 5 : **Quantité (1) -> C'EST ICI QU'EST LA CONSOMMATION (EX: 501 pour Élec, 19 pour Gaz)**. 
+   - CONSOMMATION (ÉLEC) : Ligne "Électricité". Prenez la valeur sous "Quantité (1)" ou "الكمية" (ex: "501").
+   - CONSOMMATION (GAZ) : Ligne "Gaz". Prenez la valeur sous "Quantité (1)" ou "الكمية" (ex: "19"). **NE PRENEZ PAS la valeur sous "Moyenne (2)" (ex: 4).**
 
 **RÈGLES D'OR (CRITIQUE) :**
 - **ANTI-TOTAL** : Ne confondez JAMAIS une quantité (ex: 501 kWh) avec un montant monétaire (ex: 99.376 TND). Les quantités (colonne 5) sont souvent des entiers simples. Les montants (colonne 2) ont souvent 3 décimales.
