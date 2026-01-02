@@ -39,9 +39,8 @@ export type ExtractReceiptDataOutput = z.infer<typeof ExtractReceiptDataOutputSc
 
 // ----- Prompt -----
 const getReceiptPrompt = () => {
-  const today = new Date().toISOString().split('T')[0];
-  return `Tu es un expert en extraction de donnés OCR pour reçus tunisiens (Carrefour Tunisie, Monoprix, etc.).
-Analyse cette image et extrais TOUS les produits listés.
+  return `Tu es un expert en extraction de données OCR pour tous types de reçus et tickets de caisse (Carrefour Tunisie, Monoprix, MG, Géant, Aziza, pharmacie, restaurant, etc.).
+Analyse cette image et extrais TOUS les produits ou services listés.
 
 CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
 - Eau (Sabrine, Safia, Melliti, Pristine, Aqualine, Marwa...)
@@ -61,17 +60,16 @@ RÈGLES CRITIQUES (TRÈS IMPORTANT) :
 1. DATE (purchaseAt) : 
    - Extraits la date du ticket au format ISO YYYY-MM-DD.
    - N'INVENTE JAMAIS DE DATE. Si la date n'est pas clairement visible ou illisible, laisse le champ "purchaseAt" vide ou null.
-   - Ne devine pas une date basée sur le contexte si elle n'est pas écrite.
-2. FORMAT CARREFOUR (ASSOCIATION LIGNE DE QUANTITÉ) :
-   - Sur Carrefour, les infos de quantité ("Qté x PrixUnit") sont TOUJOURS écrit sur la ligne JUSTE EN-DESSOUS du libellé du produit.
-   - NE JAMAIS associer une ligne de quantité au produit qui suit.
+2. CONSEILS DE FORMATAGE (MOTIFS COURANTS) :
+   - Pour Carrefour et certaines enseignes, les infos de quantité ("Qté x PrixUnit") sont souvent sur la ligne JUSTE EN-DESSOUS du libellé du produit.
+   - Identifie intelligemment les associations Libellé <-> Quantité/Prix selon la structure du ticket.
 3. PRODUITS SPÉCIFIQUES :
    - DELIO -> Catégorie "Boissons".
    - PRISTINE, SAFIA, SABRINE -> Catégorie "Eau".
 
 Format de sortie JSON Strict:
 {
-  "storeName": "string",
+  "storeName": "Nom de l'enseigne",
   "purchaseAt": "YYYY-MM-DD",
   "total": number,
   "lines": [
@@ -234,7 +232,7 @@ async function extractWithGroq(
       body: JSON.stringify({
         model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
-          { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus Carrefour Tunisie.' },
+          { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes.' },
           {
             role: 'user',
             content: [
