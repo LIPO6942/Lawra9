@@ -11,9 +11,7 @@ import { fr } from 'date-fns/locale';
 import { LineChart, Info } from 'lucide-react';
 
 const getDocumentDateForExpense = (doc: Document): Date | null => {
-  // For paid invoices, issueDate is updated to payment date. Prioritize this.
-  // For unpaid, use issue or billing end date.
-  const datePriority = [doc.issueDate, doc.billingEndDate, doc.createdAt];
+  const datePriority = [doc.paymentDate, doc.issueDate, doc.billingEndDate, doc.createdAt];
   for (const dateStr of datePriority) {
     if (dateStr) {
       const date = parseISO(dateStr);
