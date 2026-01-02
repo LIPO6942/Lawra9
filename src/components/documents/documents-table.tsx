@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle, FileText } from 'lucide-react';
+import { CheckCircle, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle, FileText } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -282,6 +282,13 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                         })()
                                                     ) : doc.consumptionPeriod}
                                                 </span>
+                                            </div>
+                                        )}
+
+                                        {doc.paymentDate && (
+                                            <div className="flex items-center gap-1 text-green-700 font-bold shrink-0 bg-green-50 px-1.5 rounded border border-green-100">
+                                                <CheckCircle className="h-2.5 w-2.5" />
+                                                <span>Payé le {formatDateSafe(doc.paymentDate, 'dd/MM/yy')}</span>
                                             </div>
                                         )}
 
