@@ -38,25 +38,30 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 1. **SONEDE (EAU)** : 
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
    - PÉRIODE : Repérez "فترة الاستهلاك" (souvent en haut/milieu). Juste après, il y a un code à 4 segments type "2025-08-07-06".
-   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع" ou "Prière de payer" (en bas à gauche). La date d'échéance se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Cherchez une date isolée dans le coin inférieur GAUCHE.
-   - CONSOMMATION (EAU) : Cherchez "Quantité consommée" ou "Le volume consommé" en m3. Extrayez le nombre.
+   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع", "تاريخ الاستخلاص", "Prière de payer" ou "Avant le" (en bas à gauche). La date d'échéance se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Cherchez une date isolée dans le coin inférieur GAUCHE. **IMPORTANT : Cette date peut être dans le passé (2024, 2025, etc.), extrayez-la telle quelle.**
+   - CONSOMMATION (EAU) : Cherchez "Quantité consommée", "Le volume consommé", "Volume", "Consommation" ou "Index" en m3. Extrayez le nombre de m3.
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
-   - ÉCHÉANCE : Cherchez "Prière de payer avant le" (الرجاء الدفع avant le) en bas à droite.
-   - CONSOMMATION (ÉLEC) : Cherchez "Consommation Électricité" ou "Total Électricité" en kWh. Extrayez le nombre.
-   - CONSOMMATION (GAZ) : Cherchez "Consommation Gaz" ou "Total Gaz" en m3. Extrayez le nombre.
+   - ÉCHÉANCE : Cherchez "Prière de payer avant le" (الرجاء الدفع avant le) en bas à droite. **Cette date peut être dans le passé.**
+   - CONSOMMATION (ÉLEC) : Cherchez "Consommation Électricité", "Total Électricité", "Consommation facturée", "Qté" ou "Quantité" associée à l'électricité (kWh).
+   - CONSOMMATION (GAZ) : Cherchez "Consommation Gaz", "Total Gaz", "Consommation facturée", "Qté" ou "Quantité" associée au Gaz (m3).
+
+**RÈGLES D'OR (CRITIQUE) :**
+- **DATES PASSÉES** : Acceptez et extrayez TOUTES les dates, même si elles sont en 2024, 2025 ou avant. Ne les ignorez jamais parce qu'elles sont passées.
+- **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez dans les tableaux de détails, colonnes "Qté", "Consommation", "Volume", ou calculée via "Index Nouveau - Index Ancien".
+- **UNITÉS** : Extrayez le nombre pur ou avec l'unité (ex: "145", "145 kWh", "22 m3").
 
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
-- **dueDate** : Date limite (AAAA-MM-JJ). Pour SONEDE, cherchez la date isolée tout en bas à gauche, près de "الرجاء الدفع" ou "Prière de payer".
-- **consumptionQuantity** : Quantité d'eau (m3) pour SONEDE, ou Électricité (kWh) pour STEG.
-- **gasConsumptionQuantity** : Quantité de Gaz (m3) pour STEG.
-- **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / إلى).
+- **dueDate** : Date limite (AAAA-MM-JJ). **EXTRAYEZ MÊME SI LA DATE EST PASSÉE.** Pour SONEDE, elle est TOUJOURS en bas à gauche.
+- **consumptionQuantity** : VOLUME D'EAU (m3) pour SONEDE, ou ÉLECTRICITÉ (kWh) pour STEG.
+- **gasConsumptionQuantity** : VOLUME DE GAZ (m3) pour STEG.
+- **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / à / Du / Au).
 - **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM".
 
-IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DONNEE N'EST PAS CLAIRE, LAISSEZ LE CHAMP VIDE.`;
+IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DONNÉE N'EST PAS CLAIRE, CHERCHEZ MIEUX, MAIS NE LAISSEZ VIDE QUE SI VRAIMENT ABSENTE.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
