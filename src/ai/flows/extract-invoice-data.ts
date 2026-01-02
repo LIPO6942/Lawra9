@@ -45,22 +45,30 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite.
    - ÉCHÉANCE (CRITIQUE) : Cherchez "Prière de payer avant le" ou "الرجاء الدفع قبل" (en bas à droite). **C'est la SEULE date d'échéance.**
    - IGNOREZ : Ne confondez JAMAIS avec "التاريخ المقبل لقراءة العداد" ou "Prochain relevé d'index" (souvent en bas à droite aussi). C'est une date futuriste de relevé, PAS l'échéance.
-   - CONSOMMATION (ÉLEC) : Cherchez la ligne "Électricité" (كهرباء) et extrayez la valeur sous la colonne "الكمية" ou "Quantité" (entête (1), c'est la 5ème colonne en partant de la gauche).
-   - CONSOMMATION (GAZ) : Cherchez la ligne "Gaz" (غاز) et extrayez la valeur sous la colonne "الكمية" ou "Quantité" (entête (1), c'est la 5ème colonne en partant de la gauche). **EXTRAYEZ LA VALEUR "19" (EXEMPLE) ET SURTOUT PAS LA MOYENNE MENSUELLE "4" (COLONNE 4).**
+   - STRUCTURE TABLEAU "CONSOMMATION & SERVICES" :
+     - Colonne 1 (à gauche) : TVA (%)
+     - Colonne 2 : Montant Hors taxes (4) -> **IGNOREZ POUR LA CONSOMMATION**
+     - Colonne 3 : Prix unitaire (3) -> **IGNOREZ POUR LA CONSOMMATION**
+     - Colonne 4 : Moyenne mensuelle (2) -> **IGNOREZ POUR LA CONSOMMATION**
+     - Colonne 5 : **Quantité (1) -> C'EST ICI QU'EST LA CONSOMMATION (EX: 501, 19)**
+   - CONSOMMATION (ÉLEC) : Cherchez la ligne qui commence par "Électricité" (كهرباء). Prenez la valeur dans la Colonne 5 (ex: "501"). **NE PRENEZ PAS "99.376"** (qui est le montant total élec).
+   - CONSOMMATION (GAZ) : Cherchez la ligne qui commence par "Gaz" (غاز). Prenez la valeur dans la Colonne 5 (ex: "19"). **NE PRENEZ PAS "7.389"** (qui est le montant total gaz).
 
 **RÈGLES D'OR (CRITIQUE) :**
+- **ANTI-TOTAL** : Ne confondez JAMAIS une quantité (ex: 501 kWh) avec un montant monétaire (ex: 99.376 TND). Les quantités (colonne 5) sont souvent des entiers simples. Les montants (colonne 2) ont souvent 3 décimales (ex: 4,389).
+- **LIGNES TOTALES** : Ignorez les lignes "TOTAL ÉLECTRICITÉ", "TOTAL GAZ", "TOTAL SERVICES" pour l'extraction des quantités. Les quantités sont sur les lignes de base ("Électricité", "Gaz").
 - **NON-DUPLICATION** : Ne répétez JAMAIS un chiffre s'il apparaît plusieurs fois (ex: si "13" est écrit deux fois, extrayez "13", pas "133" ou "26").
 - **DATES PASSÉES** : Acceptez et extrayez TOUTES les dates, même si elles sont en 2024, 2025 ou avant. Ne les ignorez jamais parce qu'elles sont passées.
-- **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez la case "Consommation" ou "كمية الإستهلاك". Si plusieurs paliers, prenez le TOTAL.
-- **UNITÉS** : Extrayez le nombre pur ou avec l'unité (ex: "145", "145 kWh", "22 m3").
+- **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez la case "Consommation" ou "الكمية". Si plusieurs paliers, prenez le TOTAL des quantités uniquement.
+- **UNITÉS** : Extrayez le nombre pur ou avec l'unitée (ex: "501", "19", "145 kWh", "22 m3").
 - **RÉALISME** : Une consommation d'eau domestique est souvent un petit nombre (ex: 13). Ne confondez pas avec l'index du compteur (ex: 384) ou le montant total.
 
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
 - **dueDate** : Date limite (AAAA-MM-JJ). **EXTRAYEZ MÊME SI LA DATE EST PASSÉE.** Pour SONEDE, elle est TOUJOURS en bas à gauche.
-- **consumptionQuantity** : VOLUME D'EAU (m3) pour SONEDE, ou ÉLECTRICITÉ (kWh) pour STEG. Prenez la valeur UNIQUE (ex: "13") même si répétée sur la facture.
-- **gasConsumptionQuantity** : VOLUME DE GAZ (m3) pour STEG.
+- **consumptionQuantity** : ÉLECTRICITÉ (kWh) pour STEG (Colonne 5), ou VOLUME D'EAU (m3) pour SONEDE. Prenez la valeur UNIQUE (ex: "501") même si répétée sur la facture.
+- **gasConsumptionQuantity** : VOLUME DE GAZ (m3) pour STEG (Colonne 5, ex: "19").
 - **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / à / Du / Au).
 - **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM".
 
