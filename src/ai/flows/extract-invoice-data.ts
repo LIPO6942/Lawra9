@@ -67,12 +67,28 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 **RÈGLES D'EXTRACTION DES DONNÉES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
-- **dueDate** : Date limite (AAAA-MM-JJ). **EXTRAYEZ MÊME SI LA DATE EST PASSÉE.** Pour SONEDE, elle est en bas à gauche. Pour STEG, c'est la date de GAUCHE du bloc en bas à droite.
+- **dueDate** : Date limite (FORMAT STRICT : AAAA-MM-JJ). **EXTRAYEZ MÊME SI LA DATE EST PASSÉE.** 
+   - Pour SONEDE : Elle est en bas à gauche.
+   - Pour STEG : C'est la date dans le cadre de **GAUCHE** ("Prière de payer") en bas à droite. Ignorez la date de DROITE.
+   - Si la date est "11/12/2025", retournez "2025-12-11".
 - **consumptionQuantity** : ÉLECTRICITÉ (kWh) pour STEG (Colonne 5, ex: "501"), ou VOLUME D'EAU (m3) pour SONEDE.
 - **gasConsumptionQuantity** : VOLUME DE GAZ (m3) pour STEG (Colonne 5, ex: "19").
-- **billingStartDate** / **billingEndDate** : Dates de la période STEG (من / à / Du / Au).
-- **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM".
+- **billingStartDate** / **billingEndDate** : Dates de la période STEG (FORMAT STRICT : AAAA-MM-JJ).
+- **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM". 
+- **supplier** : Nom du fournisseur (ex: "STEG", "SONEDE", "Ooredoo", "Monoprix").
+- **invoiceNumber** : Numéro de facture.
 
+**EXEMPLE DE RÉPONSE JSON :**
+{
+  "documentType": "STEG",
+  "amount": "72.345",
+  "dueDate": "2025-12-11",
+  "consumptionQuantity": "501",
+  "gasConsumptionQuantity": "19",
+  "billingStartDate": "2025-07-15",
+  "billingEndDate": "2025-11-14",
+  "supplier": "STEG"
+}
 IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DONNÉE N'EST PAS CLAIRE, CHERCHEZ MIEUX, MAIS NE LAISSEZ VIDE QUE SI VRAIMENT ABSENTE.`;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {

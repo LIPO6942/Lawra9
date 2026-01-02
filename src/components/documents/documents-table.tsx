@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -59,13 +58,12 @@ const StatusBadge = ({ dueDate, category }: { dueDate: string | undefined, categ
 
 const formatDateSafe = (dateString?: string, dateFormat = 'd MMM yyyy') => {
     if (!dateString) return null;
-    const date = parseISO(dateString); // Works for 'YYYY-MM' as well, defaults to 1st day
+    const date = parseISO(dateString);
     if (isValid(date)) {
         return format(date, dateFormat, { locale: fr });
     }
     return null;
 };
-
 
 interface DocumentsTableProps {
     documents: Document[];
@@ -88,8 +86,6 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
 
     const docIds = useMemo(() => documents.map(d => d.id), [documents]);
 
-    // This effect ensures that selections are cleared if the underlying documents list changes (e.g., due to search)
-    // but preserves selections when only the parent list of all documents changes.
     useMemo(() => {
         const currentDocIds = new Set(docIds);
         const newSelectedIds = new Set<string>();
@@ -108,7 +104,6 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [docIds]);
-
 
     const handleSelect = (docId: string, isSelected: boolean) => {
         const newSelectedIds = new Set(selectedIds);
@@ -155,7 +150,6 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
     const EditDialogComponent = isMaison ? MaisonUploadDialog : UploadDocumentDialog;
     const DetailsDialogComponent = isMaison ? MaisonDetailsDialog : DocumentDetailsDialog;
 
-
     if (documents.length === 0) {
         return isMaison ? (
             <div className="flex flex-col items-center justify-center text-center py-16 rounded-lg bg-muted/50">
@@ -178,7 +172,6 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                         const fileCount = doc.files?.length || 0;
                         const daysDiff = doc.dueDate && isValid(parseISO(doc.dueDate)) ? differenceInDays(parseISO(doc.dueDate), new Date()) : null;
 
-
                         return (
                             <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">
                                 {!isMaison && onSelectionChange && (
@@ -189,137 +182,154 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         aria-label={`Sélectionner ${doc.name}`}
                                     />
                                 )}
-                                {isMaison && (
-                                    <div className="hidden sm:block">
-                                        <CategoryIcon category={doc.category} />
+
+                                <div className="shrink-0">
+                                    <CategoryIcon category={doc.category} />
+                                </div>
+
+                                <div className="flex-1 min-w-0 flex flex-col gap-1 cursor-pointer" onClick={() => handleViewFile(doc.id)}>
+                                    <div className="flex items-center justify-between gap-2 overflow-hidden">
+                                        <p className="font-semibold truncate text-[13px] sm:text-base leading-tight flex-1">
+                                            {((doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && doc.consumptionPeriod) ? (
+                                                (() => {
+                                                    const parts = doc.consumptionPeriod.split('-');
+                                                    if (parts.length < 2) return doc.consumptionPeriod;
+                                                    const year = parts[0];
+                                                    const months = parts.slice(1).map(m => {
+                                                        try {
+                                                            const d = new Date(parseInt(year), parseInt(m) - 1, 1);
+                                                            return format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                        } catch (e) { return m; }
+                                                    });
+                                                    const formattedMonths = months.join('-');
+                                                    return formattedMonths.charAt(0).toUpperCase() + formattedMonths.slice(1) + ' ' + year;
+                                                })()
+                                            ) : (
+                                                doc.name
+                                            )}
+                                        </p>
+                                        {!isMaison && (
+                                            <div className="shrink-0 scale-90 origin-right">
+                                                <StatusBadge dueDate={doc.dueDate} category={doc.category} />
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id)}>
-                                    <div className="flex flex-col gap-1 mt-0.5">
-                                        <div className="flex items-center justify-between gap-2 overflow-hidden">
-                                            <p className="font-semibold truncate text-[13px] sm:text-base leading-tight flex-1">
-                                                {doc.name}
-                                            </p>
-                                            {!isMaison && (
-                                                <div className="shrink-0 scale-90 origin-right">
-                                                    <StatusBadge dueDate={doc.dueDate} category={doc.category} />
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        <div className="flex items-center gap-x-2.5 gap-y-1 text-[10.5px] sm:text-xs text-muted-foreground/90 overflow-x-auto no-scrollbar py-0.5">
-                                            {isMaison && doc.amount && (
-                                                <div className="flex items-center gap-1 font-mono text-foreground shrink-0 bg-secondary/20 px-1 rounded">
-                                                    <CircleDollarSign className="h-2.5 w-2.5 text-blue-500" />
-                                                    <span>{doc.amount}</span>
-                                                </div>
-                                            )}
+                                    <div className="flex items-center gap-x-2.5 text-[10.5px] sm:text-xs text-muted-foreground/90 overflow-x-auto no-scrollbar py-0.5">
+                                        {isMaison && doc.amount && (
+                                            <div className="flex items-center gap-1 font-mono text-foreground shrink-0 bg-secondary/20 px-1 rounded">
+                                                <CircleDollarSign className="h-2.5 w-2.5 text-blue-500" />
+                                                <span>{doc.amount}</span>
+                                            </div>
+                                        )}
 
-                                            {dueDate && !isMaison ? (
-                                                <div className={cn("flex items-center gap-1 font-semibold shrink-0 bg-secondary/20 px-1 rounded",
-                                                    daysDiff !== null && daysDiff < 0 && "text-destructive",
-                                                    daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
-                                                    daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
-                                                )}>
-                                                    <AlertTriangle className="h-2.5 w-2.5" />
-                                                    <span>{dueDate}</span>
-                                                </div>
-                                            ) : docDate && (
-                                                <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded">
-                                                    <CalendarDays className="h-2.5 w-2.5" />
-                                                    <span>{docDate}</span>
-                                                </div>
-                                            )}
+                                        {dueDate && !isMaison ? (
+                                            <div className={cn("flex items-center gap-1 font-semibold shrink-0 bg-secondary/20 px-1 rounded",
+                                                daysDiff !== null && daysDiff < 0 && "text-destructive",
+                                                daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
+                                                daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
+                                            )}>
+                                                <AlertTriangle className="h-2.5 w-2.5" />
+                                                <span>{dueDate}</span>
+                                            </div>
+                                        ) : docDate && !isMaison && (
+                                            <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded">
+                                                <CalendarDays className="h-2.5 w-2.5" />
+                                                <span>{docDate}</span>
+                                            </div>
+                                        )}
 
-                                            {!isMaison && (doc.consumptionQuantity || doc.gasConsumptionQuantity) && (
-                                                <div className="flex items-center gap-1 text-foreground font-medium shrink-0 bg-secondary/30 px-1.5 rounded">
-                                                    {doc.category === 'STEG' ? <Zap className="h-3 w-3 text-yellow-500" /> : <Droplets className="h-3 w-3 text-blue-500" />}
-                                                    <span>
-                                                        {doc.consumptionQuantity && `${doc.consumptionQuantity}kWh`}
-                                                        {doc.consumptionQuantity && doc.gasConsumptionQuantity && ' / '}
-                                                        {doc.gasConsumptionQuantity && `${doc.gasConsumptionQuantity}m3`}
-                                                    </span>
-                                                </div>
-                                            )}
+                                        {!dueDate && !docDate && !isMaison && (
+                                            <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded border border-secondary/50">
+                                                <CalendarDays className="h-2.5 w-2.5" />
+                                                <span className="text-[10px]">Date abs.</span>
+                                            </div>
+                                        )}
 
-                                            {!isMaison && doc.consumptionPeriod && (
-                                                <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50 px-1.5 rounded">
-                                                    <CalendarDays className="h-3 w-3 shrink-0" />
-                                                    <span>
-                                                        {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
-                                                            (() => {
-                                                                const parts = doc.consumptionPeriod.split('-');
-                                                                const year = parts[0].slice(-2); // Short year '25'
-                                                                const months = parts.slice(1).map(m => {
-                                                                    try {
-                                                                        const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
-                                                                        return format(d, 'MMM', { locale: fr }).replace('.', '');
-                                                                    } catch (e) { return m; }
-                                                                });
-                                                                return `${months.join('-')} ${year}`;
-                                                            })()
-                                                        ) : doc.consumptionPeriod}
-                                                    </span>
-                                                </div>
-                                            )}
+                                        {/* Period badge - Only show if it wasn't used as title */}
+                                        {!isMaison && doc.consumptionPeriod && !(doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && (
+                                            <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50/80 px-1.5 rounded border border-blue-100/50">
+                                                <CalendarDays className="h-2.5 w-2.5 shrink-0" />
+                                                <span>
+                                                    {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
+                                                        (() => {
+                                                            const parts = doc.consumptionPeriod.split('-');
+                                                            const year = parts[0].slice(-2);
+                                                            const months = parts.slice(1).map(m => {
+                                                                try {
+                                                                    const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
+                                                                    return format(d, 'MMM', { locale: fr }).replace('.', '').toLowerCase();
+                                                                } catch (e) { return m; }
+                                                            });
+                                                            return `${months.join('-')} ${year}`;
+                                                        })()
+                                                    ) : doc.consumptionPeriod}
+                                                </span>
+                                            </div>
+                                        )}
 
-                                            {isMaison && fileCount > 0 && (
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    <FileText className="h-3 w-3" />
-                                                    <span>{fileCount} f.</span>
-                                                </div>
-                                            )}
+                                        {!isMaison && (doc.consumptionQuantity || doc.gasConsumptionQuantity) && (
+                                            <div className="flex items-center gap-1 text-foreground font-medium shrink-0 bg-secondary/40 px-1.5 rounded border border-secondary/50">
+                                                {doc.category === 'STEG' ? <Zap className="h-2.5 w-2.5 text-yellow-500" /> : <Droplets className="h-2.5 w-2.5 text-blue-500" />}
+                                                <span>
+                                                    {doc.consumptionQuantity && `${doc.consumptionQuantity}kWh`}
+                                                    {doc.consumptionQuantity && doc.gasConsumptionQuantity && '·'}
+                                                    {doc.gasConsumptionQuantity && `${doc.gasConsumptionQuantity}m3`}
+                                                </span>
+                                            </div>
+                                        )}
 
-                                            {isMaison && periodStart && periodEnd && (
-                                                <div className="flex items-center gap-1 shrink-0 text-green-600 font-medium">
-                                                    <CalendarDays className="h-3 w-3 text-green-500" />
-                                                    <span>{`${periodStart}-${periodEnd}`}</span>
-                                                </div>
-                                            )}
+                                        {isMaison && fileCount > 0 && (
+                                            <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded border border-secondary/50">
+                                                <FileText className="h-2.5 w-2.5" />
+                                                <span>{fileCount} f.</span>
+                                            </div>
+                                        )}
 
-                                            {isMaison && doc.notes && (
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    <MessageSquare className="h-3 w-3" />
-                                                </div>
-                                            )}
-                                        </div>
+                                        {isMaison && periodStart && periodEnd && (
+                                            <div className="flex items-center gap-1 shrink-0 text-green-700 font-medium bg-green-50 px-1 rounded border border-green-100">
+                                                <CalendarDays className="h-2.5 w-2.5 text-green-600" />
+                                                <span>{`${periodStart}-${periodEnd}`}</span>
+                                            </div>
+                                        )}
+
+                                        {isMaison && doc.notes && (
+                                            <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded border border-secondary/50">
+                                                <MessageSquare className="h-2.5 w-2.5" />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex-shrink-0">
-                                    {isDeleting === doc.id ? (
-                                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                                    ) : (
-                                        <div className="flex items-center">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openDetailsModal(doc)}>
-                                                <Info className="h-4 w-4" />
+
+                                <div className="shrink-0 flex items-center">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={(e) => { e.stopPropagation(); openDetailsModal(doc); }}>
+                                        <Info className="h-4 w-4" />
+                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                                                <span className="sr-only">Ouvrir le menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
                                             </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                                        <span className="sr-only">Ouvrir le menu</span>
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => openEditModal(doc)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Détails / Modifier
-                                                    </DropdownMenuItem>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openEditModal(doc)}>
+                                                <Edit className="mr-2 h-4 w-4" />
+                                                Détails / Modifier
+                                            </DropdownMenuItem>
 
-                                                    <DropdownMenuItem onClick={() => handleViewFile(doc.id)}>
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        Consulter le fichier
-                                                    </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleViewFile(doc.id)}>
+                                                <Eye className="mr-2 h-4 w-4" />
+                                                Consulter le fichier
+                                            </DropdownMenuItem>
 
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Supprimer
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    )}
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => { e.preventDefault(); confirmDelete(doc); }}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Supprimer
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             </div>
                         );
