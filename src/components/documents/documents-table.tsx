@@ -195,76 +195,94 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                     </div>
                                 )}
                                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewFile(doc.id)}>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <p className="font-semibold pr-2 break-words">{doc.name}</p>
-
+                                    <div className="flex flex-col gap-1 mt-0.5">
+                                        <div className="flex items-center justify-between gap-2 overflow-hidden">
+                                            <p className="font-semibold truncate text-[13px] sm:text-base leading-tight flex-1">
+                                                {doc.name}
+                                            </p>
+                                            {!isMaison && (
+                                                <div className="shrink-0 scale-90 origin-right">
+                                                    <StatusBadge dueDate={doc.dueDate} category={doc.category} />
+                                                </div>
+                                            )}
                                         </div>
-                                        {!isMaison && (
-                                            <div className="flex-shrink-0 ml-4">
-                                                <StatusBadge dueDate={doc.dueDate} category={doc.category} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm mt-2 text-muted-foreground/90">
-                                        {isMaison && doc.amount && (
-                                            <div className="flex items-center gap-1.5 font-mono text-foreground whitespace-nowrap">
-                                                <CircleDollarSign className="h-3.5 w-3.5" />
-                                                <span>{doc.amount} TND</span>
-                                            </div>
-                                        )}
-                                        {dueDate && !isMaison ? (
-                                            <div className={cn("flex items-center gap-1.5 font-semibold whitespace-nowrap",
-                                                daysDiff !== null && daysDiff < 0 && "text-destructive",
-                                                daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
-                                                daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
-                                            )}>
-                                                <AlertTriangle className="h-3.5 w-3.5" />
-                                                <span>Échéance: {dueDate}</span>
-                                            </div>
-                                        ) : docDate && (
-                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                                <CalendarDays className="h-3.5 w-3.5" />
-                                                <span>{docDate}</span>
-                                            </div>
-                                        )}
-                                        {isMaison && fileCount > 0 && (
-                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                                <FileText className="h-3.5 w-3.5" />
-                                                <span>{fileCount} fichier{fileCount > 1 ? 's' : ''}</span>
-                                            </div>
-                                        )}
-                                        {isMaison && periodStart && periodEnd && (
-                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                                <CalendarDays className="h-3.5 w-3.5 text-green-500" />
-                                                <span className="text-green-600 font-medium">{`${periodStart} - ${periodEnd}`}</span>
-                                            </div>
-                                        )}
-                                        {!isMaison && doc.consumptionPeriod && (
-                                            <div className="flex items-center gap-1.5 text-blue-600 font-medium whitespace-nowrap min-w-max">
-                                                <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                                                <span className="truncate">
-                                                    {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
-                                                        (() => {
-                                                            const parts = doc.consumptionPeriod.split('-');
-                                                            const year = parts[0];
-                                                            const months = parts.slice(1).map(m => {
-                                                                try {
-                                                                    const d = new Date(parseInt(year), parseInt(m) - 1, 1);
-                                                                    return format(d, 'MMM', { locale: fr });
-                                                                } catch (e) { return m; }
-                                                            });
-                                                            return `${year} ${months.join('-')}`;
-                                                        })()
-                                                    ) : doc.consumptionPeriod}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {isMaison && doc.notes && (
-                                            <div className="flex items-center gap-1.5">
-                                                <MessageSquare className="h-3.5 w-3.5" />
-                                            </div>
-                                        )}
+
+                                        <div className="flex items-center gap-x-2.5 gap-y-1 text-[10.5px] sm:text-xs text-muted-foreground/90 overflow-x-auto no-scrollbar py-0.5">
+                                            {isMaison && doc.amount && (
+                                                <div className="flex items-center gap-1 font-mono text-foreground shrink-0 bg-secondary/20 px-1 rounded">
+                                                    <CircleDollarSign className="h-2.5 w-2.5 text-blue-500" />
+                                                    <span>{doc.amount}</span>
+                                                </div>
+                                            )}
+
+                                            {dueDate && !isMaison ? (
+                                                <div className={cn("flex items-center gap-1 font-semibold shrink-0 bg-secondary/20 px-1 rounded",
+                                                    daysDiff !== null && daysDiff < 0 && "text-destructive",
+                                                    daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
+                                                    daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
+                                                )}>
+                                                    <AlertTriangle className="h-2.5 w-2.5" />
+                                                    <span>{dueDate}</span>
+                                                </div>
+                                            ) : docDate && (
+                                                <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded">
+                                                    <CalendarDays className="h-2.5 w-2.5" />
+                                                    <span>{docDate}</span>
+                                                </div>
+                                            )}
+
+                                            {!isMaison && (doc.consumptionQuantity || doc.gasConsumptionQuantity) && (
+                                                <div className="flex items-center gap-1 text-foreground font-medium shrink-0 bg-secondary/30 px-1.5 rounded">
+                                                    {doc.category === 'STEG' ? <Zap className="h-3 w-3 text-yellow-500" /> : <Droplets className="h-3 w-3 text-blue-500" />}
+                                                    <span>
+                                                        {doc.consumptionQuantity && `${doc.consumptionQuantity}kWh`}
+                                                        {doc.consumptionQuantity && doc.gasConsumptionQuantity && ' / '}
+                                                        {doc.gasConsumptionQuantity && `${doc.gasConsumptionQuantity}m3`}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {!isMaison && doc.consumptionPeriod && (
+                                                <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50 px-1.5 rounded">
+                                                    <CalendarDays className="h-3 w-3 shrink-0" />
+                                                    <span>
+                                                        {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
+                                                            (() => {
+                                                                const parts = doc.consumptionPeriod.split('-');
+                                                                const year = parts[0].slice(-2); // Short year '25'
+                                                                const months = parts.slice(1).map(m => {
+                                                                    try {
+                                                                        const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
+                                                                        return format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                                    } catch (e) { return m; }
+                                                                });
+                                                                return `${months.join('-')} ${year}`;
+                                                            })()
+                                                        ) : doc.consumptionPeriod}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {isMaison && fileCount > 0 && (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <FileText className="h-3 w-3" />
+                                                    <span>{fileCount} f.</span>
+                                                </div>
+                                            )}
+
+                                            {isMaison && periodStart && periodEnd && (
+                                                <div className="flex items-center gap-1 shrink-0 text-green-600 font-medium">
+                                                    <CalendarDays className="h-3 w-3 text-green-500" />
+                                                    <span>{`${periodStart}-${periodEnd}`}</span>
+                                                </div>
+                                            )}
+
+                                            {isMaison && doc.notes && (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <MessageSquare className="h-3 w-3" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0">
