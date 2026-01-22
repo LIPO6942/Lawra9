@@ -172,7 +172,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                         const fileCount = doc.files?.length || 0;
                         const daysDiff = doc.dueDate && isValid(parseISO(doc.dueDate)) ? differenceInDays(parseISO(doc.dueDate), new Date()) : null;
 
-                        const isCoreBill = (doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.name === doc.category) && (doc.consumptionPeriod || (doc.billingStartDate && doc.billingEndDate));
+                        const isCoreBill = (doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.category === 'Internet' || doc.name === doc.category) && (doc.consumptionPeriod || (doc.billingStartDate && doc.billingEndDate));
 
                         return (
                             <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">

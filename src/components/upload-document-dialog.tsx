@@ -327,7 +327,19 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       }
 
       setProcessingMessage('Analyse du document...');
-      const documentDataUri = await fileToDataUrl(finalFile);
+      let documentDataUri = await fileToDataUrl(finalFile);
+
+      // If PDF, convert to image for Groq
+      if (finalFile.type === 'application/pdf') {
+        setProcessingMessage('Conversion du PDF...');
+        try {
+          const { convertPdfToImage } = await import('@/lib/pdf-utils');
+          documentDataUri = await convertPdfToImage(finalFile);
+        } catch (e) {
+          console.error('PDF conversion failed:', e);
+          throw new Error("La conversion du PDF a échoué. Essayez de prendre une photo à la place.");
+        }
+      }
 
       const result: AnalysisResult = await extractInvoiceData({
         invoiceDataUri: documentDataUri,

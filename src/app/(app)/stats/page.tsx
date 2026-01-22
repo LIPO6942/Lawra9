@@ -19,6 +19,7 @@ const expenseCategoryConfig = {
     sonede: { label: "SONEDE", color: "hsl(var(--chart-1))" },
     internet: { label: "Internet", color: "hsl(var(--chart-3))" },
     caisse: { label: "Recus de caisse", color: "hsl(var(--chart-6))" },
+    autre: { label: "Autre", color: "hsl(var(--chart-5))" },
 };
 
 const categoryMap: Record<string, string> = {

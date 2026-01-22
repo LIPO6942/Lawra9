@@ -1,7 +1,5 @@
-
 'use server';
 
-import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ExtractInvoiceDataInputSchema = z.object({
@@ -31,7 +29,7 @@ const ExtractInvoiceDataOutputSchema = z.object({
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
-const INVOICE_PROMPT = `Vous êtes un expert en factures tunisiennes (STEG, SONEDE, Orange, Ooredoo, Topnet, etc.).
+const INVOICE_PROMPT = `Vous êtes un expert en factures tunisiennes (STEG, SONEDE, Orange, Ooredoo, Topnet, GlobalNet, Tunisie Telecom, etc.).
 Votre mission est d'extraire les données avec une précision chirurgicale.
 
 **DÉTERMINATION DU FOURNISSEUR (CRITIQUE) :**
@@ -54,12 +52,15 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
      - Colonne 5 : **Quantité (1) -> C'EST ICI QU'EST LA CONSOMMATION (EX: 501 pour Élec, 19 pour Gaz)**. 
    - CONSOMMATION (ÉLEC) : Ligne "Électricité". Prenez la valeur sous "Quantité (1)" ou "الكمية" (ex: "501").
    - CONSOMMATION (GAZ) : Ligne "Gaz". Prenez la valeur sous "Quantité (1)" ou "الكمية" (ex: "19"). **NE PRENEZ PAS la valeur sous "Moyenne (2)" (ex: 4).**
+3. **INTERNET** :
+   - RECHERCHEZ : "Orange", "Ooredoo", "Topnet", "GlobalNet", "Tunisie Telecom", "Bee", "Gnet", "Ooredoo Tunisia".
+   - RÈGLE : Si l'un de ces mots apparaît (fournisseurs Internet), le \`documentType\` doit être "Internet" et le \`supplier\` doit être le nom du fournisseur.
 
 **RÈGLES D'OR (CRITIQUE) :**
 - **ANTI-TOTAL** : Ne confondez JAMAIS une quantité (ex: 501 kWh) avec un montant monétaire (ex: 99.376 TND). Les quantités (colonne 5) sont souvent des entiers simples. Les montants (colonne 2) ont souvent 3 décimales.
-- **DATES STEG** : Dans le bloc "Echéance/Prochain relevé" en bas, priorisez TOUJOURS le bloc le plus à gauche ou celui titré "Prière de payer".
+- **DATES STEG** : Dans le bloc "Echéance/Prochain relevé" en bas, priorisez TOUJOURS le bloc le plus à gauche or celui titré "Prière de payer".
 - **NON-DUPLICATION** : Ne répétez JAMAIS un chiffre s'il apparaît plusieurs fois (ex: si "13" est écrit deux fois, extrayez "13", pas "133" ou "26").
-- **DATES PASSÉES** : Acceptez et extrayez TOUTES les dates, même si elles sont en 2024, 2025 ou avant.
+- **DATES PASSÉES** : Acceptez et extrayez TOUTES les dates, même si elles sont en 2024, 2025 or avant.
 - **CONSOMMATION OBLIGATOIRE** : Pour SONEDE (m3) et STEG (kWh), vous DEVEZ trouver une quantité. Cherchez la case "الكمية". Si plusieurs paliers, prenez le TOTAL des quantités uniquement. Pour l'électricité, utilisez le champ 'consumptionQuantity'.
 - **UNITÉS** : Extrayez le nombre pur sans l'unité (ex: "501", "13"). Le système se chargera de l'unité selon le type.
 - **RÉALISME** : Une consommation d'eau domestique est souvent un petit nombre (ex: 13). Ne confondez pas avec l'index ou le montant. Une consommation d'électricité est souvent un nombre à 2 ou 3 chiffres (ex: 501).
@@ -75,19 +76,16 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 - **gasConsumptionQuantity** : VOLUME DE GAZ (m3) pour STEG (Colonne 5, ex: "19").
 - **billingStartDate** / **billingEndDate** : Dates de la période STEG (FORMAT STRICT : AAAA-MM-JJ).
 - **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM". 
-- **supplier** : Nom du fournisseur (ex: "STEG", "SONEDE", "Ooredoo", "Monoprix").
+- **supplier** : Nom du fournisseur (ex: "STEG", "SONEDE", "Orange", "Topnet", "Ooredoo", "Monoprix").
 - **invoiceNumber** : Numéro de facture.
 
 **EXEMPLE DE RÉPONSE JSON :**
 {
-  "documentType": "STEG",
-  "amount": "72.345",
-  "dueDate": "2025-12-11",
-  "consumptionQuantity": "501",
-  "gasConsumptionQuantity": "19",
-  "billingStartDate": "2025-07-15",
-  "billingEndDate": "2025-11-14",
-  "supplier": "STEG"
+  "documentType": "Internet",
+  "amount": "45.000",
+  "dueDate": "2025-10-15",
+  "supplier": "Orange",
+  "invoiceNumber": "INV-2025-001"
 }
 IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. SI UNE DONNÉE N'EST PAS CLAIRE, CHERCHEZ MIEUX, MAIS NE LAISSEZ VIDE QUE SI VRAIMENT ABSENTE.`;
 
@@ -130,28 +128,8 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
 }
 
 export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput> {
-  // 1. Try Groq (Preferred but ONLY for images)
-  const isImage = input.mimeType?.startsWith('image/') || !input.mimeType?.includes('pdf');
-  if (isImage) {
-    const groqRes = await extractWithGroq(input);
-    if (groqRes) return groqRes;
-  } else {
-    console.log('[ExtractInvoice] PDF detected, bypassing Groq.');
-  }
+  const groqRes = await extractWithGroq(input);
+  if (groqRes) return groqRes;
 
-  // 2. Fallback to Gemini
-  try {
-    const result = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      prompt: [
-        { text: INVOICE_PROMPT },
-        { media: { url: input.invoiceDataUri, contentType: input.mimeType || 'image/jpeg' } },
-      ],
-      output: { schema: ExtractInvoiceDataOutputSchema },
-    });
-    if (result.output) return result.output;
-    throw new Error("No output from Gemini");
-  } catch (err: any) {
-    throw new Error(`Analyse IA impossible: ${err.message}`);
-  }
+  throw new Error("L'analyse avec Groq a échoué. Veuillez vous assurer que le document est lisible.");
 }
