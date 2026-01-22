@@ -130,9 +130,14 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
 }
 
 export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput> {
-  // 1. Try Groq (Preferred)
-  const groqRes = await extractWithGroq(input);
-  if (groqRes) return groqRes;
+  // 1. Try Groq (Preferred but ONLY for images)
+  const isImage = input.mimeType?.startsWith('image/') || !input.mimeType?.includes('pdf');
+  if (isImage) {
+    const groqRes = await extractWithGroq(input);
+    if (groqRes) return groqRes;
+  } else {
+    console.log('[ExtractInvoice] PDF detected, bypassing Groq.');
+  }
 
   // 2. Fallback to Gemini
   try {
