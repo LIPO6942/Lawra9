@@ -96,29 +96,6 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
           productKey: normalizeProductKey(label),
         };
 
-        const text = (label || '').toLowerCase().replace(',', '.');
-        const packMatch = text.match(/(\d{1,3})\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*=\s*(\d+(?:\.\d+)?))?/);
-        if (packMatch) {
-          const qty = parseInt(packMatch[1]);
-          const unitP = parseFloat(packMatch[2]);
-          const totalP = packMatch[3] ? parseFloat(packMatch[3]) : (isFinite(qty * unitP) ? qty * unitP : undefined);
-          if (!isNaN(qty) && qty > 0 && qty <= 200) {
-            line.quantity = line.quantity && line.quantity > 1 ? line.quantity : qty;
-            line.unit = line.unit || 'pcs';
-          }
-          if (!isNaN(unitP)) line.unitPrice = line.unitPrice ?? unitP;
-          if (totalP != null && !isNaN(totalP)) line.lineTotal = line.lineTotal ?? parseFloat(totalP.toFixed(3));
-        }
-
-        if ((line.quantity == null || line.quantity === 1) && line.unitPrice != null && line.lineTotal != null && line.unitPrice > 0) {
-          const q = Math.round((line.lineTotal / line.unitPrice) * 1000) / 1000;
-          const qi = Math.round(q);
-          if (Number.isFinite(qi) && qi >= 1 && qi <= 200 && Math.abs(q - qi) < 0.05) {
-            line.quantity = qi;
-            line.unit = line.unit || 'pcs';
-          }
-        }
-
         const learned = line.productKey ? getLearnedPackQty(line.productKey, res.storeName) : undefined;
         if (learned && (!line.quantity || line.quantity <= 1 || line.quantity < learned)) {
           line.quantity = learned;

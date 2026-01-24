@@ -42,35 +42,24 @@ const getReceiptPrompt = () => {
   return `Tu es un expert en extraction de données OCR pour tous types de reçus et tickets de caisse (Carrefour Tunisie, Monoprix, MG, Géant, Aziza, pharmacie, restaurant, etc.).
 Analyse cette image et extrais TOUS les produits ou services listés.
 
-CATÉGORIES ATTENDUES (SOIS PRÉCIS) :
-- Eau (Sabrine, Safia, Melliti, Pristine, Aqualine, Marwa...)
-- Boissons (Jus, Soda, Café, Thé, Delio, Schweppes...)
-- Frais (Lait, Yaourt, Fromage, Oeufs, Beurre...)
-- Pâtes (Spaghetti, Macaroni, Couscous...)
-- Epicerie Salée (Huile, Tomate, Harissa, Thon, Riz, Farine, Sel...)
-- Epicerie Sucrée (Biscuits, Gaufres, Chocolat, Chamia, Confiture...)
-- Fruits & Légumes (Pommes, Bananes, Oignons, Pommes de terre...)
-- Boulangerie & Pâtisserie (Pain, Baguettes, Croissants...)
-- Boucherie & Volaille (Viande, Poulet, Salami...)
-- Hygiène & Soin (Savon, Shampoing, Dentifrice, Coton...)
-- Entretien (Lessive, Javel, Liquide Vaisselle...)
-- Maison & Divers (Piles, Ampoule, Ustensiles...)
+STRUCTURE TYPIQUE D'UN PRODUIT (EX: CARREFOUR) :
+1. LIGNE 1 : Libellé du produit (ex: "2L EAU PRISTINE") et souvent le TOTAL de la ligne à droite (ex: "4.740d").
+2. Ligne 2 : Code-barres (13 chiffres, ex: "6191467300049").
+3. LIGNE 3 : Détail de la quantité et prix unitaire (ex: "6 x 0.790d").
+   -> ICI, la quantité est 6 et le prix unitaire est 0.790.
 
 RÈGLES CRITIQUES (TRÈS IMPORTANT) :
-1. DATE (purchaseAt) : 
-   - Extraits la date du ticket au format ISO YYYY-MM-DD.
-   - N'INVENTE JAMAIS DE DATE. Si la date n'est pas clairement visible ou illisible, laisse le champ "purchaseAt" vide ou null.
-2. CONSEILS DE FORMATAGE (MOTIFS COURANTS) :
-   - Pour Carrefour et certaines enseignes, les infos de quantité ("Qté x PrixUnit") sont souvent sur la ligne JUSTE EN-DESSOUS du libellé ou APRÈS le code-barres (ligne de 13 chiffres).
-   - Identifie intelligemment les associations Libellé <-> Quantité/Prix selon la structure du ticket.
-3. PRODUITS EN DOUBLE :
-   - Si un produit apparaît plusieurs fois (ex: Vermicelle listé sur deux lignes distinctes), fusionne-les en une seule ligne :
-     - Additionne les quantités.
-     - Garde le même prix unitaire.
-     - Recalcule le lineTotal = quantité * unitPrice.
-4. PRODUITS SPÉCIFIQUES :
-   - DELIO -> Catégorie "Boissons".
-   - PRISTINE, SAFIA, SABRINE -> Catégorie "Eau".
+1. NE JAMAIS RÉUTILISER la quantité d'un produit précédent pour le produit suivant. 
+2. Si une ligne contient "X x Y", X est TOUJOURS la quantité et Y est le prix unitaire. Extrais ces valeurs avec précision.
+3. DATE (purchaseAt) : format ISO YYYY-MM-DD. N'invente jamais.
+4. PRODUITS EN DOUBLE : Fusionne-les si le libellé est identique (additionne quantités et totaux).
+5. CATÉGORIES :
+   - Eau (Pristine, Safia, Sabrine, Melliti, Aqualine, Marwa...)
+   - Boissons (Jus, Soda, Café, Thé, Delio...)
+   - Frais (Lait, Yaourt, Fromage...)
+   - Pâtes (Spaghetti, Macaroni, Vermicelle...)
+   - Epicerie Salée (Huile, Tomate, Harissa, Farine, Semoule...)
+   - Epicerie Sucrée (Biscuits, Chocolat, Chamia, Cake...)
 
 Format de sortie JSON Strict:
 {
