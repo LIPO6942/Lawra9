@@ -116,26 +116,31 @@ export default function ReceiptsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header with Premium Style */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6 sm:p-8 border border-border/50 shadow-2xl shadow-primary/5">
-        <div className="absolute top-0 right-0 -mr-12 -mt-12 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 -ml-12 -mb-12 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
+    <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-0 pb-12">
+      {/* Ultra-Premium Compact Header */}
+      <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 p-5 sm:p-7 border border-white/10 shadow-2xl shadow-primary/20">
+        {/* Animated Mesh Gradient Background */}
+        <div className="absolute inset-0 opacity-40">
+          <div className="absolute top-[-20%] left-[-10%] h-[140%] w-[60%] rounded-full bg-primary/30 blur-[100px] animate-pulse" />
+          <div className="absolute bottom-[-20%] right-[-10%] h-[140%] w-[60%] rounded-full bg-accent/20 blur-[100px] animate-pulse delay-700" />
+        </div>
 
-        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
-            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 ring-1 ring-primary/20">
-              <Receipt className="h-7 w-7 text-primary" />
+        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-white/5 backdrop-blur-xl flex items-center justify-center ring-1 ring-white/20 shadow-inner">
+              <Receipt className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground">Gestion des Reçus</h1>
-            <p className="text-muted-foreground font-medium mt-1">Analyse et organisation intelligente de vos dépenses</p>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-white">Mes Reçus</h1>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Intelligence Artificielle</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap justify-center">
-            <Button asChild variant="ghost" className="rounded-full font-bold hover:bg-primary/5">
-              <Link href="/stats/receipts">Statistiques</Link>
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <Button asChild variant="ghost" className="h-9 px-4 rounded-full text-xs font-bold text-white/70 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
+              <Link href="/stats/receipts">Stats</Link>
             </Button>
-            <Button variant="outline" className="rounded-full font-bold border-2" onClick={() => {
+            <Button variant="outline" className="h-9 px-4 rounded-full text-xs font-bold text-white/90 border-white/20 bg-white/5 hover:bg-white/10" onClick={() => {
               const changes: ProposedChange[] = [];
               for (const rcpt of receipts) {
                 let linesUpdated = 0;
@@ -160,56 +165,54 @@ export default function ReceiptsPage() {
               Analyser
             </Button>
             <UploadReceiptDialog>
-              <Button size="lg" className="rounded-full shadow-xl shadow-primary/20 font-bold px-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
-                Scanner un reçu
+              <Button size="sm" className="h-10 px-6 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/40 font-black text-xs transition-transform active:scale-95">
+                + Nouveau Reçu
               </Button>
             </UploadReceiptDialog>
           </div>
         </div>
       </div>
 
-      {/* Grid of Receipts */}
+      {/* Grid of Receipts - Premium Cards */}
       {receipts.length === 0 ? (
-        <Card className="border-dashed py-20 rounded-[2.5rem] bg-muted/20">
+        <Card className="border-dashed py-16 rounded-[3rem] bg-gradient-to-b from-muted/50 to-background border-muted-foreground/20">
           <CardContent className="flex flex-col items-center justify-center text-center">
-            <div className="h-20 w-20 rounded-full bg-background/50 flex items-center justify-center mb-6 shadow-sm border border-border/50">
-              <Receipt className="h-10 w-10 text-muted-foreground/50" />
+            <div className="h-16 w-16 rounded-3xl bg-background/80 flex items-center justify-center mb-6 shadow-xl border border-border/50 rotate-3">
+              <Receipt className="h-8 w-8 text-primary/40" />
             </div>
-            <CardTitle className="text-2xl font-black tracking-tight mb-2">Aucun reçu trouvé</CardTitle>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-8">Commencez par scanner votre premier ticket de caisse pour une gestion simplifiée.</p>
-            <UploadReceiptDialog><Button size="lg" className="rounded-full px-10 shadow-lg hover:shadow-2xl transition-all duration-300">Ajouter maintenant</Button></UploadReceiptDialog>
+            <CardTitle className="text-xl font-black tracking-tight mb-2">Prêt à numériser ?</CardTitle>
+            <p className="text-sm text-muted-foreground max-w-[240px] mx-auto mb-8 font-medium">Scannez vos tickets pour obtenir une analyse instantanée de vos dépenses.</p>
+            <UploadReceiptDialog><Button size="lg" className="rounded-full px-8 shadow-xl hover:shadow-primary/20 transition-all duration-500 font-black">Commencer</Button></UploadReceiptDialog>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {receipts.map(rcpt => {
             const displayDate = rcpt.purchaseAt ? new Date(rcpt.purchaseAt) : today;
             return (
-              <Card key={rcpt.id} className="group relative overflow-hidden border-none rounded-[2rem] bg-gradient-to-tr from-background to-muted/30 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 ring-1 ring-border/50 hover:ring-primary/30">
-                <div className="absolute top-0 right-0 h-32 w-32 bg-primary/5 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Card key={rcpt.id} className="group relative overflow-hidden border border-border/40 rounded-[2.2rem] bg-white dark:bg-slate-900/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(30,30,30,0.1)] transition-all duration-700 hover:-translate-y-1 hover:border-primary/20 backdrop-blur-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
-                  <div className="flex flex-col gap-1.5 flex-1 mr-4 overflow-hidden">
-                    <CardTitle className="text-xl font-black text-foreground truncate group-hover:text-primary transition-colors">
-                      {rcpt.storeName || 'Magasin Inconnu'}
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 pt-6 px-7">
+                  <div className="flex flex-col gap-1 flex-1 mr-4 overflow-hidden z-10">
+                    <CardTitle className="text-xl font-black text-slate-800 dark:text-slate-100 truncate tracking-tight group-hover:text-primary transition-colors">
+                      {rcpt.storeName || 'Magasin'}
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center shadow-sm border border-border/50">
-                        <span className="text-[10px] font-black text-primary uppercase">{format(displayDate, 'MMM', { locale: fr })}</span>
-                      </div>
-                      <span className="text-xs font-bold text-muted-foreground tracking-tight">
-                        {rcpt.purchaseAt ? format(displayDate, 'dd MMM yyyy • HH:mm', { locale: fr }) : format(today, 'dd MMM yyyy (Aujourd\'hui)', { locale: fr })}
+                      <span className="text-[11px] font-bold text-slate-500/80 tracking-tight flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
+                        {format(displayDate, 'dd MMMM yyyy • HH:mm', { locale: fr })}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 bg-background/50 backdrop-blur-md rounded-full p-1 border border-border/50 shadow-sm">
-                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full hover:bg-primary hover:text-white transition-all duration-300" onClick={() => openBasicEditor(rcpt)}>
+                  <div className="flex items-center gap-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-sm z-10">
+                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl hover:bg-primary hover:text-white shadow-none transition-all duration-300" onClick={() => openBasicEditor(rcpt)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full hover:bg-primary hover:text-white transition-all duration-300" onClick={() => openLineEditor(rcpt.id)}>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl hover:bg-primary hover:text-white shadow-none transition-all duration-300" onClick={() => openLineEditor(rcpt.id)}>
                       <ListChecks className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full hover:bg-destructive hover:text-white transition-all duration-300" onClick={async () => {
+                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl hover:bg-destructive hover:text-white shadow-none transition-all duration-300" onClick={async () => {
                       if (confirm('Voulez-vous supprimer ce reçu ?')) await deleteReceipt(rcpt.id);
                     }}>
                       <Trash2 className="h-4 w-4" />
@@ -217,17 +220,22 @@ export default function ReceiptsPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="pt-2">
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex gap-2">
-                      <div className="px-3 py-1 rounded-xl bg-primary/10 text-primary text-[10px] font-black tracking-widest uppercase">{rcpt.lines?.length || 0} ARTICLES</div>
-                      <div className="px-3 py-1 rounded-xl bg-accent/10 text-accent text-[10px] font-black tracking-widest uppercase">AUTO-OK</div>
+                <CardContent className="pt-2 pb-7 px-7 z-10">
+                  <div className="flex items-end justify-between mt-1">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-1.5 items-center">
+                        <div className="px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-border/40 text-slate-500 dark:text-slate-400 text-[9px] font-black tracking-widest uppercase">{rcpt.lines?.length || 0} ARTICLES</div>
+                        {rcpt.status === 'parsed' && <div className="px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 text-[9px] font-black tracking-widest uppercase">SYSTÈME OK</div>}
+                      </div>
                     </div>
-                    <div className="relative">
-                      <span className="text-2xl font-black tracking-tighter text-foreground pr-1">
-                        {rcpt.total != null ? `${rcpt.total.toFixed(3)}` : '0.000'}
-                      </span>
-                      <span className="text-[10px] font-black text-muted-foreground/60 align-top mt-1 inline-block">TND</span>
+                    <div className="text-right">
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-[-2px]">Total TTC</div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
+                          {rcpt.total != null ? `${rcpt.total.toFixed(3)}` : '0.000'}
+                        </span>
+                        <span className="text-xs font-black text-primary/60">TND</span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -237,37 +245,37 @@ export default function ReceiptsPage() {
         </div>
       )}
 
-      {/* BASIC EDITOR DIALOG */}
+      {/* BASIC EDITOR DIALOG - Glassmorphism */}
       <Dialog open={basicEditorOpen} onOpenChange={setBasicEditorOpen}>
-        <DialogContent className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden glassmorphism">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-accent to-primary animate-gradient-x" />
-          <DialogHeader className="pt-6">
-            <DialogTitle className="text-2xl font-black tracking-tight text-center">Détails du Reçu</DialogTitle>
-            <DialogDescription className="text-center font-medium">Ajustez les métadonnées de votre dépense.</DialogDescription>
+        <DialogContent className="sm:max-w-md rounded-[3rem] border-white/20 shadow-[0_32px_120px_rgba(0,0,0,0.3)] overflow-hidden bg-white/70 dark:bg-slate-950/70 backdrop-blur-3xl p-8">
+          <div className="absolute top-0 left-1/4 w-1/2 h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent shadow-[0_0_20px_rgba(var(--primary),0.5)]" />
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-black tracking-tighter text-center">Édition Rapide</DialogTitle>
+            <DialogDescription className="text-center font-medium opacity-60">Mise à jour des informations de base du ticket.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-6 px-2">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 ml-1">Enseigne du magasin</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/70 ml-2">Enseigne commerciale</label>
               <input
-                className="h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-lg font-bold shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none placeholder:text-muted-foreground/40"
+                className="h-14 w-full rounded-[1.5rem] border-none bg-slate-100 dark:bg-white/5 px-6 text-lg font-bold shadow-inner focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                 value={editingStoreName}
                 onChange={e => setEditingStoreName(e.target.value)}
-                placeholder="Ex: Carrefour Market..."
+                placeholder="Ex : Carrefour Market"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 ml-1">Date de la transaction</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/70 ml-2">Date d'émission</label>
               <input
                 type="datetime-local"
-                className="h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-lg font-bold shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                className="h-14 w-full rounded-[1.5rem] border-none bg-slate-100 dark:bg-white/5 px-6 text-lg font-bold shadow-inner focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                 value={editingDateValue}
                 onChange={e => setEditingDateValue(e.target.value)}
               />
             </div>
           </div>
-          <DialogFooter className="flex-row gap-2 sm:gap-2 pb-6">
-            <Button variant="ghost" className="rounded-2xl flex-1 h-12 font-bold hover:bg-muted/80 transition-colors" onClick={() => setBasicEditorOpen(false)}>Annuler</Button>
-            <Button className="rounded-2xl flex-1 h-12 font-black shadow-xl shadow-primary/20 transition-all active:scale-95" onClick={async () => {
+          <DialogFooter className="flex-row gap-3 mt-10">
+            <Button variant="ghost" className="rounded-2xl flex-1 h-14 font-bold hover:bg-slate-200 dark:hover:bg-white/5 transition-colors" onClick={() => setBasicEditorOpen(false)}>Quitter</Button>
+            <Button className="rounded-2xl flex-1 h-14 font-black shadow-2xl shadow-primary/30 transition-all active:scale-95 px-0" onClick={async () => {
               if (basicEditorReceiptId) {
                 await updateReceipt(basicEditorReceiptId, {
                   storeName: editingStoreName,
@@ -280,109 +288,93 @@ export default function ReceiptsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* LINE EDITOR DIALOG - MOBILE OPTIMIZED */}
+      {/* LINE EDITOR - Ultra Responive / Zero Scroll */}
       <Dialog open={lineEditorOpen} onOpenChange={setLineEditorOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-3xl rounded-[2.5rem] border-none shadow-2xl overflow-hidden flex flex-col p-1 sm:p-6 bg-background/95 backdrop-blur-xl">
-          <DialogHeader className="px-4 pt-6 flex-shrink-0">
+        <DialogContent className="max-w-[98vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-[3rem] border-white/20 shadow-2xl overflow-hidden flex flex-col p-0 bg-white/90 dark:bg-slate-950/90 backdrop-blur-3xl border-none">
+          <DialogHeader className="p-8 pt-9 pb-4 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-2xl font-black tracking-tight">Articles du Reçu</DialogTitle>
-                <DialogDescription className="font-medium mt-0.5">Vérification et correction des lignes extraites.</DialogDescription>
+                <DialogTitle className="text-3xl font-black tracking-tightest">Articles Détectés</DialogTitle>
+                <DialogDescription className="font-bold text-slate-500">Optimisez les détails de votre panier ({lineDrafts.length})</DialogDescription>
               </div>
-              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                <ListChecks className="h-6 w-6 text-primary" />
+              <div className="hidden sm:flex h-14 w-14 rounded-3xl bg-primary/10 items-center justify-center ring-1 ring-primary/20 shadow-xl shadow-primary/5">
+                <ListChecks className="h-7 w-7 text-primary" />
               </div>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto mt-6 px-3 sm:px-1 space-y-3 custom-scrollbar min-h-[40vh] max-h-[65vh]">
-            {/* Desktop Table Header (Shown only on Desktop) */}
-            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 font-black text-[10px] text-muted-foreground uppercase tracking-widest border-b sticky top-0 bg-background/80 backdrop-blur-md z-10">
-              <div className="col-span-5">Libellé</div>
-              <div className="col-span-2 text-center">Quantité</div>
-              <div className="col-span-2 text-right">Prix Unitaire</div>
-              <div className="col-span-2 text-right">Total HT</div>
-              <div className="col-span-1"></div>
-            </div>
-
-            {lineDrafts.map((ln, i) => (
-              <div key={ln.id || i} className="relative group">
-                {/* Mobile Variant (Card-like) */}
-                <div className="md:hidden flex flex-col rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-4 hover:border-primary/30 transition-all">
-                  <div className="flex justify-between items-start gap-4">
-                    <span className="text-sm font-bold leading-tight flex-1">{ln.normalizedLabel || ln.rawLabel}</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50 hover:bg-destructive/10 hover:text-destructive rounded-full shrink-0" onClick={() => deleteDraftLine(i)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[9px] font-black text-muted-foreground/70 uppercase tracking-tighter ml-1">Qté</label>
-                      <input
-                        type="number"
-                        className="h-10 w-full rounded-xl border border-border/60 bg-background px-1 text-center font-black text-sm"
-                        value={ln.quantity ?? ''}
-                        onChange={e => setField(i, 'quantity', e.target.value)}
-                        onBlur={() => autoRecalc(i)}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[9px] font-black text-muted-foreground/70 uppercase tracking-tighter ml-1">P.U.</label>
-                      <input
-                        type="number"
-                        className="h-10 w-full rounded-xl border border-border/60 bg-background px-1 text-right font-bold text-sm"
-                        step="0.001"
-                        value={ln.unitPrice ?? ''}
-                        onChange={e => setField(i, 'unitPrice', e.target.value)}
-                        onBlur={() => autoRecalc(i)}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[9px] font-black text-muted-foreground/70 uppercase tracking-tighter ml-1">Total</label>
-                      <input
-                        type="number"
-                        className="h-10 w-full rounded-xl border-2 border-primary/20 bg-primary/5 px-1 text-right font-black text-primary text-sm shadow-sm"
-                        step="0.001"
-                        value={ln.lineTotal ?? ''}
-                        onChange={e => setField(i, 'lineTotal', e.target.value)}
-                        onBlur={() => autoRecalc(i)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Desktop Variant (Table Row) */}
-                <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-b border-border/30 hover:bg-primary/5 transition-colors rounded-xl">
-                  <div className="col-span-5 font-bold text-sm truncate pr-4" title={ln.rawLabel}>{ln.normalizedLabel || ln.rawLabel}</div>
-                  <div className="col-span-2">
-                    <input type="number" className="h-9 w-full rounded-xl border border-border/60 bg-background px-2 text-center font-black text-sm" value={ln.quantity ?? ''} onChange={e => setField(i, 'quantity', e.target.value)} onBlur={() => autoRecalc(i)} />
-                  </div>
-                  <div className="col-span-2">
-                    <input type="number" className="h-9 w-full rounded-xl border border-border/60 bg-background px-2 text-right font-bold text-sm" step="0.001" value={ln.unitPrice ?? ''} onChange={e => setField(i, 'unitPrice', e.target.value)} onBlur={() => autoRecalc(i)} />
-                  </div>
-                  <div className="col-span-2">
-                    <input type="number" className="h-9 w-full rounded-xl border-2 border-primary/20 bg-primary/5 px-2 text-right font-black text-primary text-sm" step="0.001" value={ln.lineTotal ?? ''} onChange={e => setField(i, 'lineTotal', e.target.value)} onBlur={() => autoRecalc(i)} />
-                  </div>
-                  <div className="col-span-1 text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/20 hover:text-destructive hover:bg-destructive/5 rounded-xl transition-all" onClick={() => deleteDraftLine(i)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+          <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-32 pt-2 custom-scrollbar max-h-[70vh]">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+              {/* Table Header for Desktop */}
+              <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 font-black text-[9px] text-slate-400 uppercase tracking-[0.2em] border-b border-border/30 sticky top-0 bg-transparent backdrop-blur-md z-20">
+                <div className="col-span-5">Libellé Produit</div>
+                <div className="col-span-2 text-center">Unités</div>
+                <div className="col-span-2 text-right">P.U. (TND)</div>
+                <div className="col-span-2 text-right">Montant</div>
+                <div className="col-span-1"></div>
               </div>
-            ))}
+
+              {lineDrafts.map((ln, i) => (
+                <div key={ln.id || i}>
+                  {/* Mobile Layout Card - No Scroll */}
+                  <div className="md:hidden flex flex-col rounded-[1.8rem] bg-slate-100/50 dark:bg-white/5 p-5 space-y-4 border border-border/30 hover:border-primary/20 transition-all duration-300">
+                    <div className="flex justify-between items-start">
+                      <div className="text-sm font-black text-slate-800 dark:text-slate-100 max-w-[80%] leading-tight truncate-multiline mb-1">{ln.normalizedLabel || ln.rawLabel}</div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/40 hover:bg-destructive/10 hover:text-destructive rounded-full" onClick={() => deleteDraftLine(i)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Qté</span>
+                        <input type="number" className="h-10 w-full rounded-2xl bg-white dark:bg-slate-800 border-none px-3 font-black text-xs shadow-inner" value={ln.quantity ?? ''} onChange={e => setField(i, 'quantity', e.target.value)} onBlur={() => autoRecalc(i)} />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit</span>
+                        <input type="number" className="h-10 w-full rounded-2xl bg-white dark:bg-slate-800 border-none px-3 font-black text-right text-xs shadow-inner" step="0.001" value={ln.unitPrice ?? ''} onChange={e => setField(i, 'unitPrice', e.target.value)} onBlur={() => autoRecalc(i)} />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[8px] font-black text-primary/70 uppercase tracking-widest ml-1">Total</span>
+                        <input type="number" className="h-10 w-full rounded-2xl bg-primary/10 border-none px-3 font-black text-right text-xs text-primary shadow-sm" step="0.001" value={ln.lineTotal ?? ''} onChange={e => setField(i, 'lineTotal', e.target.value)} onBlur={() => autoRecalc(i)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop Layout Row */}
+                  <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3.5 items-center hover:bg-slate-100/30 dark:hover:bg-white/5 transition-all rounded-[1.2rem] group border-b border-border/10">
+                    <div className="col-span-5 font-bold text-sm tracking-tight truncate pr-4" title={ln.rawLabel}>{ln.normalizedLabel || ln.rawLabel}</div>
+                    <div className="col-span-2">
+                      <input type="number" className="h-10 w-full rounded-2xl bg-slate-100/50 dark:bg-white/5 border-none px-3 text-center font-black text-xs hover:bg-white dark:hover:bg-slate-800 transition-colors focus:ring-4 focus:ring-primary/10" value={ln.quantity ?? ''} onChange={e => setField(i, 'quantity', e.target.value)} onBlur={() => autoRecalc(i)} />
+                    </div>
+                    <div className="col-span-2">
+                      <input type="number" className="h-10 w-full rounded-2xl bg-slate-100/50 dark:bg-white/5 border-none px-3 text-right font-black text-xs hover:bg-white dark:hover:bg-slate-800 transition-colors focus:ring-4 focus:ring-primary/10" step="0.001" value={ln.unitPrice ?? ''} onChange={e => setField(i, 'unitPrice', e.target.value)} onBlur={() => autoRecalc(i)} />
+                    </div>
+                    <div className="col-span-2">
+                      <input type="number" className="h-10 w-full rounded-2xl bg-primary/5 border-2 border-primary/20 px-3 text-right font-black text-xs text-primary focus:ring-4 focus:ring-primary/10 outline-none" step="0.001" value={ln.lineTotal ?? ''} onChange={e => setField(i, 'lineTotal', e.target.value)} onBlur={() => autoRecalc(i)} />
+                    </div>
+                    <div className="col-span-1 text-right">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300" onClick={() => deleteDraftLine(i)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <DialogFooter className="flex-row gap-3 pt-6 px-4 pb-4 bg-background mt-auto shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] flex-shrink-0">
-            <Button variant="ghost" className="rounded-2xl flex-1 h-12 font-bold transition-all" onClick={() => setLineEditorOpen(false)}>Annuler</Button>
-            <Button className="rounded-2xl flex-1 h-12 font-black shadow-xl shadow-primary/20 transition-all active:scale-95" onClick={async () => {
+          <DialogFooter className="absolute bottom-0 left-0 w-full p-6 sm:p-8 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl border-t border-white/10 z-30 flex-row gap-4">
+            <Button variant="ghost" className="rounded-2xl h-14 flex-1 font-bold text-slate-500 hover:text-slate-800 transition-all" onClick={() => setLineEditorOpen(false)}>Quitter</Button>
+            <Button className="rounded-[1.4rem] h-14 flex-[2] font-black text-base shadow-2xl shadow-primary/30 group transition-all active:scale-95" onClick={async () => {
               if (lineEditorReceiptId) {
                 await updateReceipt(lineEditorReceiptId, { lines: lineDrafts });
               }
               setLineEditorOpen(false);
-              toast({ title: 'Succès', description: 'Les articles ont été mis à jour.' });
-            }}>Enregistrer {lineDrafts.length} articles</Button>
+              toast({ title: 'Analyse Finalisée', description: `${lineDrafts.length} produits enregistrés avec succès.` });
+            }}>
+              Valider les Modifications
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
