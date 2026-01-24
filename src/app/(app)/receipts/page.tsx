@@ -29,6 +29,8 @@ export default function ReceiptsPage() {
   const { learnPackQty } = useLearning();
   const { toast } = useToast();
 
+  const today = new Date();
+
   // Basic Editor (Store & Date)
   const [basicEditorOpen, setBasicEditorOpen] = useState(false);
   const [basicEditorReceiptId, setBasicEditorReceiptId] = useState<string | null>(null);
@@ -45,14 +47,13 @@ export default function ReceiptsPage() {
   const [proposed, setProposed] = useState<ProposedChange[]>([]);
 
   function toLocalInputValue(iso?: string) {
-    if (!iso) return '';
-    const d = new Date(iso);
+    const d = iso ? new Date(iso) : new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   function toIsoFromLocal(localVal: string) {
-    if (!localVal) return undefined;
+    if (!localVal) return new Date().toISOString();
     return new Date(localVal).toISOString();
   }
 
@@ -115,135 +116,158 @@ export default function ReceiptsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Receipt className="h-6 w-6 text-primary" />
-          Reçus
-        </h1>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <Button asChild variant="outline">
-            <Link href="/stats/receipts">Voir stats reçus</Link>
-          </Button>
-          <Button variant="secondary" onClick={() => {
-            const changes: ProposedChange[] = [];
-            for (const rcpt of receipts) {
-              let linesUpdated = 0;
-              const details: any[] = [];
-              const newLines = (rcpt.lines || []).map((ln, idx) => {
-                const before = { quantity: ln.quantity, unit: ln.unit, unitPrice: ln.unitPrice, lineTotal: ln.lineTotal };
-                const inferred = inferQuantityFromLabel(ln.normalizedLabel || ln.rawLabel, before);
-                if (inferred.quantity !== before.quantity) {
-                  linesUpdated++;
-                  details.push({ index: idx, label: ln.normalizedLabel || ln.rawLabel || '', beforeQty: before.quantity, afterQty: inferred.quantity });
-                  return { ...ln, ...inferred };
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Header with Premium Style */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6 sm:p-8 border border-border/50 shadow-2xl shadow-primary/5">
+        <div className="absolute top-0 right-0 -mr-12 -mt-12 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 -ml-12 -mb-12 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
+
+        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 ring-1 ring-primary/20">
+              <Receipt className="h-7 w-7 text-primary" />
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-foreground">Gestion des Reçus</h1>
+            <p className="text-muted-foreground font-medium mt-1">Analyse et organisation intelligente de vos dépenses</p>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap justify-center">
+            <Button asChild variant="ghost" className="rounded-full font-bold hover:bg-primary/5">
+              <Link href="/stats/receipts">Statistiques</Link>
+            </Button>
+            <Button variant="outline" className="rounded-full font-bold border-2" onClick={() => {
+              const changes: ProposedChange[] = [];
+              for (const rcpt of receipts) {
+                let linesUpdated = 0;
+                const details: any[] = [];
+                const newLines = (rcpt.lines || []).map((ln, idx) => {
+                  const before = { quantity: ln.quantity, unit: ln.unit, unitPrice: ln.unitPrice, lineTotal: ln.lineTotal };
+                  const inferred = inferQuantityFromLabel(ln.normalizedLabel || ln.rawLabel, before);
+                  if (inferred.quantity !== before.quantity) {
+                    linesUpdated++;
+                    details.push({ index: idx, label: ln.normalizedLabel || ln.rawLabel || '', beforeQty: before.quantity, afterQty: inferred.quantity });
+                    return { ...ln, ...inferred };
+                  }
+                  return ln;
+                });
+                if (linesUpdated > 0) {
+                  changes.push({ receiptId: rcpt.id, storeName: rcpt.storeName, linesUpdated, newLines, details, indicesToDelete: [] });
                 }
-                return ln;
-              });
-              if (linesUpdated > 0) {
-                changes.push({ receiptId: rcpt.id, storeName: rcpt.storeName, linesUpdated, newLines, details, indicesToDelete: [] });
               }
-            }
-            setProposed(changes);
-            setPreviewOpen(true);
-          }}>
-            Recalculer
-          </Button>
-          <UploadReceiptDialog />
+              setProposed(changes);
+              setPreviewOpen(true);
+            }}>
+              Analyser
+            </Button>
+            <UploadReceiptDialog>
+              <Button size="lg" className="rounded-full shadow-xl shadow-primary/20 font-bold px-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                Scanner un reçu
+              </Button>
+            </UploadReceiptDialog>
+          </div>
         </div>
       </div>
-      <Separator />
 
-      {/* Content */}
+      {/* Grid of Receipts */}
       {receipts.length === 0 ? (
-        <Card className="border-dashed py-12">
+        <Card className="border-dashed py-20 rounded-[2.5rem] bg-muted/20">
           <CardContent className="flex flex-col items-center justify-center text-center">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Receipt className="h-6 w-6 text-muted-foreground" />
+            <div className="h-20 w-20 rounded-full bg-background/50 flex items-center justify-center mb-6 shadow-sm border border-border/50">
+              <Receipt className="h-10 w-10 text-muted-foreground/50" />
             </div>
-            <CardTitle className="mb-2 uppercase tracking-tighter font-black">Aucun reçu</CardTitle>
-            <p className="text-sm text-muted-foreground mb-6">Ajoutez votre premier reçu pour commencer l'analyse IA.</p>
-            <UploadReceiptDialog><Button size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all">Ajouter un reçu</Button></UploadReceiptDialog>
+            <CardTitle className="text-2xl font-black tracking-tight mb-2">Aucun reçu trouvé</CardTitle>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-8">Commencez par scanner votre premier ticket de caisse pour une gestion simplifiée.</p>
+            <UploadReceiptDialog><Button size="lg" className="rounded-full px-10 shadow-lg hover:shadow-2xl transition-all duration-300">Ajouter maintenant</Button></UploadReceiptDialog>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {receipts.map(rcpt => (
-            <Card key={rcpt.id} className="group overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-300 ring-1 ring-border/50 hover:ring-primary/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex flex-col gap-0.5 flex-1 mr-4 truncate">
-                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                    {rcpt.storeName || 'Magasin inconnu'}
-                    <span className="h-1 w-1 rounded-full bg-primary/30 hidden sm:block" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block sm:inline">
-                      {rcpt.purchaseAt ? format(new Date(rcpt.purchaseAt), 'dd MMM yyyy', { locale: fr }) : 'Date inconnue'}
-                    </span>
-                  </CardTitle>
-                  <p className="text-[10px] font-medium text-muted-foreground/60 hidden sm:block">
-                    {rcpt.purchaseAt ? format(new Date(rcpt.purchaseAt), 'HH:mm', { locale: fr }) : ''}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => openBasicEditor(rcpt)} title="Modifier infos">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => openLineEditor(rcpt.id)} title="Modifier lignes">
-                    <ListChecks className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={async () => {
-                    if (confirm('Supprimer ce reçu ?')) await deleteReceipt(rcpt.id);
-                  }} title="Supprimer">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <div className="flex items-end justify-between">
-                  <div className="flex gap-2 text-xs text-muted-foreground">
-                    <div className="px-2 py-0.5 rounded-full bg-muted font-bold tracking-tight">{rcpt.lines?.length || 0} ARTICLES</div>
-                    {rcpt.status === 'parsed' && <div className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold tracking-tight">IA OK</div>}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
+          {receipts.map(rcpt => {
+            const displayDate = rcpt.purchaseAt ? new Date(rcpt.purchaseAt) : today;
+            return (
+              <Card key={rcpt.id} className="group relative overflow-hidden border-none rounded-[2rem] bg-gradient-to-tr from-background to-muted/30 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 ring-1 ring-border/50 hover:ring-primary/30">
+                <div className="absolute top-0 right-0 h-32 w-32 bg-primary/5 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+                  <div className="flex flex-col gap-1.5 flex-1 mr-4 overflow-hidden">
+                    <CardTitle className="text-xl font-black text-foreground truncate group-hover:text-primary transition-colors">
+                      {rcpt.storeName || 'Magasin Inconnu'}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center shadow-sm border border-border/50">
+                        <span className="text-[10px] font-black text-primary uppercase">{format(displayDate, 'MMM', { locale: fr })}</span>
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground tracking-tight">
+                        {rcpt.purchaseAt ? format(displayDate, 'dd MMM yyyy • HH:mm', { locale: fr }) : format(today, 'dd MMM yyyy (Aujourd\'hui)', { locale: fr })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-lg font-black tracking-tighter text-foreground">
-                    {rcpt.total != null ? `${rcpt.total.toFixed(3)}` : '0.000'} <span className="text-[10px] font-bold text-muted-foreground align-top mt-1 inline-block">TND</span>
+                  <div className="flex items-center gap-1 bg-background/50 backdrop-blur-md rounded-full p-1 border border-border/50 shadow-sm">
+                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full hover:bg-primary hover:text-white transition-all duration-300" onClick={() => openBasicEditor(rcpt)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full hover:bg-primary hover:text-white transition-all duration-300" onClick={() => openLineEditor(rcpt.id)}>
+                      <ListChecks className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full hover:bg-destructive hover:text-white transition-all duration-300" onClick={async () => {
+                      if (confirm('Voulez-vous supprimer ce reçu ?')) await deleteReceipt(rcpt.id);
+                    }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+
+                <CardContent className="pt-2">
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex gap-2">
+                      <div className="px-3 py-1 rounded-xl bg-primary/10 text-primary text-[10px] font-black tracking-widest uppercase">{rcpt.lines?.length || 0} ARTICLES</div>
+                      <div className="px-3 py-1 rounded-xl bg-accent/10 text-accent text-[10px] font-black tracking-widest uppercase">AUTO-OK</div>
+                    </div>
+                    <div className="relative">
+                      <span className="text-2xl font-black tracking-tighter text-foreground pr-1">
+                        {rcpt.total != null ? `${rcpt.total.toFixed(3)}` : '0.000'}
+                      </span>
+                      <span className="text-[10px] font-black text-muted-foreground/60 align-top mt-1 inline-block">TND</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {/* BASIC EDITOR DIALOG */}
       <Dialog open={basicEditorOpen} onOpenChange={setBasicEditorOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold tracking-tight">Modifier le reçu</DialogTitle>
-            <DialogDescription>Ajustez le nom de l'enseigne et la date de l'achat.</DialogDescription>
+        <DialogContent className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden glassmorphism">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-accent to-primary animate-gradient-x" />
+          <DialogHeader className="pt-6">
+            <DialogTitle className="text-2xl font-black tracking-tight text-center">Détails du Reçu</DialogTitle>
+            <DialogDescription className="text-center font-medium">Ajustez les métadonnées de votre dépense.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 py-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Magasin</label>
+          <div className="space-y-6 py-6 px-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 ml-1">Enseigne du magasin</label>
               <input
-                className="h-11 w-full rounded-2xl border border-input shadow-sm px-4 bg-background focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                className="h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-lg font-bold shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none placeholder:text-muted-foreground/40"
                 value={editingStoreName}
                 onChange={e => setEditingStoreName(e.target.value)}
-                placeholder="Ex: Carrefour, Aziza..."
+                placeholder="Ex: Carrefour Market..."
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Date et heure</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 ml-1">Date de la transaction</label>
               <input
                 type="datetime-local"
-                className="h-11 w-full rounded-2xl border border-input shadow-sm px-4 bg-background focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                className="h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-lg font-bold shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                 value={editingDateValue}
                 onChange={e => setEditingDateValue(e.target.value)}
               />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" className="rounded-2xl" onClick={() => setBasicEditorOpen(false)}>Annuler</Button>
-            <Button className="rounded-2xl px-8 shadow-lg shadow-primary/20 font-bold" onClick={async () => {
+          <DialogFooter className="flex-row gap-2 sm:gap-2 pb-6">
+            <Button variant="ghost" className="rounded-2xl flex-1 h-12 font-bold hover:bg-muted/80 transition-colors" onClick={() => setBasicEditorOpen(false)}>Annuler</Button>
+            <Button className="rounded-2xl flex-1 h-12 font-black shadow-xl shadow-primary/20 transition-all active:scale-95" onClick={async () => {
               if (basicEditorReceiptId) {
                 await updateReceipt(basicEditorReceiptId, {
                   storeName: editingStoreName,
@@ -256,78 +280,109 @@ export default function ReceiptsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* LINE EDITOR DIALOG */}
+      {/* LINE EDITOR DIALOG - MOBILE OPTIMIZED */}
       <Dialog open={lineEditorOpen} onOpenChange={setLineEditorOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold tracking-tight">Modifier les articles</DialogTitle>
-            <DialogDescription>Ajustez les quantités et prix. Le total se recalcule automatiquement.</DialogDescription>
+        <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-3xl rounded-[2.5rem] border-none shadow-2xl overflow-hidden flex flex-col p-1 sm:p-6 bg-background/95 backdrop-blur-xl">
+          <DialogHeader className="px-4 pt-6 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-2xl font-black tracking-tight">Articles du Reçu</DialogTitle>
+                <DialogDescription className="font-medium mt-0.5">Vérification et correction des lignes extraites.</DialogDescription>
+              </div>
+              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                <ListChecks className="h-6 w-6 text-primary" />
+              </div>
+            </div>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-auto -mx-1 px-1 custom-scrollbar">
-            <table className="w-full text-xs sm:text-sm border-collapse">
-              <thead className="sticky top-0 bg-background z-20 border-b">
-                <tr className="text-left font-bold text-muted-foreground uppercase tracking-widest text-[9px]">
-                  <th className="pb-3 pr-2">Article</th>
-                  <th className="pb-3 pr-2 w-16 text-center">Qté</th>
-                  <th className="pb-3 pr-2 w-20 text-right">P.U.</th>
-                  <th className="pb-3 pr-2 w-20 text-right">Total</th>
-                  <th className="pb-3 w-10 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-muted/30">
-                {lineDrafts.map((ln, i) => (
-                  <tr key={ln.id || i} className="group hover:bg-muted/30 transition-colors">
-                    <td className="py-3 pr-2 font-medium truncate max-w-[100px] sm:max-w-[180px]" title={ln.rawLabel}>
-                      {ln.normalizedLabel || ln.rawLabel}
-                    </td>
-                    <td className="py-2 pr-2">
+
+          <div className="flex-1 overflow-y-auto mt-6 px-3 sm:px-1 space-y-3 custom-scrollbar min-h-[40vh] max-h-[65vh]">
+            {/* Desktop Table Header (Shown only on Desktop) */}
+            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 font-black text-[10px] text-muted-foreground uppercase tracking-widest border-b sticky top-0 bg-background/80 backdrop-blur-md z-10">
+              <div className="col-span-5">Libellé</div>
+              <div className="col-span-2 text-center">Quantité</div>
+              <div className="col-span-2 text-right">Prix Unitaire</div>
+              <div className="col-span-2 text-right">Total HT</div>
+              <div className="col-span-1"></div>
+            </div>
+
+            {lineDrafts.map((ln, i) => (
+              <div key={ln.id || i} className="relative group">
+                {/* Mobile Variant (Card-like) */}
+                <div className="md:hidden flex flex-col rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-4 hover:border-primary/30 transition-all">
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-sm font-bold leading-tight flex-1">{ln.normalizedLabel || ln.rawLabel}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50 hover:bg-destructive/10 hover:text-destructive rounded-full shrink-0" onClick={() => deleteDraftLine(i)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-black text-muted-foreground/70 uppercase tracking-tighter ml-1">Qté</label>
                       <input
                         type="number"
-                        className="h-8 w-14 border rounded-xl bg-muted/50 focus:bg-background px-1 text-center font-bold focus:ring-2 focus:ring-primary/10 transition-all outline-none"
+                        className="h-10 w-full rounded-xl border border-border/60 bg-background px-1 text-center font-black text-sm"
                         value={ln.quantity ?? ''}
                         onChange={e => setField(i, 'quantity', e.target.value)}
                         onBlur={() => autoRecalc(i)}
                       />
-                    </td>
-                    <td className="py-2 pr-2">
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-black text-muted-foreground/70 uppercase tracking-tighter ml-1">P.U.</label>
                       <input
                         type="number"
-                        className="h-8 w-20 border rounded-xl bg-muted/50 focus:bg-background px-1 text-right focus:ring-2 focus:ring-primary/10 transition-all outline-none"
+                        className="h-10 w-full rounded-xl border border-border/60 bg-background px-1 text-right font-bold text-sm"
                         step="0.001"
                         value={ln.unitPrice ?? ''}
                         onChange={e => setField(i, 'unitPrice', e.target.value)}
                         onBlur={() => autoRecalc(i)}
                       />
-                    </td>
-                    <td className="py-2 pr-2">
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-black text-muted-foreground/70 uppercase tracking-tighter ml-1">Total</label>
                       <input
                         type="number"
-                        className="h-8 w-20 border rounded-xl bg-primary/5 px-1 text-right font-black text-primary border-primary/20 outline-none"
+                        className="h-10 w-full rounded-xl border-2 border-primary/20 bg-primary/5 px-1 text-right font-black text-primary text-sm shadow-sm"
                         step="0.001"
                         value={ln.lineTotal ?? ''}
                         onChange={e => setField(i, 'lineTotal', e.target.value)}
                         onBlur={() => autoRecalc(i)}
                       />
-                    </td>
-                    <td className="py-2 text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive/50 hover:text-destructive hover:bg-destructive/5 transition-all" onClick={() => deleteDraftLine(i)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop Variant (Table Row) */}
+                <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-b border-border/30 hover:bg-primary/5 transition-colors rounded-xl">
+                  <div className="col-span-5 font-bold text-sm truncate pr-4" title={ln.rawLabel}>{ln.normalizedLabel || ln.rawLabel}</div>
+                  <div className="col-span-2">
+                    <input type="number" className="h-9 w-full rounded-xl border border-border/60 bg-background px-2 text-center font-black text-sm" value={ln.quantity ?? ''} onChange={e => setField(i, 'quantity', e.target.value)} onBlur={() => autoRecalc(i)} />
+                  </div>
+                  <div className="col-span-2">
+                    <input type="number" className="h-9 w-full rounded-xl border border-border/60 bg-background px-2 text-right font-bold text-sm" step="0.001" value={ln.unitPrice ?? ''} onChange={e => setField(i, 'unitPrice', e.target.value)} onBlur={() => autoRecalc(i)} />
+                  </div>
+                  <div className="col-span-2">
+                    <input type="number" className="h-9 w-full rounded-xl border-2 border-primary/20 bg-primary/5 px-2 text-right font-black text-primary text-sm" step="0.001" value={ln.lineTotal ?? ''} onChange={e => setField(i, 'lineTotal', e.target.value)} onBlur={() => autoRecalc(i)} />
+                  </div>
+                  <div className="col-span-1 text-right">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/20 hover:text-destructive hover:bg-destructive/5 rounded-xl transition-all" onClick={() => deleteDraftLine(i)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <DialogFooter className="gap-2 sm:gap-2 mt-6">
-            <Button variant="ghost" className="rounded-2xl" onClick={() => setLineEditorOpen(false)}>Annuler</Button>
-            <Button className="rounded-2xl px-8 shadow-lg shadow-primary/20 font-bold" onClick={async () => {
+
+          <DialogFooter className="flex-row gap-3 pt-6 px-4 pb-4 bg-background mt-auto shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] flex-shrink-0">
+            <Button variant="ghost" className="rounded-2xl flex-1 h-12 font-bold transition-all" onClick={() => setLineEditorOpen(false)}>Annuler</Button>
+            <Button className="rounded-2xl flex-1 h-12 font-black shadow-xl shadow-primary/20 transition-all active:scale-95" onClick={async () => {
               if (lineEditorReceiptId) {
                 await updateReceipt(lineEditorReceiptId, { lines: lineDrafts });
               }
               setLineEditorOpen(false);
-              toast({ title: 'Mis à jour', description: 'Les articles ont été enregistrés.' });
-            }}>Enregistrer</Button>
+              toast({ title: 'Succès', description: 'Les articles ont été mis à jour.' });
+            }}>Enregistrer {lineDrafts.length} articles</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
