@@ -61,9 +61,14 @@ RÈGLES CRITIQUES (TRÈS IMPORTANT) :
    - Extraits la date du ticket au format ISO YYYY-MM-DD.
    - N'INVENTE JAMAIS DE DATE. Si la date n'est pas clairement visible ou illisible, laisse le champ "purchaseAt" vide ou null.
 2. CONSEILS DE FORMATAGE (MOTIFS COURANTS) :
-   - Pour Carrefour et certaines enseignes, les infos de quantité ("Qté x PrixUnit") sont souvent sur la ligne JUSTE EN-DESSOUS du libellé du produit.
+   - Pour Carrefour et certaines enseignes, les infos de quantité ("Qté x PrixUnit") sont souvent sur la ligne JUSTE EN-DESSOUS du libellé ou APRÈS le code-barres (ligne de 13 chiffres).
    - Identifie intelligemment les associations Libellé <-> Quantité/Prix selon la structure du ticket.
-3. PRODUITS SPÉCIFIQUES :
+3. PRODUITS EN DOUBLE :
+   - Si un produit apparaît plusieurs fois (ex: Vermicelle listé sur deux lignes distinctes), fusionne-les en une seule ligne :
+     - Additionne les quantités.
+     - Garde le même prix unitaire.
+     - Recalcule le lineTotal = quantité * unitPrice.
+4. PRODUITS SPÉCIFIQUES :
    - DELIO -> Catégorie "Boissons".
    - PRISTINE, SAFIA, SABRINE -> Catégorie "Eau".
 

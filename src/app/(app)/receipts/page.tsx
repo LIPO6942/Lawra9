@@ -84,6 +84,8 @@ export default function ReceiptsPage() {
     });
   }
 
+  const [editingStoreName, setEditingStoreName] = useState<string>('');
+
   function toLocalInputValue(iso?: string) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -161,8 +163,17 @@ export default function ReceiptsPage() {
           {receipts.map(rcpt => (
             <Card key={rcpt.id} className="overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">
-                  {rcpt.storeName || 'Magasin inconnu'}
+                <CardTitle className="text-base flex-1 mr-4">
+                  {editingId === rcpt.id ? (
+                    <input
+                      className="h-8 w-full rounded-md border px-2 text-foreground bg-background font-semibold"
+                      value={editingStoreName}
+                      onChange={(e) => setEditingStoreName(e.target.value)}
+                      placeholder="Nom du magasin"
+                    />
+                  ) : (
+                    rcpt.storeName || 'Magasin inconnu'
+                  )}
                 </CardTitle>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   {editingId === rcpt.id ? (
@@ -175,20 +186,28 @@ export default function ReceiptsPage() {
                       />
                       <Button size="sm" variant="ghost" onClick={async () => {
                         const iso = toIsoFromLocal(editingValue);
-                        await updateReceipt(rcpt.id, { purchaseAt: iso });
+                        await updateReceipt(rcpt.id, {
+                          purchaseAt: iso,
+                          storeName: editingStoreName
+                        });
                         setEditingId(null);
                         setEditingValue('');
+                        setEditingStoreName('');
                       }} title="Enregistrer">
                         <Save className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditingValue(''); }} title="Annuler">
+                      <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditingValue(''); setEditingStoreName(''); }} title="Annuler">
                         <X className="h-4 w-4" />
                       </Button>
                     </>
                   ) : (
                     <>
                       {rcpt.purchaseAt ? format(new Date(rcpt.purchaseAt), 'dd/MM/yyyy HH:mm', { locale: fr }) : 'Date inconnue'}
-                      <Button size="sm" variant="ghost" onClick={() => { setEditingId(rcpt.id); setEditingValue(toLocalInputValue(rcpt.purchaseAt) || toLocalInputValue(new Date().toISOString())); }} title="Modifier la date">
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        setEditingId(rcpt.id);
+                        setEditingValue(toLocalInputValue(rcpt.purchaseAt) || toLocalInputValue(new Date().toISOString()));
+                        setEditingStoreName(rcpt.storeName || '');
+                      }} title="Modifier">
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => openLineEditor(rcpt.id)} title="Modifier les lignes">

@@ -75,7 +75,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
       if (res.storeName === "Échec de l'analyse") throw new Error(res.ocrText || "L'IA n'a pas pu lire le ticket.");
 
       setProcessingMessage('Ticket lu ! Optimisation...');
-      const enhancedLines = (res.lines || []).map((l: any, idx: number) => {
+      const initialEnhancedLines = (res.lines || []).map((l: any, idx: number) => {
         const label = l.normalizedLabel || l.rawLabel || 'Produit Inconnu';
         const heurCat = mapCategoryHeuristic(label);
         const norm = normalizeUnit(l.quantity, l.unit, label);
@@ -93,6 +93,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
           stdUnit: norm.stdUnit,
           stdQty: norm.stdQty,
           standardUnitPrice: undefined as number | undefined,
+          productKey: normalizeProductKey(label),
         };
 
         const text = (label || '').toLowerCase().replace(',', '.');
@@ -118,16 +119,39 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
           }
         }
 
-        const productKey = normalizeProductKey(label || '');
-        const learned = productKey ? getLearnedPackQty(productKey, res.storeName) : undefined;
+        const learned = line.productKey ? getLearnedPackQty(line.productKey, res.storeName) : undefined;
         if (learned && (!line.quantity || line.quantity <= 1 || line.quantity < learned)) {
           line.quantity = learned;
           line.unit = line.unit || 'pcs';
         }
 
         line.standardUnitPrice = computeStandardUnitPrice(line as any);
-        return line as any;
+        return line;
       });
+
+      // --- Merging duplicates ---
+      const mergedMap: Record<string, typeof initialEnhancedLines[0]> = {};
+      initialEnhancedLines.forEach((line) => {
+        const key = line.productKey || line.rawLabel || 'unknown';
+        if (!mergedMap[key]) {
+          mergedMap[key] = { ...line };
+        } else {
+          // Additionner les quantités et totaux
+          const existing = mergedMap[key];
+          existing.quantity = (existing.quantity || 0) + (line.quantity || 0);
+          existing.stdQty = (existing.stdQty || 0) + (line.stdQty || 0);
+          if (line.lineTotal != null) {
+            existing.lineTotal = (existing.lineTotal || 0) + line.lineTotal;
+            existing.lineTotal = parseFloat(existing.lineTotal.toFixed(3));
+          }
+          // On garde le prix unitaire du premier (qui devrait être le même)
+          // On garde le barcode s'il manque
+          if (!existing.barcode && line.barcode) existing.barcode = line.barcode;
+          // Recalculer le prix unitaire standard
+          existing.standardUnitPrice = computeStandardUnitPrice(existing as any);
+        }
+      });
+      const enhancedLines = Object.values(mergedMap);
 
       setProcessingMessage('Presque fini...');
       const receipt: Omit<Receipt, 'id'> = {
@@ -142,7 +166,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         file: finalFile,
         status: 'parsed',
         confidence: res.confidence ?? 0.7,
-        lines: enhancedLines,
+        lines: enhancedLines as any,
       };
 
       await addReceipt(receipt);

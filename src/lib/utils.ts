@@ -140,6 +140,9 @@ export function mapCategoryHeuristic(label: string): string {
 export type NormalizedUnit = { stdUnit: 'kg' | 'L' | 'pcs'; stdQty: number };
 
 export function normalizeUnit(quantity?: number, unit?: string, label?: string): NormalizedUnit {
+  const q = quantity && quantity > 0 ? quantity : 1;
+  const text = (label || '').toLowerCase().replace(',', '.').replace('1/2', '0.5').replace('1/4', '0.25');
+
   // Try explicit fields first
   if (quantity && unit) {
     const u = unit.toLowerCase();
@@ -149,20 +152,22 @@ export function normalizeUnit(quantity?: number, unit?: string, label?: string):
     if (u === 'ml') return { stdUnit: 'L', stdQty: quantity / 1000 };
     if (u === 'pcs' || u === 'piece' || u === 'pièce' || u === 'un' || u === 'u') return { stdUnit: 'pcs', stdQty: quantity };
   }
+
   // Parse from label (e.g., 500g, 1kg, 1.5l, x2)
-  const text = (label || '').toLowerCase().replace(',', '.');
   const kg = text.match(/(\d+(?:\.\d+)?)\s?kg/);
-  if (kg) return { stdUnit: 'kg', stdQty: parseFloat(kg[1]) };
+  if (kg) return { stdUnit: 'kg', stdQty: parseFloat(kg[1]) * q };
   const g = text.match(/(\d+(?:\.\d+)?)\s?g(?!r)/);
-  if (g) return { stdUnit: 'kg', stdQty: parseFloat(g[1]) / 1000 };
+  if (g) return { stdUnit: 'kg', stdQty: (parseFloat(g[1]) / 1000) * q };
   const l = text.match(/(\d+(?:\.\d+)?)\s?l(?!t)/);
-  if (l) return { stdUnit: 'L', stdQty: parseFloat(l[1]) };
+  if (l) return { stdUnit: 'L', stdQty: parseFloat(l[1]) * q };
   const ml = text.match(/(\d+(?:\.\d+)?)\s?ml/);
-  if (ml) return { stdUnit: 'L', stdQty: parseFloat(ml[1]) / 1000 };
-  const pcs = text.match(/x\s?(\d+)/);
-  if (pcs) return { stdUnit: 'pcs', stdQty: parseInt(pcs[1]) };
+  if (ml) return { stdUnit: 'L', stdQty: (parseFloat(ml[1]) / 1000) * q };
+
+  const xExp = text.match(/x\s?(\d+)/);
+  if (xExp) return { stdUnit: 'pcs', stdQty: parseInt(xExp[1]) };
+
   // default
-  return { stdUnit: 'pcs', stdQty: quantity && quantity > 0 ? quantity : 1 };
+  return { stdUnit: 'pcs', stdQty: q };
 }
 
 export function computeStandardUnitPrice(line: ReceiptLine): number | undefined {
