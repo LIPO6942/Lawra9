@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Pencil, Receipt, Trash2, ListChecks } from 'lucide-react';
+import { Pencil, Receipt, Trash2, ListChecks, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { inferQuantityFromLabel, normalizeProductKey } from '@/lib/utils';
 import { useLearning } from '@/contexts/learning-context';
@@ -206,6 +206,28 @@ export default function ReceiptsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-sm z-10">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-xl hover:bg-accent hover:text-white shadow-none transition-all duration-300"
+                      title="Exporter pour Mon Assistant Courses"
+                      onClick={() => {
+                        const exportData = {
+                          source: "Lawra9",
+                          date: rcpt.purchaseAt ? format(new Date(rcpt.purchaseAt), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+                          products: (rcpt.lines || []).map(ln => ({
+                            name: ln.normalizedLabel || ln.rawLabel,
+                            price: ln.unitPrice ?? (ln.lineTotal && ln.quantity ? ln.lineTotal / ln.quantity : 0),
+                            unit: ln.unit || 'pcs',
+                            category: ln.category || 'Alimentation / Divers'
+                          }))
+                        };
+                        navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
+                        toast({ title: 'Copié !', description: 'Données prêtes à être collées dans Mon Assistant Courses.' });
+                      }}
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl hover:bg-primary hover:text-white shadow-none transition-all duration-300" onClick={() => openBasicEditor(rcpt)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
