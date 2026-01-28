@@ -132,7 +132,6 @@ export default function ReceiptsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-white">Mes Reçus</h1>
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Intelligence Artificielle</p>
             </div>
           </div>
 
@@ -193,19 +192,19 @@ export default function ReceiptsPage() {
               <Card key={rcpt.id} className="group relative overflow-hidden border border-border/40 rounded-[2.2rem] bg-white dark:bg-slate-900/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(30,30,30,0.1)] transition-all duration-700 hover:-translate-y-1 hover:border-primary/20 backdrop-blur-sm">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 pt-6 px-7">
-                  <div className="flex flex-col gap-1 flex-1 mr-4 overflow-hidden z-10">
-                    <CardTitle className="text-base sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden tracking-tight group-hover:text-primary transition-colors">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0 pb-3 pt-5 px-5 sm:pt-6 sm:px-7">
+                  <div className="flex flex-col gap-1 w-full sm:flex-1 sm:mr-4 overflow-hidden z-10">
+                    <CardTitle className="text-xl sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden tracking-tight group-hover:text-primary transition-colors">
                       {rcpt.storeName || 'Magasin'}
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-slate-500/80 tracking-tight flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-slate-500/80 tracking-tight flex items-center gap-1.5 whitespace-nowrap">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
                         {format(displayDate, 'dd MMMM yyyy • HH:mm', { locale: fr })}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-sm z-10">
+                  <div className="flex items-center gap-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-sm z-10 w-full sm:w-auto justify-between sm:justify-start">
                     <Button
                       size="icon"
                       variant="ghost"
