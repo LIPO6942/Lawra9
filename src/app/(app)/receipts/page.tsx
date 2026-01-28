@@ -246,7 +246,7 @@ export default function ReceiptsPage() {
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-1.5 items-center">
                         <div className="px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-border/40 text-slate-500 dark:text-slate-400 text-[9px] font-black tracking-widest uppercase">{rcpt.lines?.length || 0} ARTICLES</div>
-                        {rcpt.status === 'parsed' && <div className="px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 text-[9px] font-black tracking-widest uppercase">SYSTÈME OK</div>}
+
                       </div>
                     </div>
                     <div className="text-right">
