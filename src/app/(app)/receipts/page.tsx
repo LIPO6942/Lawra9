@@ -195,7 +195,7 @@ export default function ReceiptsPage() {
 
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 pt-6 px-7">
                   <div className="flex flex-col gap-1 flex-1 mr-4 overflow-hidden z-10">
-                    <CardTitle className="text-xl font-black text-slate-800 dark:text-slate-100 truncate tracking-tight group-hover:text-primary transition-colors">
+                    <CardTitle className="text-base sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden tracking-tight group-hover:text-primary transition-colors">
                       {rcpt.storeName || 'Magasin'}
                     </CardTitle>
                     <div className="flex items-center gap-2">
