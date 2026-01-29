@@ -56,9 +56,11 @@ function ProviderQuickLinks() {
     return (
         <div className="flex items-center gap-2">
             {adslNumber && (
-                <div className="hidden sm:flex items-center justify-center h-9 px-3 rounded-md border border-input bg-background text-sm font-semibold text-accent animate-in fade-in-0">
-                    {adslNumber}
-                </div>
+                <Button asChild variant="outline" className="hidden sm:flex h-9 px-3 font-semibold text-accent animate-in fade-in-0 border-input bg-background hover:bg-accent/10">
+                    <Link href={currentIspLink} target="_blank" rel="noopener noreferrer">
+                        {adslNumber}
+                    </Link>
+                </Button>
             )}
             <Tooltip>
                 <TooltipTrigger asChild>
