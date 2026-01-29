@@ -46,9 +46,9 @@ const providerDetails: Record<ISP, { name: string; link: string; className: stri
 };
 
 function ProviderQuickLinks() {
-    const { isp, adslNumber } = useUserPreferences();
+    const { isp, adslNumber, stegInvoiceLink } = useUserPreferences();
 
-    const stegLink = "https://espace.steg.com.tn/fr/espace/login.php";
+    const stegLink = (stegInvoiceLink && stegInvoiceLink.trim() !== '') ? stegInvoiceLink : "https://espace.steg.com.tn/fr/espace/login.php";
     const sonedeLink = "https://portail.sonede.com.tn/login";
     const ispProvider = isp ? providerDetails[isp] : null;
 

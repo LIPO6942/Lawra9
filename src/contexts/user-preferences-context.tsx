@@ -11,6 +11,7 @@ interface UserPreferences {
   stegRef: string | null;
   sonedeRef: string | null;
   adslNumber: string | null;
+  stegInvoiceLink: string | null;
 }
 
 interface UserPreferencesContextType extends UserPreferences {
@@ -25,11 +26,12 @@ const getInitialState = (): UserPreferences => ({
   stegRef: null,
   sonedeRef: null,
   adslNumber: null,
+  stegInvoiceLink: null,
 });
 
 export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { userId } = useAuth();
-  
+
   const [preferences, setPreferences] = useState<UserPreferences>(getInitialState());
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,7 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
         if (storedPrefs) {
           setPreferences(JSON.parse(storedPrefs));
         } else {
-           setPreferences(getInitialState());
+          setPreferences(getInitialState());
         }
       } catch (error) {
         console.error("Failed to load user preferences from local storage", error);
@@ -55,22 +57,22 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
         setLoading(false);
       }
     } else if (userId === null) { // Explicitly check for logout/not logged in
-        setPreferences(getInitialState());
-        setLoading(false);
+      setPreferences(getInitialState());
+      setLoading(false);
     }
   }, [userId, getLocalStorageKey]);
-  
+
   const savePreferences = async (newPrefs: UserPreferences) => {
     const key = getLocalStorageKey();
     if (key) {
-        try {
-            // Update state first, then save to localStorage
-            setPreferences(newPrefs);
-            localStorage.setItem(key, JSON.stringify(newPrefs));
-        } catch(error) {
-            console.error("Failed to save preferences", error);
-            throw error;
-        }
+      try {
+        // Update state first, then save to localStorage
+        setPreferences(newPrefs);
+        localStorage.setItem(key, JSON.stringify(newPrefs));
+      } catch (error) {
+        console.error("Failed to save preferences", error);
+        throw error;
+      }
     }
   };
 

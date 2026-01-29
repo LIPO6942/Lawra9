@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { isp, stegRef, sonedeRef, adslNumber, savePreferences, loading: prefsLoading } = useUserPreferences();
+  const { isp, stegRef, sonedeRef, adslNumber, stegInvoiceLink, savePreferences, loading: prefsLoading } = useUserPreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [localStegRef, setLocalStegRef] = useState('');
   const [localSonedeRef, setLocalSonedeRef] = useState('');
   const [localAdslNumber, setLocalAdslNumber] = useState('');
+  const [localStegInvoiceLink, setLocalStegInvoiceLink] = useState('');
 
   useEffect(() => {
     if (user?.displayName) {
@@ -42,8 +43,9 @@ export default function SettingsPage() {
       setLocalStegRef(stegRef || '');
       setLocalSonedeRef(sonedeRef || '');
       setLocalAdslNumber(adslNumber || '');
+      setLocalStegInvoiceLink(stegInvoiceLink || '');
     }
-  }, [isp, stegRef, sonedeRef, adslNumber, prefsLoading]);
+  }, [isp, stegRef, sonedeRef, adslNumber, stegInvoiceLink, prefsLoading]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +69,7 @@ export default function SettingsPage() {
       setIsSavingProfile(false);
     }
   };
-  
+
   const handleProviderUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProviders(true);
@@ -77,19 +79,20 @@ export default function SettingsPage() {
         stegRef: localStegRef,
         sonedeRef: localSonedeRef,
         adslNumber: localAdslNumber,
+        stegInvoiceLink: localStegInvoiceLink,
       });
       toast({
         title: 'Préférences enregistrées',
         description: 'Vos informations de fournisseurs ont été mises à jour.',
       });
     } catch (error) {
-       toast({
+      toast({
         variant: 'destructive',
         title: 'Erreur',
         description: 'Impossible d\'enregistrer les préférences.',
       });
     } finally {
-        setIsSavingProviders(false);
+      setIsSavingProviders(false);
     }
   };
 
@@ -110,79 +113,83 @@ export default function SettingsPage() {
           <p className="text-muted-foreground">Gérez votre compte et les préférences de l'application.</p>
         </div>
       </div>
-      
+
       <div className="space-y-8 max-w-3xl">
         <Card>
-           <CardHeader>
+          <CardHeader>
             <CardTitle>Profil</CardTitle>
             <CardDescription>Informations publiques de votre compte.</CardDescription>
-           </CardHeader>
-           <form onSubmit={handleProfileUpdate}>
-              <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="displayName">Nom d'affichage</Label>
-                    <Input
-                      id="displayName"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Votre nom"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={user?.email || ''} disabled />
-                  </div>
-              </CardContent>
-              <CardFooter className="border-t px-6 py-4">
-                <Button type="submit" disabled={isSavingProfile}>
-                  {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Enregistrer les modifications
-                </Button>
-              </CardFooter>
-            </form>
+          </CardHeader>
+          <form onSubmit={handleProfileUpdate}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Nom d'affichage</Label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Votre nom"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={user?.email || ''} disabled />
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4">
+              <Button type="submit" disabled={isSavingProfile}>
+                {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Enregistrer les modifications
+              </Button>
+            </CardFooter>
+          </form>
         </Card>
 
         <Card>
-           <CardHeader>
+          <CardHeader>
             <CardTitle>Fournisseurs & Raccourcis</CardTitle>
             <CardDescription>Configurez vos contrats pour un accès rapide depuis l'accueil.</CardDescription>
-           </CardHeader>
+          </CardHeader>
           <form onSubmit={handleProviderUpdate}>
-              <CardContent className="space-y-4">
-                   <div className="space-y-2">
-                      <Label htmlFor="isp-select">Fournisseur d'accès Internet</Label>
-                       <Select value={localIsp || ''} onValueChange={(v) => setLocalIsp(v as ISP)}>
-                          <SelectTrigger id="isp-select">
-                              <SelectValue placeholder="Sélectionnez votre FAI" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="Orange">Orange</SelectItem>
-                              <SelectItem value="Ooredoo">Ooredoo</SelectItem>
-                              <SelectItem value="Topnet">Topnet</SelectItem>
-                              <SelectItem value="TT">Tunisie Telecom</SelectItem>
-                              <SelectItem value="Hexabyte">Hexabyte</SelectItem>
-                          </SelectContent>
-                      </Select>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="adsl-number">Numéro de ligne ADSL/Fibre</Label>
-                      <Input id="adsl-number" value={localAdslNumber} onChange={(e) => setLocalAdslNumber(e.target.value)} placeholder="Ex: 71... / 31..." />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="steg-ref">Référence contrat STEG</Label>
-                      <Input id="steg-ref" value={localStegRef} onChange={(e) => setLocalStegRef(e.target.value)} placeholder="Ex: 201..." />
-                  </div>
-                   <div className="space-y-2">
-                      <Label htmlFor="sonede-ref">Référence compteur SONEDE</Label>
-                      <Input id="sonede-ref" value={localSonedeRef} onChange={(e) => setLocalSonedeRef(e.target.value)} placeholder="Ex: 304..." />
-                  </div>
-              </CardContent>
-              <CardFooter className="border-t px-6 py-4">
-                <Button type="submit" disabled={isSavingProviders}>
-                  {isSavingProviders && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Enregistrer les fournisseurs
-                </Button>
-              </CardFooter>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="isp-select">Fournisseur d'accès Internet</Label>
+                <Select value={localIsp || ''} onValueChange={(v) => setLocalIsp(v as ISP)}>
+                  <SelectTrigger id="isp-select">
+                    <SelectValue placeholder="Sélectionnez votre FAI" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Orange">Orange</SelectItem>
+                    <SelectItem value="Ooredoo">Ooredoo</SelectItem>
+                    <SelectItem value="Topnet">Topnet</SelectItem>
+                    <SelectItem value="TT">Tunisie Telecom</SelectItem>
+                    <SelectItem value="Hexabyte">Hexabyte</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="adsl-number">Numéro de ligne ADSL/Fibre</Label>
+                <Input id="adsl-number" value={localAdslNumber} onChange={(e) => setLocalAdslNumber(e.target.value)} placeholder="Ex: 71... / 31..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="steg-ref">Référence contrat STEG</Label>
+                <Input id="steg-ref" value={localStegRef} onChange={(e) => setLocalStegRef(e.target.value)} placeholder="Ex: 201..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="steg-link">Lien personnalisé facture STEG</Label>
+                <Input id="steg-link" value={localStegInvoiceLink} onChange={(e) => setLocalStegInvoiceLink(e.target.value)} placeholder="https://espace.steg.com.tn/..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sonede-ref">Référence compteur SONEDE</Label>
+                <Input id="sonede-ref" value={localSonedeRef} onChange={(e) => setLocalSonedeRef(e.target.value)} placeholder="Ex: 304..." />
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4">
+              <Button type="submit" disabled={isSavingProviders}>
+                {isSavingProviders && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Enregistrer les fournisseurs
+              </Button>
+            </CardFooter>
           </form>
         </Card>
       </div>
