@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { isp, stegRef, sonedeRef, adslNumber, stegInvoiceLink, savePreferences, loading: prefsLoading } = useUserPreferences();
+  const { isp, stegRef, sonedeRef, adslNumber, stegInvoiceLink, sonedeInvoiceLink, ispInvoiceLink, savePreferences, loading: prefsLoading } = useUserPreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -29,6 +29,8 @@ export default function SettingsPage() {
   const [localSonedeRef, setLocalSonedeRef] = useState('');
   const [localAdslNumber, setLocalAdslNumber] = useState('');
   const [localStegInvoiceLink, setLocalStegInvoiceLink] = useState('');
+  const [localSonedeInvoiceLink, setLocalSonedeInvoiceLink] = useState('');
+  const [localIspInvoiceLink, setLocalIspInvoiceLink] = useState('');
 
   useEffect(() => {
     if (user?.displayName) {
@@ -44,8 +46,10 @@ export default function SettingsPage() {
       setLocalSonedeRef(sonedeRef || '');
       setLocalAdslNumber(adslNumber || '');
       setLocalStegInvoiceLink(stegInvoiceLink || '');
+      setLocalSonedeInvoiceLink(sonedeInvoiceLink || '');
+      setLocalIspInvoiceLink(ispInvoiceLink || '');
     }
-  }, [isp, stegRef, sonedeRef, adslNumber, stegInvoiceLink, prefsLoading]);
+  }, [isp, stegRef, sonedeRef, adslNumber, stegInvoiceLink, sonedeInvoiceLink, ispInvoiceLink, prefsLoading]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +84,8 @@ export default function SettingsPage() {
         sonedeRef: localSonedeRef,
         adslNumber: localAdslNumber,
         stegInvoiceLink: localStegInvoiceLink,
+        sonedeInvoiceLink: localSonedeInvoiceLink,
+        ispInvoiceLink: localIspInvoiceLink,
       });
       toast({
         title: 'Préférences enregistrées',
@@ -172,6 +178,10 @@ export default function SettingsPage() {
                 <Input id="adsl-number" value={localAdslNumber} onChange={(e) => setLocalAdslNumber(e.target.value)} placeholder="Ex: 71... / 31..." />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="isp-link">Lien personnalisé paiement FAI</Label>
+                <Input id="isp-link" value={localIspInvoiceLink} onChange={(e) => setLocalIspInvoiceLink(e.target.value)} placeholder="https://..." />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="steg-ref">Référence contrat STEG</Label>
                 <Input id="steg-ref" value={localStegRef} onChange={(e) => setLocalStegRef(e.target.value)} placeholder="Ex: 201..." />
               </div>
@@ -182,6 +192,10 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="sonede-ref">Référence compteur SONEDE</Label>
                 <Input id="sonede-ref" value={localSonedeRef} onChange={(e) => setLocalSonedeRef(e.target.value)} placeholder="Ex: 304..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sonede-link">Lien personnalisé facture SONEDE</Label>
+                <Input id="sonede-link" value={localSonedeInvoiceLink} onChange={(e) => setLocalSonedeInvoiceLink(e.target.value)} placeholder="https://portail.sonede.com.tn/..." />
               </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4">

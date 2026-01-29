@@ -12,6 +12,8 @@ interface UserPreferences {
   sonedeRef: string | null;
   adslNumber: string | null;
   stegInvoiceLink: string | null;
+  sonedeInvoiceLink: string | null;
+  ispInvoiceLink: string | null;
 }
 
 interface UserPreferencesContextType extends UserPreferences {
@@ -27,6 +29,8 @@ const getInitialState = (): UserPreferences => ({
   sonedeRef: null,
   adslNumber: null,
   stegInvoiceLink: null,
+  sonedeInvoiceLink: null,
+  ispInvoiceLink: null,
 });
 
 export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

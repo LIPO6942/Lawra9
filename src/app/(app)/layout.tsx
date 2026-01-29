@@ -46,11 +46,12 @@ const providerDetails: Record<ISP, { name: string; link: string; className: stri
 };
 
 function ProviderQuickLinks() {
-    const { isp, adslNumber, stegInvoiceLink } = useUserPreferences();
+    const { isp, adslNumber, stegInvoiceLink, sonedeInvoiceLink, ispInvoiceLink } = useUserPreferences();
 
     const stegLink = (stegInvoiceLink && stegInvoiceLink.trim() !== '') ? stegInvoiceLink : "https://espace.steg.com.tn/fr/espace/login.php";
-    const sonedeLink = "https://portail.sonede.com.tn/login";
+    const sonedeLink = (sonedeInvoiceLink && sonedeInvoiceLink.trim() !== '') ? sonedeInvoiceLink : "https://portail.sonede.com.tn/login";
     const ispProvider = isp ? providerDetails[isp] : null;
+    const currentIspLink = (ispInvoiceLink && ispInvoiceLink.trim() !== '') ? ispInvoiceLink : (ispProvider ? ispProvider.link : '#');
 
     return (
         <div className="flex items-center gap-2">
@@ -79,7 +80,7 @@ function ProviderQuickLinks() {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button asChild variant="outline" size="icon" className={cn("h-9 w-9", ispProvider.className)}>
-                            <Link href={ispProvider.link} target="_blank"><ispProvider.icon className="h-5 w-5" /></Link>
+                            <Link href={currentIspLink} target="_blank"><ispProvider.icon className="h-5 w-5" /></Link>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent><p>Paiement facture {ispProvider.name}</p></TooltipContent>
