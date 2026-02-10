@@ -310,13 +310,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
     try {
       let finalFile = file;
+      console.log(`[Upload] Starting process for: ${file.name} (${file.type}, ${Math.round(file.size / 1024)} KB)`);
 
       // Compression if large image
       if (file.type.startsWith('image/') && file.size > 1 * 1024 * 1024) {
         setProcessingMessage('Optimisation de l\'image...');
         try {
+          console.log('[Upload] Compressing image...');
           const compressed = await compressImage(file, 0.8, 1600);
           finalFile = new File([compressed.blob], file.name, { type: 'image/jpeg' });
+          console.log(`[Upload] Compressed: ${Math.round(finalFile.size / 1024)} KB`);
         } catch (e) {
           console.warn('Compression failed, using original', e);
         }
@@ -332,19 +335,23 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       // If PDF, convert to image for Groq
       if (finalFile.type === 'application/pdf') {
         setProcessingMessage('Conversion du PDF...');
+        console.log('[Upload] Converting PDF to image...');
         try {
           const { convertPdfToImage } = await import('@/lib/pdf-utils');
           documentDataUri = await convertPdfToImage(finalFile);
+          console.log('[Upload] PDF conversion successful');
         } catch (e) {
           console.error('PDF conversion failed:', e);
           throw new Error("La conversion du PDF a échoué. Essayez de prendre une photo à la place.");
         }
       }
 
+      console.log('[Upload] Starting AI extraction...');
       const result: AnalysisResult = await extractInvoiceData({
         invoiceDataUri: documentDataUri,
         mimeType: finalFile.type,
       });
+      console.log('[Upload] AI extraction result:', result);
 
       setProcessingMessage('Sauvegarde en cours...');
       let finalCategory = (result.documentType && frenchCategories[result.documentType]) || 'Autre';

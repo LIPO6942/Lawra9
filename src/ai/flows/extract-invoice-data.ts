@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'genkit';
+import { ai } from '@/ai/genkit';
 
 const ExtractInvoiceDataInputSchema = z.object({
   invoiceDataUri: z
@@ -128,8 +129,35 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
 }
 
 export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput> {
-  const groqRes = await extractWithGroq(input);
-  if (groqRes) return groqRes;
+  try {
+    const groqRes = await extractWithGroq(input);
+    if (groqRes) {
+      console.log('[Groq Invoice] Extraction successful');
+      return groqRes;
+    }
+  } catch (e: any) {
+    console.warn('[Groq Invoice] Failed or timed out:', e.message);
+  }
 
-  throw new Error("L'analyse avec Groq a échoué. Veuillez vous assurer que le document est lisible.");
+  // Fallback to Gemini 1.5 Flash
+  console.log('[Gemini Invoice] Attempting fallback...');
+  try {
+    const result = await (ai.generate({
+      model: 'googleai/gemini-1.5-flash',
+      prompt: [
+        { text: INVOICE_PROMPT },
+        { media: { url: input.invoiceDataUri, contentType: input.mimeType || 'image/jpeg' } },
+      ],
+      output: { schema: ExtractInvoiceDataOutputSchema },
+    }) as Promise<any>);
+
+    if (result && result.output) {
+      console.log('[Gemini Invoice] Extraction successful');
+      return result.output;
+    }
+  } catch (e: any) {
+    console.error('[Gemini Invoice] Fallback failed:', e.message);
+  }
+
+  throw new Error("L'analyse du document a échoué. Veuillez vous assurer que le document est lisible et réessayez.");
 }
