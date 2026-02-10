@@ -66,6 +66,19 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
         finalDataUri = await fileToDataUrl(file);
       }
 
+      // Support PDF conversion for receipts
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        setProcessingMessage('Conversion du PDF...');
+        try {
+          const { convertPdfToImage } = await import('@/lib/pdf-utils');
+          finalDataUri = await convertPdfToImage(file);
+          // For receipts, we use jpeg for AI
+        } catch (e) {
+          console.error('PDF conversion failed for receipt:', e);
+          throw new Error("La conversion du PDF a échoué. Essayez une photo ou un fichier JPG/PNG.");
+        }
+      }
+
       setProcessingMessage('Analyse IA en cours (3 à 4 min)...');
 
       // On wrap l'appel dans un try/catch spécifique pour chopper les erreurs de timeout serveur
@@ -213,7 +226,7 @@ export function UploadReceiptDialog({ children }: { children?: ReactNode }) {
                 <p className="text-xs text-muted-foreground">iPhone supporté (Conversion auto)</p>
               </div>
             </label>
-            <Input id="receipt-upload" type="file" className="hidden" onChange={onFileChange} accept=".heic,.png,.jpg,.jpeg" />
+            <Input id="receipt-upload" type="file" className="hidden" onChange={onFileChange} accept=".heic,.pdf,.png,.jpg,.jpeg" />
           </div>
         )}
 

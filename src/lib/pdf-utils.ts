@@ -5,7 +5,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 // Define the worker URL for pdfjs-dist
 // We use a CDN to avoid complex local worker setup in Next.js
 const PDF_JS_VERSION = '5.4.530'; // Matching package.json
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/build/pdf.worker.min.mjs`;
 
 /**
  * Converts the first page of a PDF file to a base64 data URI image.

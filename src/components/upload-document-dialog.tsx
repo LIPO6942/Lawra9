@@ -337,12 +337,14 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         setProcessingMessage('Conversion du PDF...');
         console.log('[Upload] Converting PDF to image...');
         try {
+          console.log('[Upload] Importing pdf-utils dynamically...');
           const { convertPdfToImage } = await import('@/lib/pdf-utils');
+          console.log('[Upload] Starting conversion with pdf-utils...');
           documentDataUri = await convertPdfToImage(finalFile);
-          console.log('[Upload] PDF conversion successful');
+          console.log('[Upload] PDF conversion successful, data URI length:', documentDataUri.length);
         } catch (e) {
           console.error('PDF conversion failed:', e);
-          throw new Error("La conversion du PDF a échoué. Essayez de prendre une photo à la place.");
+          throw new Error(`La conversion du PDF a échoué: ${e instanceof Error ? e.message : String(e)}. Essayez de prendre une photo à la place.`);
         }
       }
 
