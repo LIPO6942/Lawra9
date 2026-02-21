@@ -118,9 +118,9 @@ function parseFlexibleDate(dateStr: string | undefined): Date | null {
 export async function extractReceiptData(
   input: ExtractReceiptDataInput
 ): Promise<ExtractReceiptDataOutput> {
-  console.log('[Genkit] Scan début (Image size:', input.receiptDataUri.length, ')');
+  console.log('[Groq Receipt] Scan début (Image size:', input.receiptDataUri.length, ')');
   const now = new Date();
-  const todayISO = now.toISOString().split('T')[0]; // Format YYYY-MM-DD pour la cohérence
+  const todayISO = now.toISOString().split('T')[0];
 
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -133,9 +133,7 @@ export async function extractReceiptData(
     const rawDate = result.purchaseAt;
     const parsedDate = parseFlexibleDate(rawDate);
 
-    // Sanity check: pas de date, date invalide, date futuriste (> demain), ou date trop ancienne (< 2020)
     if (!rawDate || !parsedDate || parsedDate >= tomorrow || parsedDate.getFullYear() < 2020) {
-      console.warn('[Validation] Date absente ou suspecte:', rawDate, '-> Remplacée par:', todayISO);
       result.purchaseAt = todayISO;
     } else {
       result.purchaseAt = parsedDate.toISOString().split('T')[0];
@@ -144,42 +142,20 @@ export async function extractReceiptData(
   };
 
   try {
-    const groqRes = await extractWithGroqTimeout(input, prompt);
+    const groqRes = await extractWithGroq(input, prompt);
     if (groqRes) {
-      console.log('[Groq] Succès.');
+      console.log('[Groq Receipt] Extraction successful');
       const validated = validateDate(groqRes);
       return JSON.parse(JSON.stringify(validated));
     }
   } catch (err: any) {
-    console.warn('[Groq] Échec:', err.message);
-  }
-
-  if (!process.env.GOOGLE_API_KEY) {
-    console.warn('[Gemini] API Key missing.');
-  } else {
-    try {
-      const result = await (ai.generate({
-        model: 'googleai/gemini-1.5-flash',
-        prompt: [
-          { text: prompt },
-          { media: { url: input.receiptDataUri, contentType: input.mimeType || 'image/jpeg' } },
-        ],
-        output: { schema: ExtractReceiptDataOutputSchema },
-      }) as Promise<any>);
-      if (result && result.output) {
-        console.log('[Gemini] Succès.');
-        const validated = validateDate(result.output);
-        return JSON.parse(JSON.stringify(validated));
-      }
-    } catch (err: any) {
-      console.warn('[Gemini] Échec/Timeout:', err.message);
-    }
+    console.error('[Groq Receipt] Error:', err.message);
   }
 
   return {
-    storeName: "Échec de l'analyse",
+    storeName: "Échec de l'analyse Groq",
     lines: [],
-    ocrText: "L'IA n'a pas pu répondre à temps.",
+    ocrText: "Impossible de traiter le reçu via Groq.",
     confidence: 0,
     storeId: '',
     purchaseAt: todayISO,
@@ -190,23 +166,7 @@ export async function extractReceiptData(
   };
 }
 
-// Helper: Groq with timeout
-async function extractWithGroqTimeout(
-  input: ExtractReceiptDataInput,
-  prompt: string,
-  timeoutMs: number = 240000
-): Promise<ExtractReceiptDataOutput | null> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const result = await extractWithGroq(input, prompt);
-    return result;
-  } catch (e) {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+// Fonction supprimée, appel direct à extractWithGroq utilisé.
 
 // Groq implementation
 async function extractWithGroq(

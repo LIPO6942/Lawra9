@@ -61,9 +61,13 @@ IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien.
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
   const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) return null;
+  if (!groqKey) {
+    console.warn('[Groq Invoice] No API Key found in process.env.GROQ_API_KEY');
+    return null;
+  }
 
   try {
+    console.log('[Groq Invoice] Sending request to Groq API...');
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -94,7 +98,7 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
     const content = data.choices?.[0]?.message?.content;
     return content ? JSON.parse(content) : null;
   } catch (e) {
-    console.error('[Groq Invoice] Error:', e);
+    console.error('[Groq Invoice] Exception during fetch:', e);
     return null;
   }
 }
@@ -106,30 +110,9 @@ export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promis
       console.log('[Groq Invoice] Extraction successful');
       return { data: groqRes };
     }
+    return { error: "L'analyse via Groq n'a retourné aucun résultat. Vérifiez la lisibilité du document." };
   } catch (e: any) {
-    console.warn('[Groq Invoice] Failed or timed out:', e.message);
+    console.error('[Groq Invoice] Critical Error:', e.message);
+    return { error: `Erreur d'analyse : ${e.message}` };
   }
-
-  // Fallback to Gemini 1.5 Flash
-  console.log('[Gemini Invoice] Attempting fallback...');
-  try {
-    const result = await (ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      prompt: [
-        { text: INVOICE_PROMPT },
-        { media: { url: input.invoiceDataUri, contentType: input.mimeType || 'image/jpeg' } },
-      ],
-      output: { schema: ExtractInvoiceDataOutputSchema },
-    }) as Promise<any>);
-
-    if (result && result.output) {
-      console.log('[Gemini Invoice] Extraction successful');
-      return { data: result.output as ExtractInvoiceDataOutput };
-    }
-  } catch (e: any) {
-    console.error('[Gemini Invoice] Fallback failed:', e.message);
-    return { error: `AI Analysis failed: ${e.message}` };
-  }
-
-  return { error: "L'analyse du document a échoué. Veuillez vous assurer que le document est lisible et réessayez." };
 }
