@@ -36,9 +36,9 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 **DÉTERMINATION DU FOURNISSEUR (CRITIQUE) :**
 1. **SONEDE (EAU)** : 
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
-   - PÉRIODE : Repérez "فترة الاستهلاك" (souvent en haut/milieu). Juste après, il y a un code à 4 segments type "2025-08-07-06".
-   - ÉCHÉANCE (CRITIQUE) : Repérez le bloc de texte "الرجاء الدفع", "تاريخ الاستخلاص", "Prière de payer" ou "Avant le" (en bas à gauche). La date d'échéance se trouve TOUJOURS immédiatement à GAUCHE de ce texte ou juste au-dessus. Cherchez une date isolée dans le coin inférieur GAUCHE. **IMPORTANT : Cette date peut être dans le passé (2024, 2025, etc.), extrayez-la telle quelle.**
-    - CONSOMMATION (EAU) : Cherchez "كمية الإستهلاك", "الكمية", "Quantité consommée", "Le volume consommé", "Volume" ou "Consommation" en m3. Elle se trouve TOUJOURS dans une case dédiée sous "كمية الإستهلاك". Si vous voyez deux index (ancien/nouveau), la consommation est la différence (ex: 384-371=13). Priorisez le petit nombre (ex: 13). Extrayez UNIQUEMENT le nombre (ex: "13"). L'unité est toujours m3 pour l'eau.
+   - PÉRIODE : Repérez "فترة الاستهلاك". Juste après, il y a un code à 4 segments (AAAA-MM-MM-MM) représentant l'année et les 3 mois de consommation. Extrayez ce code EXACTEMENT. NE LE CONFONDEZ PAS avec la date d'échéance.
+   - ÉCHÉANCE ET MONTANT (CRITIQUE) : Cherchez dans le coin inférieur GAUCHE du document (attention : ces éléments sont souvent tournés de 90 degrés ou isolés dans des cadres). Repérez "الرجاء الدفع" ou "Prière de payer". La date d'échéance est la date isolée juste à côté ou au-dessus de ce texte (ex: 2026-02-12). Le montant total (ex: 20,800) se trouve généralement juste au-dessus ou en dessous.
+   - CONSOMMATION (EAU) : Cherchez "كمية الإستهلاك", "الكمية", "Quantité consommée", "Le volume consommé", "Volume" ou "Consommation" en m3. Elle se trouve TOUJOURS dans une case dédiée sous "كمية الإستهلاك". Si vous voyez deux index (ancien/nouveau), la consommation est la différence (ex: 384-371=13). Priorisez le petit nombre (ex: 13). Extrayez UNIQUEMENT le nombre (ex: "13"). L'unité est toujours m3 pour l'eau.
 2. **STEG (ÉLEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
    - PÉRIODE : Repérez "Du" (من) et "Au" (إلى) en haut à droite. Ces dates correspondent à billingStartDate et billingEndDate.
@@ -70,7 +70,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
 - **dueDate** : Date limite (FORMAT STRICT : AAAA-MM-JJ). **EXTRAYEZ MÊME SI LA DATE EST PASSÉE.** 
-   - Pour SONEDE : Elle est en bas à gauche.
+   - Pour SONEDE : Elle est en bas à gauche, souvent tournée.
    - Pour STEG : C'est la date dans le cadre de **GAUCHE** ("Prière de payer") en bas à droite. Ignorez la date de DROITE.
    - Si la date est "11/12/2025", retournez "2025-12-11".
 - **consumptionQuantity** : ÉLECTRICITÉ (kWh) pour STEG (Colonne 5, ex: "501"), ou VOLUME D'EAU (m3) pour SONEDE.
@@ -102,7 +102,7 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        model: 'llama-3.2-11b-vision-preview',
         messages: [
           { role: 'system', content: 'Tu es un expert en extraction JSON de factures tunisiennes (STEG/SONEDE). Restreint la sortie au JSON pur.' },
           {
