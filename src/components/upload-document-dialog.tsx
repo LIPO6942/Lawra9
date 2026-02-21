@@ -75,6 +75,16 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
   }
 
   // Final naming logic for core bills
+  if (supplierName === 'SONEDE' || docType === 'SONEDE') {
+    let quarter = "Q3";
+    if (result.consumptionPeriod?.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/)) {
+      const m = parseInt(result.consumptionPeriod.split('-')[1]);
+      if ([12, 1, 2, 3].includes(m)) quarter = "Q1";
+      else if ([4, 5, 6, 7].includes(m)) quarter = "Q2";
+    }
+    return `Facture Eau ${quarter}`;
+  }
+
   if (supplierName) {
     const periodPart = formattedPeriod ? ` (${formattedPeriod})` : '';
     return `Facture ${supplierName}${periodPart}`;

@@ -209,6 +209,27 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                         return format(d, 'MMM', { locale: fr }).replace('.', '');
                                                                     } catch (e) { return m; }
                                                                 }).reverse();
+
+                                                                if (doc.category === 'SONEDE' || doc.name.includes('SONEDE')) {
+                                                                    const firstMonth = parseInt(parts[parts.length - 1]); // the first month in chronological order is at the end because of .reverse() or just the first in parts
+                                                                    // Re-evaluating chronological first month from the period string AAAA-MM-MM-MM
+                                                                    const m1 = parseInt(parts[1]);
+                                                                    const m2 = parseInt(parts[2]);
+                                                                    const m3 = parseInt(parts[3]);
+                                                                    // Chronological order for SONEDE is usually the last 3 segments: [m1, m2, m3]
+                                                                    // But they are recorded as they appear. Often 09-10-11.
+                                                                    // User said: 09-10-11 -> Q3, 12-01-02 -> Q1.
+                                                                    // This corresponds to a 3-quarter system of 4 months each:
+                                                                    // Q1: 12, 1, 2, 3
+                                                                    // Q2: 4, 5, 6, 7
+                                                                    // Q3: 8, 9, 10, 11
+                                                                    let quarter = "Q3";
+                                                                    if ([12, 1, 2, 3].includes(m1)) quarter = "Q1";
+                                                                    else if ([4, 5, 6, 7].includes(m1)) quarter = "Q2";
+
+                                                                    return `Facture Eau ${quarter}`;
+                                                                }
+
                                                                 const formattedMonths = months.join('-');
                                                                 return `Facture ${doc.supplier || doc.name} (${formattedMonths} ${year})`;
                                                             } else if (doc.billingStartDate && doc.billingEndDate) {
