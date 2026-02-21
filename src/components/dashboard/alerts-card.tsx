@@ -68,7 +68,14 @@ export function AlertsCard({ alerts }: AlertsCardProps) {
                 </div>
                 <div className="flex-1 space-y-1 min-w-0">
                   <p className="text-sm font-medium leading-none break-words" title={alert.documentName}>{alert.documentName}</p>
-                  <p className="text-sm text-muted-foreground">{alert.type} - {format(parseISO(alert.dueDate), 'd MMMM', { locale: fr })}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {alert.type} - {format(parseISO(alert.dueDate), 'd MMMM', { locale: fr })}
+                    {alert.amount && !isNaN(parseFloat(alert.amount.replace(',', '.'))) && (
+                      <span className="ml-2 text-[11px] font-medium text-primary/70">
+                        ({parseFloat(alert.amount.replace(',', '.')).toLocaleString('fr-TN', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} Dt)
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   {getAlertBadge(alert.dueDate)}

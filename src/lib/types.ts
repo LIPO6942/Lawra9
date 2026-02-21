@@ -42,6 +42,7 @@ export type Alert = {
   documentName: string;
   dueDate: string; // ISO date string
   type: 'Paiement' | 'Expiration' | 'Renouvellement';
+  amount?: string;
 };
 
 // ==========================

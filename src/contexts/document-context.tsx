@@ -164,6 +164,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         documentName: doc.supplier || doc.name,
         dueDate: doc.dueDate!,
         type: ((doc.category === 'STEG' || doc.category === 'SONEDE') ? 'Paiement' : 'Renouvellement') as Alert['type'],
+        amount: doc.amount,
       }))
       .sort((a, b) => differenceInDays(parseISO(a.dueDate), new Date()) - differenceInDays(parseISO(b.dueDate), new Date()));
   }, [documents]);
