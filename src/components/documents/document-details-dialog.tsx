@@ -61,7 +61,7 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
                     const d = new Date(parseInt(year), parseInt(m) - 1, 1);
                     return format(d, 'MMMM', { locale: fr });
                 } catch (e) { return m; }
-            });
+            }).reverse();
             period = `${year} ${months.join('-')}`;
         }
     } else {

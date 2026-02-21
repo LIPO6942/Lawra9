@@ -36,6 +36,7 @@ export async function convertPdfToImage(file: File): Promise<string> {
     await page.render({
         canvasContext: context,
         viewport: viewport,
+        canvas: canvas,
     }).promise;
     console.log('[pdf-utils] Render complete');
 

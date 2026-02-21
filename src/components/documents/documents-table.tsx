@@ -208,7 +208,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                         const d = new Date(parseInt(year), parseInt(m) - 1, 1);
                                                                         return format(d, 'MMM', { locale: fr }).replace('.', '');
                                                                     } catch (e) { return m; }
-                                                                });
+                                                                }).reverse();
                                                                 const formattedMonths = months.join('-');
                                                                 return formattedMonths.charAt(0).toUpperCase() + formattedMonths.slice(1) + ' ' + year;
                                                             } else if (doc.billingStartDate && doc.billingEndDate) {
@@ -277,7 +277,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                     const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
                                                                     return format(d, 'MMM', { locale: fr }).replace('.', '').toLowerCase();
                                                                 } catch (e) { return m; }
-                                                            });
+                                                            }).reverse();
                                                             return `${months.join('-')} ${year}`;
                                                         })()
                                                     ) : doc.consumptionPeriod}

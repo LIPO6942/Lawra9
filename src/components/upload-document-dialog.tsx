@@ -62,7 +62,7 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
         const d = new Date(parseInt(year), parseInt(m) - 1, 1);
         return format(d, 'MMMM', { locale: fr });
       } catch (e) { return m; }
-    });
+    }).reverse();
     formattedPeriod = `${year} ${months.join('-')}`;
   } else if (result.billingStartDate && result.billingEndDate) {
     try {
