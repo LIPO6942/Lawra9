@@ -223,13 +223,14 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                     // Q1: 12, 1, 2, 3
                                                                     // Q2: 4, 5, 6, 7
                                                                     // Q3: 8, 9, 10, 11
-                                                                    let quarter = "Q3";
-                                                                    if ([12, 1, 2, 3].includes(m1)) quarter = "Q1";
-                                                                    else if ([4, 5, 6, 7].includes(m1)) quarter = "Q2";
+                                                                    let quarter = "Q4";
+                                                                    if ([12, 1, 2].includes(m1)) quarter = "Q1";
+                                                                    else if ([3, 4, 5].includes(m1)) quarter = "Q2";
+                                                                    else if ([6, 7, 8].includes(m1)) quarter = "Q3";
+                                                                    else if ([9, 10, 11].includes(m1)) quarter = "Q4";
 
                                                                     return `Facture Eau ${quarter}`;
                                                                 }
-
                                                                 const formattedMonths = months.join('-');
                                                                 return `Facture ${doc.supplier || doc.name} (${formattedMonths} ${year})`;
                                                             } else if (doc.billingStartDate && doc.billingEndDate) {
