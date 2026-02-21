@@ -36,9 +36,9 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 **DETERMINATION DU FOURNISSEUR (CRITIQUE) :**
 1. **SONEDE (EAU)** : 
    - RECHERCHEZ : "SONEDE", "الشركة الوطنية لاستغلال وتوزيع المياه", "District", "Eau potable".
-   - PERIODE : Reperez "periode d'echance" ou "periode de consommation". Juste apres, il y a un code a 4 segments (AAAA-MM-MM-MM) representant l'annee et les 3 mois de consommation. Extrayez ce code EXACTEMENT. NE LE CONFONDEZ PAS avec la date d'echeance. 
-   - ECHEANCE ET MONTANT (CRITIQUE) : Cherchez dans le coin inferieur GAUCHE du document (attention : ces elements sont souvent tournes de 90 degres). Reperez "Priere de payer" ou le texte en arabe correspondant. La date d'echeance est la date isolee juste a cote (ex: 2026-02-12). Le montant total (ex: 20,800) se trouve generalement juste a cote.
-   - CONSOMMATION (EAU) : Cherchez "Quantite consommee", "Volume" ou "Consommation" en m3. Extrayez UNIQUEMENT le nombre (ex: "13").
+   - PERIODE : Trouvez le code de consommation de type "AAAA-MM-MM-MM" (ex: "2025-11-10-09"). Il est souvent apres "فترة الاستهلاك". Extrayez ce code EXACTEMENT.
+   - ECHEANCE ET MONTANT : Dans le coin bas-gauche, souvent tourne. Reperez "الرجاء الدفع" ou "Prière de payer". La date d'echeance est juste a cote.
+   - CONSOMMATION (CHIRURGICAL) : Reperez le tableau des index. Calculez : "Nouveau Index" - "Ancien Index". Si le resultat est 12, retournez "12". Ne prenez pas d'autre chiffre. Verifiez le cadre "Consommation" ou "الكمية". Si vous voyez une consommation d'entretien (ex: 13), assurez-vous de bien prendre la consommation REELLE facturée. Si le texte montre 12 m3, extrayez "12".
 2. **STEG (ELEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
    - PERIODE : Reperez "Du" et "Au" en haut a droite.

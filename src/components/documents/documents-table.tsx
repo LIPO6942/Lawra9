@@ -210,7 +210,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                     } catch (e) { return m; }
                                                                 }).reverse();
                                                                 const formattedMonths = months.join('-');
-                                                                return formattedMonths.charAt(0).toUpperCase() + formattedMonths.slice(1) + ' ' + year;
+                                                                return `Facture ${doc.supplier || doc.name} (${formattedMonths} ${year})`;
                                                             } else if (doc.billingStartDate && doc.billingEndDate) {
                                                                 const start = formatDateSafe(doc.billingStartDate, 'MMM');
                                                                 const end = formatDateSafe(doc.billingEndDate, 'MMM yy');
@@ -246,7 +246,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                 daysDiff !== null && daysDiff >= 0 && daysDiff <= 7 && "text-red-500",
                                                 daysDiff !== null && daysDiff > 7 && daysDiff <= 30 && "text-orange-500",
                                             )}>
-                                                <AlertTriangle className="h-2.5 w-2.5" />
+                                                <CalendarDays className="h-2.5 w-2.5" />
                                                 <span>{dueDate}</span>
                                             </div>
                                         ) : docDate && !isMaison && (
@@ -264,7 +264,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         )}
 
                                         {/* Period badge - Only show if it wasn't used as title */}
-                                        {!isMaison && doc.consumptionPeriod && !isCoreBill && (
+                                        {!isMaison && doc.consumptionPeriod && (
                                             <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50/80 px-1.5 rounded border border-blue-100/50">
                                                 <CalendarDays className="h-2.5 w-2.5 shrink-0" />
                                                 <span>

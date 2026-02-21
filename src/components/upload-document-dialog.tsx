@@ -76,9 +76,8 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
 
   // Final naming logic for core bills
   if (supplierName) {
-    // We NO LONGER include period and amount in the name for core bills 
-    // because they are displayed as metadata in the UI, saving space.
-    return supplierName;
+    const periodPart = formattedPeriod ? ` (${formattedPeriod})` : '';
+    return `Facture ${supplierName}${periodPart}`;
   }
 
   // Formatting for receipts
