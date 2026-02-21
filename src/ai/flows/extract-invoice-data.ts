@@ -59,11 +59,10 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien.
 `;
 
-async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput | null> {
+async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: ExtractInvoiceDataOutput | null; error?: string }> {
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) {
-    console.warn('[Groq Invoice] No API Key found in process.env.GROQ_API_KEY');
-    return null;
+    return { data: null, error: "Clé API Groq manquante (GROQ_API_KEY non trouvée dans l'environnement)." };
   }
 
   try {
@@ -92,27 +91,30 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       console.error('[Groq Invoice] API Error:', response.status, errData);
-      return null;
+      return { data: null, error: `Erreur API Groq (${response.status}): ${errData.error?.message || JSON.stringify(errData)}` };
     }
+
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    return content ? JSON.parse(content) : null;
-  } catch (e) {
-    console.error('[Groq Invoice] Exception during fetch:', e);
-    return null;
+    if (!content) return { data: null, error: "Réponse vide de Groq." };
+
+    return { data: JSON.parse(content) };
+  } catch (e: any) {
+    console.error('[Groq Invoice] Fetch Exception:', e);
+    return { data: null, error: `Erreur de connexion Groq : ${e.message}` };
   }
 }
 
 export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<{ data?: ExtractInvoiceDataOutput; error?: string }> {
   try {
-    const groqRes = await extractWithGroq(input);
-    if (groqRes) {
+    const { data, error } = await extractWithGroq(input);
+    if (data) {
       console.log('[Groq Invoice] Extraction successful');
-      return { data: groqRes };
+      return { data };
     }
-    return { error: "L'analyse via Groq n'a retourné aucun résultat. Vérifiez la lisibilité du document." };
+    return { error: error || "L'analyse via Groq a échoué sans message d'erreur précis." };
   } catch (e: any) {
-    console.error('[Groq Invoice] Critical Error:', e.message);
-    return { error: `Erreur d'analyse : ${e.message}` };
+    console.error('[Groq Invoice] Critical Flow Error:', e.message);
+    return { error: `Erreur critique : ${e.message}` };
   }
 }
