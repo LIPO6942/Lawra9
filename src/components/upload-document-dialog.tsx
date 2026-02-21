@@ -349,10 +349,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       }
 
       console.log('[Upload] Starting AI extraction...');
-      const result: AnalysisResult = await extractInvoiceData({
+      const extractionRes = await extractInvoiceData({
         invoiceDataUri: documentDataUri,
         mimeType: finalFile.type,
       });
+
+      if (extractionRes.error || !extractionRes.data) {
+        throw new Error(extractionRes.error || "L'IA n'a retourné aucune donnée.");
+      }
+
+      const result = extractionRes.data;
       console.log('[Upload] AI extraction result:', result);
 
       setProcessingMessage('Sauvegarde en cours...');

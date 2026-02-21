@@ -99,12 +99,12 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<ExtractI
   }
 }
 
-export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput> {
+export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<{ data?: ExtractInvoiceDataOutput; error?: string }> {
   try {
     const groqRes = await extractWithGroq(input);
     if (groqRes) {
       console.log('[Groq Invoice] Extraction successful');
-      return groqRes;
+      return { data: groqRes };
     }
   } catch (e: any) {
     console.warn('[Groq Invoice] Failed or timed out:', e.message);
@@ -124,11 +124,12 @@ export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promis
 
     if (result && result.output) {
       console.log('[Gemini Invoice] Extraction successful');
-      return result.output;
+      return { data: result.output as ExtractInvoiceDataOutput };
     }
   } catch (e: any) {
     console.error('[Gemini Invoice] Fallback failed:', e.message);
+    return { error: `AI Analysis failed: ${e.message}` };
   }
 
-  throw new Error("L'analyse du document a échoué. Veuillez vous assurer que le document est lisible et réessayez.");
+  return { error: "L'analyse du document a échoué. Veuillez vous assurer que le document est lisible et réessayez." };
 }

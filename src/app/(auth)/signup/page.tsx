@@ -15,10 +15,10 @@ import Link from 'next/link';
 import { useTheme } from 'next-themes';
 
 const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-        <polyline points="14 2 14 8 20 8" />
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+    <polyline points="14 2 14 8 20 8" />
+  </svg>
 );
 
 export default function SignupPage() {
@@ -71,13 +71,13 @@ export default function SignupPage() {
   };
 
   return (
-     <div className="flex items-center justify-center min-h-screen bg-background p-4">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <Card className="w-full max-w-sm mx-auto shadow-2xl rounded-2xl border-border/50">
         <CardHeader className="text-center space-y-2">
-             <div className="flex items-center justify-center gap-2 mb-2">
-                <PaperworkIcon className="h-8 w-8 text-primary" />
-                <h1 className="text-3xl font-bold font-headline text-foreground tracking-tight">Lawra9</h1>
-            </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <PaperworkIcon className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold font-headline text-foreground tracking-tight">Lawra9</h1>
+          </div>
           <CardTitle className="text-2xl font-headline">Créer votre compte</CardTitle>
           <CardDescription>Rejoignez-nous pour simplifier votre paperasse.</CardDescription>
         </CardHeader>
@@ -102,7 +102,7 @@ export default function SignupPage() {
           </form>
         </CardContent>
         <CardFooter className="justify-center text-sm">
-           <p className="text-muted-foreground">Déjà un compte ? <Link href="/login" className="font-semibold text-primary hover:underline">Se connecter</Link></p>
+          <p className="text-muted-foreground">Déjà un compte ? <Link href="/login" className="font-semibold text-primary hover:underline">Se connecter</Link></p>
         </CardFooter>
       </Card>
     </div>
