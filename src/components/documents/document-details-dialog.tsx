@@ -50,21 +50,28 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
     const dueDate = formatDateSafe(document.dueDate);
 
     let period = null;
-    if (document.consumptionPeriod) {
+    if (document.category === 'STEG' || document.name === 'STEG') {
+        if (document.billingStartDate && document.billingEndDate) {
+            period = `du ${formatDateSafe(document.billingStartDate, 'dd-MM-yy')} Au ${formatDateSafe(document.billingEndDate, 'dd-MM-yy')}`;
+        }
+    }
+
+    if (!period && document.consumptionPeriod) {
         period = document.consumptionPeriod;
-        // Si c'est le format SONEDE AAAA-MM-MM-MM, on le rend un peu plus beau
-        if (period.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/)) {
+        // Si c'est le format SONEDE ou Internet AAAA-MM-MM...
+        if (period.match(/^\d{4}(-\d{2})+$/)) {
             const parts = period.split('-');
             const year = parts[0];
             const months = parts.slice(1).map(m => {
                 try {
                     const d = new Date(parseInt(year), parseInt(m) - 1, 1);
-                    return format(d, 'MMMM', { locale: fr });
+                    const monthStr = format(d, 'MMMM', { locale: fr });
+                    return monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
                 } catch (e) { return m; }
             }).reverse();
-            period = `${year} ${months.join('-')}`;
+            period = `${months.join('-')} ${year}`;
         }
-    } else {
+    } else if (!period) {
         const periodStart = formatDateSafe(document.billingStartDate, 'MMM yyyy');
         const periodEnd = formatDateSafe(document.billingEndDate, 'MMM yyyy');
         if (periodStart && periodEnd) {

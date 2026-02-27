@@ -262,6 +262,35 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             </div>
                                         )}
 
+                                        {/* Period badge - Always show FIRST for non-maison docs */}
+                                        {!isMaison && (doc.consumptionPeriod || ((doc.category === 'STEG' || doc.name === 'STEG') && doc.billingStartDate && doc.billingEndDate)) && (
+                                            <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50/80 px-1.5 rounded border border-blue-100/50">
+                                                <CalendarDays className="h-2.5 w-2.5 shrink-0" />
+                                                <span>
+                                                    {(() => {
+                                                        if (doc.category === 'STEG' || doc.name === 'STEG') {
+                                                            if (doc.billingStartDate && doc.billingEndDate) {
+                                                                return `du ${formatDateSafe(doc.billingStartDate, 'dd-MM-yy')} Au ${formatDateSafe(doc.billingEndDate, 'dd-MM-yy')}`;
+                                                            }
+                                                        }
+                                                        if (doc.consumptionPeriod && doc.consumptionPeriod.match(/^\d{4}(-\d{2})+$/)) {
+                                                            const parts = doc.consumptionPeriod.split('-');
+                                                            const year = parts[0].slice(-2);
+                                                            const months = parts.slice(1).map(m => {
+                                                                try {
+                                                                    const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
+                                                                    const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                                    return monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
+                                                                } catch (e) { return m; }
+                                                            }).reverse();
+                                                            return `${months.join('-')} ${year}`;
+                                                        }
+                                                        return doc.consumptionPeriod;
+                                                    })()}
+                                                </span>
+                                            </div>
+                                        )}
+
                                         {dueDate && !isMaison ? (
                                             <div className={cn("flex items-center gap-1 font-semibold shrink-0 bg-secondary/20 px-1 rounded",
                                                 daysDiff !== null && daysDiff < 0 && "text-destructive",
@@ -282,28 +311,6 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded border border-secondary/50">
                                                 <CalendarDays className="h-2.5 w-2.5" />
                                                 <span className="text-[10px]">Date abs.</span>
-                                            </div>
-                                        )}
-
-                                        {/* Period badge - Only show if it wasn't used as title */}
-                                        {!isMaison && doc.consumptionPeriod && (
-                                            <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50/80 px-1.5 rounded border border-blue-100/50">
-                                                <CalendarDays className="h-2.5 w-2.5 shrink-0" />
-                                                <span>
-                                                    {doc.consumptionPeriod.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/) ? (
-                                                        (() => {
-                                                            const parts = doc.consumptionPeriod.split('-');
-                                                            const year = parts[0].slice(-2);
-                                                            const months = parts.slice(1).map(m => {
-                                                                try {
-                                                                    const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
-                                                                    return format(d, 'MMM', { locale: fr }).replace('.', '').toLowerCase();
-                                                                } catch (e) { return m; }
-                                                            }).reverse();
-                                                            return `${months.join('-')} ${year}`;
-                                                        })()
-                                                    ) : doc.consumptionPeriod}
-                                                </span>
                                             </div>
                                         )}
 
