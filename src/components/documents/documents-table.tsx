@@ -224,7 +224,10 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                 } else if (doc.consumptionPeriod) {
                                                                     periodStr = doc.consumptionPeriod;
                                                                 }
-                                                                return periodStr ? `${supplier} ${periodStr}` : supplier;
+                                                                if (periodStr) {
+                                                                    return `${supplier} ${periodStr}`;
+                                                                }
+                                                                return (doc.name && doc.name !== 'Internet') ? doc.name : supplier;
                                                             }
 
                                                             if (doc.category === 'STEG' || doc.name === 'STEG') {
@@ -267,7 +270,6 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                             return doc.name;
                                                         })()}
                                                     </span>
-                                                    <div className="shrink-0 opacity-80"><CategoryIcon category={doc.category} /></div>
                                                 </div>
                                             ) : (
                                                 doc.name
