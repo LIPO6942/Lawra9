@@ -263,7 +263,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         )}
 
                                         {/* Period badge - Always show FIRST for non-maison docs */}
-                                        {!isMaison && (doc.consumptionPeriod || ((doc.category === 'STEG' || doc.name === 'STEG') && doc.billingStartDate && doc.billingEndDate)) && (
+                                        {!isMaison && (doc.consumptionPeriod || ((doc.category === 'STEG' || doc.name === 'STEG') && doc.billingStartDate && doc.billingEndDate) || ((doc.category === 'Internet' || doc.name === 'Internet') && doc.billingStartDate)) && (
                                             <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50/80 px-1.5 rounded border border-blue-100/50">
                                                 <CalendarDays className="h-2.5 w-2.5 shrink-0" />
                                                 <span>
@@ -284,6 +284,14 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                 } catch (e) { return m; }
                                                             }).reverse();
                                                             return `${months.join('-')} ${year}`;
+                                                        }
+                                                        if ((doc.category === 'Internet' || doc.name === 'Internet') && !doc.consumptionPeriod && doc.billingStartDate) {
+                                                            try {
+                                                                const d = new Date(doc.billingStartDate);
+                                                                const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                                const year = format(d, 'yy');
+                                                                return `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${year}`;
+                                                            } catch (e) { }
                                                         }
                                                         return doc.consumptionPeriod;
                                                     })()}

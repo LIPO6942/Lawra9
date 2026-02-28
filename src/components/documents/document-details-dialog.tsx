@@ -72,10 +72,20 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
             period = `${months.join('-')} ${year}`;
         }
     } else if (!period) {
-        const periodStart = formatDateSafe(document.billingStartDate, 'MMM yyyy');
-        const periodEnd = formatDateSafe(document.billingEndDate, 'MMM yyyy');
-        if (periodStart && periodEnd) {
-            period = `Du ${periodStart} au ${periodEnd}`;
+        if ((document.category === 'Internet' || document.name === 'Internet') && document.billingStartDate) {
+            try {
+                const d = new Date(document.billingStartDate);
+                const monthStr = format(d, 'MMMM', { locale: fr });
+                period = `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${format(d, 'yyyy')}`;
+            } catch (e) { }
+        }
+
+        if (!period) {
+            const periodStart = formatDateSafe(document.billingStartDate, 'MMM yyyy');
+            const periodEnd = formatDateSafe(document.billingEndDate, 'MMM yyyy');
+            if (periodStart && periodEnd) {
+                period = `Du ${periodStart} au ${periodEnd}`;
+            }
         }
     }
 

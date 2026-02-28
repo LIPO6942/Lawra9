@@ -78,7 +78,7 @@ function ProviderQuickLinks() {
                 </TooltipTrigger>
                 <TooltipContent><p>Espace client SONEDE</p></TooltipContent>
             </Tooltip>
-            {ispProvider && (
+            {ispProvider ? (
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button asChild variant="outline" size="icon" className={cn("h-9 w-9", ispProvider.className)}>
@@ -86,6 +86,15 @@ function ProviderQuickLinks() {
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent><p>Paiement facture {ispProvider.name}</p></TooltipContent>
+                </Tooltip>
+            ) : (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button asChild variant="outline" size="icon" className="h-9 w-9 border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400">
+                            <Link href={currentIspLink !== '#' ? currentIspLink : '/settings'} target="_blank"><Wifi className="h-5 w-5" /></Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Espace client Internet (Non configuré)</p></TooltipContent>
                 </Tooltip>
             )}
         </div>
