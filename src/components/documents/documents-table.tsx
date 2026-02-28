@@ -172,7 +172,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                         const fileCount = doc.files?.length || 0;
                         const daysDiff = doc.dueDate && isValid(parseISO(doc.dueDate)) ? differenceInDays(parseISO(doc.dueDate), new Date()) : null;
 
-                        const isCoreBill = (doc.category === 'STEG' || doc.category === 'SONEDE' || doc.category === 'Internet' || doc.name === doc.category) && (doc.consumptionPeriod || (doc.billingStartDate && doc.billingEndDate) || ((doc.category === 'Internet' || doc.name === 'Internet') && doc.billingStartDate));
+                        const isCoreBill = (doc.category === 'STEG' || doc.category === 'SONEDE' || doc.category === 'Internet' || doc.name === doc.category) && (doc.consumptionPeriod || (doc.billingStartDate && doc.billingEndDate) || doc.category === 'Internet' || doc.name === 'Internet');
 
 
                         return (
@@ -214,7 +214,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                         } catch (e) { return m; }
                                                                     }).reverse();
                                                                     periodStr = `${months.join('-')} ${year}`;
-                                                                } else if (!doc.consumptionPeriod && doc.billingStartDate) {
+                                                                } else if (doc.billingStartDate && (!doc.consumptionPeriod || doc.consumptionPeriod === '')) {
                                                                     try {
                                                                         const d = new Date(doc.billingStartDate);
                                                                         const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
@@ -289,7 +289,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                         )}
 
                                         {/* Period badge - Always show FIRST for non-maison docs */}
-                                        {!isMaison && (doc.consumptionPeriod || ((doc.category === 'STEG' || doc.name === 'STEG') && doc.billingStartDate && doc.billingEndDate) || ((doc.category === 'Internet' || doc.name === 'Internet') && doc.billingStartDate)) && (
+                                        {!isMaison && (doc.consumptionPeriod || ((doc.category === 'STEG' || doc.name === 'STEG') && doc.billingStartDate && doc.billingEndDate) || ((doc.category === 'Internet' || doc.name === 'Internet') && (doc.billingStartDate || doc.consumptionPeriod))) && (
                                             <div className="flex items-center gap-1 text-blue-600 font-bold shrink-0 whitespace-nowrap bg-blue-50/80 px-1.5 rounded border border-blue-100/50">
                                                 <CalendarDays className="h-2.5 w-2.5 shrink-0" />
                                                 <span>
@@ -311,7 +311,7 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                             }).reverse();
                                                             return `${months.join('-')} ${year}`;
                                                         }
-                                                        if ((doc.category === 'Internet' || doc.name === 'Internet') && !doc.consumptionPeriod && doc.billingStartDate) {
+                                                        if ((doc.category === 'Internet' || doc.name === 'Internet') && doc.billingStartDate && (!doc.consumptionPeriod || doc.consumptionPeriod === '')) {
                                                             try {
                                                                 const d = new Date(doc.billingStartDate);
                                                                 const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
