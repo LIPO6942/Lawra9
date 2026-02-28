@@ -172,7 +172,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                         const fileCount = doc.files?.length || 0;
                         const daysDiff = doc.dueDate && isValid(parseISO(doc.dueDate)) ? differenceInDays(parseISO(doc.dueDate), new Date()) : null;
 
-                        const isCoreBill = (doc.name === 'STEG' || doc.name === 'SONEDE' || doc.name === 'Internet' || doc.category === 'Internet' || doc.name === doc.category) && (doc.consumptionPeriod || (doc.billingStartDate && doc.billingEndDate));
+                        const isCoreBill = (doc.category === 'STEG' || doc.category === 'SONEDE' || doc.category === 'Internet' || doc.name === doc.category) && (doc.consumptionPeriod || (doc.billingStartDate && doc.billingEndDate));
+
 
                         return (
                             <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md transition-all hover:bg-muted/50 -m-3">
@@ -199,6 +200,42 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                     <div className="shrink-0 opacity-80"><CategoryIcon category={doc.category} /></div>
                                                     <span className="truncate">
                                                         {(() => {
+                                                            if (doc.category === 'Internet' || doc.name === 'Internet') {
+                                                                const supplier = doc.supplier || 'Internet';
+                                                                let periodStr = '';
+                                                                if (doc.consumptionPeriod && doc.consumptionPeriod.match(/^\d{4}(-\d{2})+$/)) {
+                                                                    const parts = doc.consumptionPeriod.split('-');
+                                                                    const year = parts[0].slice(-2);
+                                                                    const months = parts.slice(1).map(m => {
+                                                                        try {
+                                                                            const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
+                                                                            const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                                            return monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
+                                                                        } catch (e) { return m; }
+                                                                    }).reverse();
+                                                                    periodStr = `${months.join('-')} ${year}`;
+                                                                } else if (!doc.consumptionPeriod && doc.billingStartDate) {
+                                                                    try {
+                                                                        const d = new Date(doc.billingStartDate);
+                                                                        const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
+                                                                        const year = format(d, 'yy');
+                                                                        periodStr = `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${year}`;
+                                                                    } catch (e) { }
+                                                                } else if (doc.consumptionPeriod) {
+                                                                    periodStr = doc.consumptionPeriod;
+                                                                }
+                                                                return periodStr ? `${supplier} ${periodStr}` : supplier;
+                                                            }
+
+                                                            if (doc.category === 'STEG' || doc.name === 'STEG') {
+                                                                if (doc.billingStartDate && doc.billingEndDate) {
+                                                                    const start = formatDateSafe(doc.billingStartDate, 'MMM')?.replace('.', '');
+                                                                    const end = formatDateSafe(doc.billingEndDate, 'MMM yy')?.replace('.', '');
+                                                                    return `STEG ${start}-${end}`;
+                                                                }
+                                                                return 'STEG';
+                                                            }
+
                                                             if (doc.consumptionPeriod) {
                                                                 const parts = doc.consumptionPeriod.split('-');
                                                                 if (parts.length < 2) return doc.consumptionPeriod;
@@ -211,24 +248,13 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                                 }).reverse();
 
                                                                 if (doc.category === 'SONEDE' || doc.name.includes('SONEDE')) {
-                                                                    const firstMonth = parseInt(parts[parts.length - 1]); // the first month in chronological order is at the end because of .reverse() or just the first in parts
-                                                                    // Re-evaluating chronological first month from the period string AAAA-MM-MM-MM
+                                                                    const firstMonth = parseInt(parts[parts.length - 1]);
                                                                     const m1 = parseInt(parts[1]);
-                                                                    const m2 = parseInt(parts[2]);
-                                                                    const m3 = parseInt(parts[3]);
-                                                                    // Chronological order for SONEDE is usually the last 3 segments: [m1, m2, m3]
-                                                                    // But they are recorded as they appear. Often 09-10-11.
-                                                                    // User said: 09-10-11 -> Q3, 12-01-02 -> Q1.
-                                                                    // This corresponds to a 3-quarter system of 4 months each:
-                                                                    // Q1: 12, 1, 2, 3
-                                                                    // Q2: 4, 5, 6, 7
-                                                                    // Q3: 8, 9, 10, 11
                                                                     let quarter = "Q4";
                                                                     if ([12, 1, 2].includes(m1)) quarter = "Q1";
                                                                     else if ([3, 4, 5].includes(m1)) quarter = "Q2";
                                                                     else if ([6, 7, 8].includes(m1)) quarter = "Q3";
                                                                     else if ([9, 10, 11].includes(m1)) quarter = "Q4";
-
                                                                     return `Facture Eau ${quarter}`;
                                                                 }
                                                                 const formattedMonths = months.join('-');

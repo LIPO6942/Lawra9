@@ -74,7 +74,21 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
     } catch (e) { /* fallback to default result.consumptionPeriod */ }
   }
 
-  // Final naming logic for core bills
+  if (supplierName === 'STEG' || docType === 'STEG') {
+    if (result.billingStartDate && result.billingEndDate) {
+      try {
+        const start = parseISO(result.billingStartDate);
+        const end = parseISO(result.billingEndDate);
+        if (isValid(start) && isValid(end)) {
+          const startStr = format(start, 'MMM', { locale: fr }).replace('.', '');
+          const endStr = format(end, 'MMM yy', { locale: fr }).replace('.', '');
+          return `STEG ${startStr}-${endStr}`;
+        }
+      } catch (e) { }
+    }
+    return 'STEG';
+  }
+
   if (supplierName === 'SONEDE' || docType === 'SONEDE') {
     let quarter = "Q4";
     if (result.consumptionPeriod?.match(/^\d{4}-\d{2}-\d{2}-\d{2}$/)) {
@@ -85,6 +99,35 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
       else if ([9, 10, 11].includes(m)) quarter = "Q4";
     }
     return `Facture Eau ${quarter}`;
+  }
+
+  if (docType === 'Internet') {
+    const sName = supplierName || 'Internet';
+    let internetPeriodStr = '';
+    if (result.consumptionPeriod?.match(/^\d{4}(-\d{2})+$/)) {
+      const parts = result.consumptionPeriod.split('-');
+      const year = parts[0].slice(-2);
+      const months = parts.slice(1).map(m => {
+        try {
+          const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
+          const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
+          return monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
+        } catch (e) { return m; }
+      }).reverse();
+      internetPeriodStr = `${months.join('-')} ${year}`;
+    } else if (!result.consumptionPeriod && result.billingStartDate) {
+      try {
+        const startDate = parseISO(result.billingStartDate);
+        if (isValid(startDate)) {
+          const monthStr = format(startDate, 'MMM', { locale: fr }).replace('.', '');
+          const year = format(startDate, 'yy');
+          internetPeriodStr = `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${year}`;
+        }
+      } catch (e) { }
+    } else if (result.consumptionPeriod) {
+      internetPeriodStr = result.consumptionPeriod;
+    }
+    return internetPeriodStr ? `${sName} ${internetPeriodStr}` : sName;
   }
 
   if (supplierName) {
