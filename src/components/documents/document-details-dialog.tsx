@@ -72,9 +72,10 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
             period = `${months.join('-')} ${year}`;
         }
     } else if (!period) {
-        if ((document.category === 'Internet' || document.name === 'Internet') && document.billingStartDate) {
+        if ((document.category === 'Internet' || document.name === 'Internet') && (document.billingStartDate || document.consumptionPeriod)) {
             try {
-                const d = new Date(document.billingStartDate);
+                // Prioritize billingStartDate but fall back to consumptionPeriod month extraction if needed
+                const d = document.billingStartDate ? new Date(document.billingStartDate) : new Date(document.consumptionPeriod?.split('-')[0] as string, (parseInt(document.consumptionPeriod?.split('-')[1] as string) || 1) - 1, 1);
                 const monthStr = format(d, 'MMMM', { locale: fr });
                 period = `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${format(d, 'yyyy')}`;
             } catch (e) { }

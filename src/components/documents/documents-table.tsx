@@ -203,27 +203,19 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                             if (doc.category === 'Internet' || doc.name === 'Internet') {
                                                                 const supplier = doc.supplier || 'Internet';
                                                                 let periodStr = '';
-                                                                if (doc.consumptionPeriod && doc.consumptionPeriod.match(/^\d{4}(-\d{2})+$/)) {
-                                                                    const parts = doc.consumptionPeriod.split('-');
-                                                                    const year = parts[0].slice(-2);
-                                                                    const months = parts.slice(1).map(m => {
-                                                                        try {
-                                                                            const d = new Date(parseInt(parts[0]), parseInt(m) - 1, 1);
-                                                                            const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
-                                                                            return monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
-                                                                        } catch (e) { return m; }
-                                                                    }).reverse();
-                                                                    periodStr = `${months.join('-')} ${year}`;
-                                                                } else if (doc.billingStartDate && (!doc.consumptionPeriod || doc.consumptionPeriod === '')) {
-                                                                    try {
-                                                                        const d = new Date(doc.billingStartDate);
-                                                                        const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
-                                                                        const year = format(d, 'yy');
+                                                                try {
+                                                                    // For Internet, we want it simple: "Mois YY"
+                                                                    const dateToUse = doc.billingStartDate ? new Date(doc.billingStartDate) : (doc.consumptionPeriod?.match(/^\d{4}/) ? new Date(parseInt(doc.consumptionPeriod.split('-')[0]), (parseInt(doc.consumptionPeriod.split('-')[1]) || 1) - 1, 1) : null);
+
+                                                                    if (dateToUse && isValid(dateToUse)) {
+                                                                        const monthStr = format(dateToUse, 'MMM', { locale: fr }).replace('.', '');
+                                                                        const year = format(dateToUse, 'yy');
                                                                         periodStr = `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${year}`;
-                                                                    } catch (e) { }
-                                                                } else if (doc.consumptionPeriod) {
-                                                                    periodStr = doc.consumptionPeriod;
-                                                                }
+                                                                    } else if (doc.consumptionPeriod) {
+                                                                        periodStr = doc.consumptionPeriod;
+                                                                    }
+                                                                } catch (e) { }
+
                                                                 if (periodStr) {
                                                                     return `${supplier} ${periodStr}`;
                                                                 }
@@ -313,12 +305,14 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                                             }).reverse();
                                                             return `${months.join('-')} ${year}`;
                                                         }
-                                                        if ((doc.category === 'Internet' || doc.name === 'Internet') && doc.billingStartDate && (!doc.consumptionPeriod || doc.consumptionPeriod === '')) {
+                                                        if (doc.category === 'Internet' || doc.name === 'Internet') {
                                                             try {
-                                                                const d = new Date(doc.billingStartDate);
-                                                                const monthStr = format(d, 'MMM', { locale: fr }).replace('.', '');
-                                                                const year = format(d, 'yy');
-                                                                return `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${year}`;
+                                                                const dateToUse = doc.billingStartDate ? new Date(doc.billingStartDate) : (doc.consumptionPeriod?.match(/^\d{4}/) ? new Date(parseInt(doc.consumptionPeriod.split('-')[0]), (parseInt(doc.consumptionPeriod.split('-')[1]) || 1) - 1, 1) : null);
+                                                                if (dateToUse && isValid(dateToUse)) {
+                                                                    const monthStr = format(dateToUse, 'MMM', { locale: fr }).replace('.', '');
+                                                                    const year = format(dateToUse, 'yy');
+                                                                    return `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${year}`;
+                                                                }
                                                             } catch (e) { }
                                                         }
                                                         return doc.consumptionPeriod;
