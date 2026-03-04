@@ -68,39 +68,45 @@ export function AlertsCard({ alerts }: AlertsCardProps) {
       <CardContent>
         {alerts.length > 0 ? (
           <div className="space-y-3">
-            {alerts.slice(0, 5).map((alert) => (
-              <div key={alert.id} className="flex items-center space-x-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                  {differenceInDays(parseISO(alert.dueDate), new Date()) < 0 ? <AlertTriangle className="h-5 w-5 text-destructive" /> : <Clock className="h-5 w-5 text-orange-500" />}
+            {alerts.slice(0, 5).map((alert) => {
+              const parsedDate = parseISO(alert.dueDate);
+              const isDateValid = isValid(parsedDate);
+              const isLate = isDateValid ? differenceInDays(parsedDate, new Date()) < 0 : true;
+
+              return (
+                <div key={alert.id} className="flex items-center space-x-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                    {isLate ? <AlertTriangle className="h-5 w-5 text-destructive" /> : <Clock className="h-5 w-5 text-orange-500" />}
+                  </div>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <p className="text-sm font-medium leading-none break-words" title={alert.documentName}>{alert.documentName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {alert.type} {isDateValid ? `- ${format(parsedDate, 'd MMMM', { locale: fr })}` : ''}
+                      {alert.amount && !isNaN(parseFloat(String(alert.amount).replace(',', '.'))) && (
+                        <span className="ml-2 text-[11px] font-medium text-primary/70">
+                          ({parseFloat(String(alert.amount).replace(',', '.')).toLocaleString('fr-TN', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} Dt)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {getAlertBadge(alert.dueDate)}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => markAsPaid(alert.documentId)} className="h-8 w-8 text-muted-foreground hover:bg-green-500/10 hover:text-green-600">
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Marquer comme payée</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
-                <div className="flex-1 space-y-1 min-w-0">
-                  <p className="text-sm font-medium leading-none break-words" title={alert.documentName}>{alert.documentName}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {alert.type} - {format(parseISO(alert.dueDate), 'd MMMM', { locale: fr })}
-                    {alert.amount && !isNaN(parseFloat(String(alert.amount).replace(',', '.'))) && (
-                      <span className="ml-2 text-[11px] font-medium text-primary/70">
-                        ({parseFloat(String(alert.amount).replace(',', '.')).toLocaleString('fr-TN', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} Dt)
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {getAlertBadge(alert.dueDate)}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => markAsPaid(alert.documentId)} className="h-8 w-8 text-muted-foreground hover:bg-green-500/10 hover:text-green-600">
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Marquer comme payée</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            ))}
+              )
+            })}
             {alerts.length > 5 && <p className="text-center text-xs text-muted-foreground pt-2">et {alerts.length - 5} autres...</p>}
           </div>
         ) : (
