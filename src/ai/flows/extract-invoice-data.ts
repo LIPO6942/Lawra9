@@ -44,19 +44,31 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - PERIODE : Reperez "Du" et "Au" en haut a droite.
    - ECHEANCE (CRITIQUE) : En bas a droite, dans le cadre de GAUCHE ("Priere de payer").
    - CONSOMMATION : Colonne 5 "Quantite (1)".
+3. **INTERNET (TELECOM)** :
+   - RECHERCHEZ : "Orange", "Ooredoo", "Topnet", "GlobalNet", "Tunisie Telecom", "TTnet", "HexaByte", "TOPNET", logo ou nom d'opérateur télécom/internet.
+   - Mettez **documentType** à "Internet".
+   - **PERIODE DE FACTURATION (CRITIQUE)** : C'est le champ le plus important pour ce type.
+     - Cherchez des phrases comme : "Période du", "Période de facturation", "Du ... au ...", "Mois de ...", "Facture du mois de ...".
+     - Cherchez aussi un mois + année explicite (ex: "Janvier 2026", "Février 2026", "jan. 2026").
+     - **billingStartDate** : premier jour de la période, format AAAA-MM-JJ (ex: "2026-01-01").
+     - **billingEndDate** : dernier jour de la période, format AAAA-MM-JJ (ex: "2026-01-31").
+     - Si seul un mois est mentionné sans dates précises (ex : "Janvier 2026"), déduisez : start = 1er du mois, end = dernier jour du mois.
+   - **issueDate** : Date d'émission de la facture (AAAA-MM-JJ). Cherchez "Date de facturation", "Date d'émission", "Emise le".
+   - **dueDate** : Date limite de paiement (AAAA-MM-JJ). Cherchez "Date d'échéance", "A payer avant le", "avant le", "Date limite".
+   - **amount** : Montant total TTC à payer. Cherchez "Total TTC", "Montant à payer", "Net à payer", "Total dû".
+   - **invoiceNumber** : Numéro de facture. Cherchez "N° facture", "Ref.", "Référence facture".
+   - **supplier** : Le nom exact de l'opérateur (ex: "Orange", "Ooredoo", "Topnet").
 
-**REGLES D'EXTRACTION :**
+**REGLES D'EXTRACTION GENERALES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
 - **amount** : Montant Total (ex: "72.000").
-- **dueDate** : Date limite (AAAA-MM-JJ).
-   - Pour SONEDE : Coin inferieur gauche.
-   - Pour STEG : Cadre GAUCHE en bas a droite.
-- **consumptionPeriod** : Pour SONEDE, Format "AAAA-MM-MM-MM".
+- **dueDate** : Date limite de paiement (AAAA-MM-JJ).
+- **consumptionPeriod** : Pour SONEDE uniquement, format "AAAA-MM-MM-MM".
 - **supplier** : Nom du fournisseur (ex: "STEG", "SONEDE", "Orange").
 - **consumptionQuantity** : Quantite d'electricite (kWh) pour STEG, ou Volume d'eau (m3) pour SONEDE.
-- **billingStartDate** / **billingEndDate** : Dates de la periode pour STEG (AAAA-MM-JJ).
+- **billingStartDate** / **billingEndDate** : Dates de la période de facturation (AAAA-MM-JJ). OBLIGATOIRE pour Internet, STEG. Laissez vide pour SONEDE.
 
-IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien.
+IMPORTANT : Retournez UNIQUEMENT du JSON pur. N'inventez rien. Si une information est absente, laissez le champ vide.
 `;
 
 async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: ExtractInvoiceDataOutput | null; error?: string }> {
