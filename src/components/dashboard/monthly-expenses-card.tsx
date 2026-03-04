@@ -54,9 +54,10 @@ export function MonthlyExpensesCard() {
     return Object.entries(totals)
       .map(([key, total]) => {
         const [year, month] = key.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
         return {
           year: parseInt(year),
-          month: format(new Date(key), 'MMMM', { locale: fr }),
+          month: format(date, 'MMMM', { locale: fr }),
           total,
           monthIndex: parseInt(month) - 1,
         };

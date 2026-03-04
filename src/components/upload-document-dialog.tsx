@@ -170,6 +170,46 @@ const frenchCategories: Record<string, Document['category']> = {
   "Autre": "Autre",
 };
 
+/**
+ * Sanitize a date string from the AI to ensure it's a valid ISO 'yyyy-MM-dd' string.
+ * The AI can return dates in various formats: 'yyyy-MM', 'yyyy-MM-dd', 'dd/MM/yyyy', etc.
+ * Invalid dates are returned as undefined to prevent crashes.
+ */
+function sanitizeAIDate(dateStr: string | undefined): string | undefined {
+  if (!dateStr || typeof dateStr !== 'string') return undefined;
+  const s = dateStr.trim();
+  if (!s) return undefined;
+
+  // Already full ISO: 'yyyy-MM-dd'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = parseISO(s);
+    return isValid(d) ? s : undefined;
+  }
+
+  // Month only: 'yyyy-MM' → normalize to 'yyyy-MM-01'
+  if (/^\d{4}-\d{2}$/.test(s)) {
+    const normalized = `${s}-01`;
+    const d = parseISO(normalized);
+    return isValid(d) ? normalized : undefined;
+  }
+
+  // French dd/MM/yyyy: '01/01/2026'
+  const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    const normalized = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+    const d = parseISO(normalized);
+    return isValid(d) ? normalized : undefined;
+  }
+
+  // Anything else: try parseISO directly, discard if invalid
+  try {
+    const d = parseISO(s);
+    if (isValid(d)) return format(d, 'yyyy-MM-dd');
+  } catch (_) { /* ignored */ }
+
+  return undefined;
+}
+
 const fileToDataUrl = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -425,11 +465,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
 
       const aiCategory = finalCategory;
 
+      const safeBillingStart = sanitizeAIDate(result.billingStartDate);
+      const safeBillingEnd = sanitizeAIDate(result.billingEndDate);
+      const safeDueDate = sanitizeAIDate(result.dueDate);
+      const safeIssueDate = sanitizeAIDate(result.issueDate);
+
       let finalConsumptionPeriod = result.consumptionPeriod;
-      if (!finalConsumptionPeriod && result.billingStartDate && result.billingEndDate) {
+      if (!finalConsumptionPeriod && safeBillingStart && safeBillingEnd) {
         try {
-          const start = parseISO(result.billingStartDate);
-          const end = parseISO(result.billingEndDate);
+          const start = parseISO(safeBillingStart);
+          const end = parseISO(safeBillingEnd);
           if (isValid(start) && isValid(end)) {
             finalConsumptionPeriod = `${format(start, 'yyyy-MM', { locale: fr })}-${format(end, 'MM', { locale: fr })}`;
           }
@@ -441,11 +486,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
         category: aiCategory,
         supplier: result.supplier,
         amount: result.amount,
-        dueDate: result.dueDate,
-        issueDate: result.issueDate,
+        dueDate: safeDueDate,
+        issueDate: safeIssueDate,
         invoiceNumber: result.invoiceNumber,
-        billingStartDate: result.billingStartDate,
-        billingEndDate: result.billingEndDate,
+        billingStartDate: safeBillingStart,
+        billingEndDate: safeBillingEnd,
         consumptionPeriod: finalConsumptionPeriod,
         consumptionQuantity: result.consumptionQuantity,
         gasAmount: result.gasAmount,
