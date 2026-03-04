@@ -17,9 +17,16 @@ import {
 } from "@/components/ui/tooltip"
 
 function getAlertBadge(dueDate: string) {
-  const daysDiff = differenceInDays(parseISO(dueDate), new Date());
+  const parsedDate = parseISO(dueDate);
+  if (!isValid(parsedDate)) {
+    return <Badge variant="destructive">À payer</Badge>;
+  }
+
+  const daysDiff = differenceInDays(parsedDate, new Date());
   let badge;
-  if (daysDiff < 0) {
+  if (daysDiff < -30) {
+    badge = <Badge variant="destructive">Impayé</Badge>;
+  } else if (daysDiff < 0) {
     badge = <Badge variant="destructive">En retard</Badge>;
   } else if (daysDiff <= 7) {
     badge = <Badge className="bg-orange-500 hover:bg-orange-500/80 text-white">Urgent</Badge>;

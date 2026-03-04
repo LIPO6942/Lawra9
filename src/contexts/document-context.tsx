@@ -151,22 +151,35 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const alerts = useMemo((): Alert[] => {
     return documents
       .filter(doc => {
-        if (!doc.dueDate || doc.category === 'Maison') return false;
-        try {
-          return isValid(parseISO(doc.dueDate));
-        } catch (e) {
-          return false;
-        }
+        // Exclure les documents déjà payés ou les types non facturables sans échéance stricte
+        if (doc.paymentDate) return false;
+        if (doc.category === 'Maison' || doc.category === 'Reçu Bancaire') return false;
+        return true;
       })
-      .map(doc => ({
-        id: `alert-${doc.id}`,
-        documentId: doc.id,
-        documentName: doc.supplier || doc.name,
-        dueDate: doc.dueDate!,
-        type: ((doc.category === 'STEG' || doc.category === 'SONEDE') ? 'Paiement' : 'Renouvellement') as Alert['type'],
-        amount: doc.amount,
-      }))
-      .sort((a, b) => differenceInDays(parseISO(a.dueDate), new Date()) - differenceInDays(parseISO(b.dueDate), new Date()));
+      .map(doc => {
+        // Fallback de date pour les factures sans échéance claire pour le tri
+        const fallbackDate = doc.dueDate || doc.issueDate || doc.createdAt || new Date().toISOString();
+        let validDueDate = fallbackDate;
+        try {
+          if (!isValid(parseISO(fallbackDate))) validDueDate = new Date().toISOString();
+        } catch {
+          validDueDate = new Date().toISOString();
+        }
+
+        return {
+          id: `alert-${doc.id}`,
+          documentId: doc.id,
+          documentName: doc.supplier || doc.name,
+          dueDate: doc.dueDate || validDueDate, // On garde la logique originale pour l'interface mais on s'assure qu'elle est valide
+          type: ((doc.category === 'STEG' || doc.category === 'SONEDE' || doc.category === 'Internet') ? 'Paiement' : 'Paiement') as Alert['type'],
+          amount: doc.amount,
+        };
+      })
+      .sort((a, b) => {
+        const dateA = a.dueDate ? parseISO(a.dueDate) : new Date();
+        const dateB = b.dueDate ? parseISO(b.dueDate) : new Date();
+        return differenceInDays(isValid(dateA) ? dateA : new Date(), new Date()) - differenceInDays(isValid(dateB) ? dateB : new Date(), new Date());
+      });
   }, [documents]);
 
   const monthlyExpenses = useMemo(() => {
