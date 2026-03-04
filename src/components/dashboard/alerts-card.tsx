@@ -70,9 +70,9 @@ export function AlertsCard({ alerts }: AlertsCardProps) {
                   <p className="text-sm font-medium leading-none break-words" title={alert.documentName}>{alert.documentName}</p>
                   <p className="text-sm text-muted-foreground">
                     {alert.type} - {format(parseISO(alert.dueDate), 'd MMMM', { locale: fr })}
-                    {alert.amount && !isNaN(parseFloat(alert.amount.replace(',', '.'))) && (
+                    {alert.amount && !isNaN(parseFloat(String(alert.amount).replace(',', '.'))) && (
                       <span className="ml-2 text-[11px] font-medium text-primary/70">
-                        ({parseFloat(alert.amount.replace(',', '.')).toLocaleString('fr-TN', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} Dt)
+                        ({parseFloat(String(alert.amount).replace(',', '.')).toLocaleString('fr-TN', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} Dt)
                       </span>
                     )}
                   </p>
