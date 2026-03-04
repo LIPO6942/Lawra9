@@ -130,17 +130,21 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const markAsPaid = useCallback(async (id: string) => {
     if (!user) return;
-    const db = await openDB(user.uid);
-    const docToUpdate = documents.find(d => d.id === id);
-    if (docToUpdate) {
-      const updatedDoc = {
-        ...docToUpdate,
-        issueDate: new Date().toISOString(),
-        dueDate: undefined
-      };
-      await dbUpdateDocument(db, updatedDoc);
-      await loadDocuments();
-      toast({ title: 'Document marqué comme payé' });
+    try {
+      const db = await openDB(user.uid);
+      const docToUpdate = documents.find(d => d.id === id);
+      if (docToUpdate) {
+        const updatedDoc = {
+          ...docToUpdate,
+          paymentDate: new Date().toISOString(),
+          status: 'paid' as const
+        };
+        await dbUpdateDocument(db, updatedDoc);
+        await loadDocuments();
+        toast({ title: 'Document marqué comme payé' });
+      }
+    } catch (error) {
+      console.error("Erreur markAsPaid:", error);
     }
   }, [user, documents, loadDocuments, toast]);
 
@@ -149,37 +153,49 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [documents]);
 
   const alerts = useMemo((): Alert[] => {
-    return documents
-      .filter(doc => {
-        // Exclure les documents déjà payés ou les types non facturables sans échéance stricte
-        if (doc.paymentDate) return false;
-        if (doc.category === 'Maison' || doc.category === 'Reçu Bancaire') return false;
-        return true;
-      })
-      .map(doc => {
-        // Fallback de date pour les factures sans échéance claire pour le tri
-        const fallbackDate = doc.dueDate || doc.issueDate || doc.createdAt || new Date().toISOString();
-        let validDueDate = fallbackDate;
-        try {
-          if (!isValid(parseISO(fallbackDate))) validDueDate = new Date().toISOString();
-        } catch {
-          validDueDate = new Date().toISOString();
-        }
+    try {
+      return documents
+        .filter(doc => {
+          // Exclure les documents déjà payés ou Maison/Banque
+          if (doc.paymentDate) return false;
+          if (doc.category === 'Maison' || doc.category === 'Reçu Bancaire') return false;
+          return true;
+        })
+        .map(doc => {
+          // Fallback de date pour les factures sans échéance claire pour le tri
+          const fallbackDate = doc.dueDate || doc.issueDate || doc.createdAt || new Date().toISOString();
+          let validDueDate = fallbackDate;
+          try {
+            const d = parseISO(fallbackDate);
+            if (!isValid(d)) validDueDate = new Date().toISOString();
+          } catch {
+            validDueDate = new Date().toISOString();
+          }
 
-        return {
-          id: `alert-${doc.id}`,
-          documentId: doc.id,
-          documentName: doc.supplier || doc.name,
-          dueDate: doc.dueDate || validDueDate, // On garde la logique originale pour l'interface mais on s'assure qu'elle est valide
-          type: ((doc.category === 'STEG' || doc.category === 'SONEDE' || doc.category === 'Internet') ? 'Paiement' : 'Paiement') as Alert['type'],
-          amount: doc.amount,
-        };
-      })
-      .sort((a, b) => {
-        const dateA = a.dueDate ? parseISO(a.dueDate) : new Date();
-        const dateB = b.dueDate ? parseISO(b.dueDate) : new Date();
-        return differenceInDays(isValid(dateA) ? dateA : new Date(), new Date()) - differenceInDays(isValid(dateB) ? dateB : new Date(), new Date());
-      });
+          return {
+            id: `alert-${doc.id}`,
+            documentId: doc.id,
+            documentName: String(doc.supplier || doc.name || 'Document sans nom'),
+            dueDate: validDueDate,
+            type: 'Paiement' as const,
+            amount: doc.amount,
+          };
+        })
+        .sort((a, b) => {
+          try {
+            const dateA = parseISO(a.dueDate);
+            const dateB = parseISO(b.dueDate);
+            const validA = isValid(dateA) ? dateA : new Date();
+            const validB = isValid(dateB) ? dateB : new Date();
+            return differenceInDays(validA, new Date()) - differenceInDays(validB, new Date());
+          } catch {
+            return 0;
+          }
+        });
+    } catch (e) {
+      console.error("Error generating alerts:", e);
+      return [];
+    }
   }, [documents]);
 
   const monthlyExpenses = useMemo(() => {
@@ -187,14 +203,14 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const currentYear = getYear(new Date());
 
     documents.forEach(doc => {
-      if (!doc.amount || doc.category === 'Maison') return;
+      try {
+        if (!doc.amount || doc.category === 'Maison') return;
 
-      const expenseDate = getDocumentDate(doc);
+        const expenseDate = getDocumentDate(doc);
 
-      if (expenseDate && getYear(expenseDate) === currentYear) {
-        try {
+        if (expenseDate && getYear(expenseDate) === currentYear) {
           const month = format(expenseDate, 'MMM', { locale: fr }).replace('.', '');
-          const category = doc.category;
+          const category = doc.category || 'Autre';
           const amount = parseFloat(String(doc.amount).replace(',', '.'));
 
           if (isNaN(amount)) return;
@@ -206,9 +222,9 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             expensesByMonth[month][category] = 0;
           }
           expensesByMonth[month][category] += amount;
-        } catch (e) {
-          console.error(`Could not process expense for doc ${doc.id}:`, e);
         }
+      } catch (e) {
+        console.error(`Could not process expense for doc ${doc.id}:`, e);
       }
     });
 

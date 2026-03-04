@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Bell, AlertTriangle, Clock, CheckCircle, Info } from 'lucide-react';
-import { format, differenceInDays, parseISO } from 'date-fns';
+import { format, differenceInDays, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useDocuments } from '@/contexts/document-context';
 import {
