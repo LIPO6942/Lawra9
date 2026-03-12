@@ -6,13 +6,30 @@ function getAdminApp() {
     return admin.apps[0]!;
   }
 
-  return admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+  // Debug logs pour voir ce que le serveur reçoit (sera visible dans les Runtime Logs de Vercel)
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!projectId || !clientEmail || !privateKey) {
+    console.error('CRITICAL ERROR: Firebase Admin Credentials missing!');
+    console.error('ProjectId:', !!projectId);
+    console.error('ClientEmail:', !!clientEmail);
+    console.error('PrivateKey:', !!privateKey);
+  }
+
+  try {
+    return admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: projectId,
+        clientEmail: clientEmail,
+        privateKey: privateKey?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (err: any) {
+    console.error('FIREBASE_ADMIN_INIT_ERROR:', err.message);
+    throw err;
+  }
 }
 
 export function getAdminDb() {
