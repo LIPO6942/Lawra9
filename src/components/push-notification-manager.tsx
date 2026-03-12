@@ -21,9 +21,10 @@ export function PushNotificationManager() {
       // Vérifie si on a déjà un token
       try {
         const messaging = getMessaging(app);
+        const swUrl = `/firebase-messaging-sw.js?apiKey=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&projectId=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}&messagingSenderId=${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}&appId=${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}`;
         const existingToken = await getToken(messaging, {
           vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-          serviceWorkerRegistration: await navigator.serviceWorker.register('/firebase-messaging-sw.js'),
+          serviceWorkerRegistration: await navigator.serviceWorker.register(swUrl),
         });
         if (existingToken) {
           setFcmToken(existingToken);
@@ -55,7 +56,8 @@ export function PushNotificationManager() {
       }
 
       const messaging = getMessaging(app);
-      const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const swUrl = `/firebase-messaging-sw.js?apiKey=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&projectId=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}&messagingSenderId=${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}&appId=${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}`;
+      const swRegistration = await navigator.serviceWorker.register(swUrl);
 
       const token = await getToken(messaging, {
         vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
