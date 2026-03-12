@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2, Settings, User } from 'lucide-react';
+import { PushNotificationManager } from '@/components/push-notification-manager';
 import { useUserPreferences, ISP } from '@/contexts/user-preferences-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -205,6 +206,17 @@ export default function SettingsPage() {
               </Button>
             </CardFooter>
           </form>
+        </Card>
+
+        {/* Section Notifications */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Recevez des rappels sur cet appareil avant les échéances de vos factures.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PushNotificationManager />
+          </CardContent>
         </Card>
       </div>
     </div>

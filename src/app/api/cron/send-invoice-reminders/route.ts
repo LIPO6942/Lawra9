@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import webpush from 'web-push';
 
-// Vercel Cron Secret for Authorization
+// Configure web-push avec tes clés VAPID
+webpush.setVapidDetails(
+  'mailto:admin@lawra9.app', // Remplace par ton email
+  process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY as string,
+  process.env.VAPID_PRIVATE_KEY as string
+);
+
 const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function GET(request: Request) {
-  // 1. Verify Authorization Header
+  // 1. Vérification du secret CRON
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
-    console.error('Unauthorized cron access attempt.');
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
@@ -16,98 +22,91 @@ export async function GET(request: Request) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const targetDate3Days = new Date(today);
-    targetDate3Days.setDate(today.getDate() + 3);
-
-    const targetDate7DaysAgo = new Date(today);
-    targetDate7DaysAgo.setDate(today.getDate() - 7);
-
-    // Format dates for Firestore query (assuming YYYY-MM-DD format based on typical input)
     const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     };
 
-    const date3DaysStr = formatDate(targetDate3Days);
-    const todayStr = formatDate(today);
-    const date7DaysAgoStr = formatDate(targetDate7DaysAgo);
+    // Les 3 dates clés
+    const date3DaysLater = new Date(today); date3DaysLater.setDate(today.getDate() + 3);
+    const date7DaysAgo = new Date(today); date7DaysAgo.setDate(today.getDate() - 7);
 
-    console.log(`Checking invoices for: Due in 3 days (${date3DaysStr}), Due today (${todayStr}), Overdue by 7 days (${date7DaysAgoStr})`);
+    const targets = [
+      { date: formatDate(date3DaysLater), label: 'J-3', message: (name: string, amount: string) => `⏰ Rappel : La facture "${name}"${amount ? ` (${amount} TND)` : ''} arrive à échéance dans 3 jours.` },
+      { date: formatDate(today),          label: 'Jour-J', message: (name: string, amount: string) => `🔔 Aujourd'hui : La facture "${name}"${amount ? ` (${amount} TND)` : ''} est à payer aujourd'hui !` },
+      { date: formatDate(date7DaysAgo),   label: 'J+7', message: (name: string, amount: string) => `🚨 En retard : La facture "${name}"${amount ? ` (${amount} TND)` : ''} n'a pas été payée depuis 7 jours.` },
+    ];
 
-    // Fetch *all* pending documents from all users (requires Firebase Admin)
-    // Assuming your documents are stored in a top-level 'documents' collection, or nested under users.
-    // If nested under users, you'll need a collectionGroup query or to iterate users.
-    // Here we'll assume a collectionGroup query for 'documents' if they are subcollections.
+    console.log('CRON lancé. Cibles:', targets.map(t => `${t.label} (${t.date})`).join(', '));
 
-    const documentsRef = adminDb.collectionGroup('documents');
-    
-    // We only want pending documents
-    const pendingDocsSnapshot = await documentsRef.where('status', '==', 'pending').get();
+    let totalSent = 0;
+    const results: any[] = [];
 
-    let emailsSent = 0;
-    const notificationsToSend: { userEmail: string, docName: string, dueDate: string, type: string }[] = [];
+    // 2. Récupérer tous les documents "pending" avec les dates cibles
+    const pendingDocs = await adminDb.collectionGroup('documents')
+      .where('status', '==', 'pending')
+      .get();
 
-    // Process each pending document
-    for (const doc of pendingDocsSnapshot.docs) {
-      const data = doc.data();
-      const dueDateStr = data.dueDate;
+    for (const docSnap of pendingDocs.docs) {
+      const data = docSnap.data();
+      const dueDate = data.dueDate as string;
+      if (!dueDate) continue;
 
-      if (!dueDateStr) continue;
+      const target = targets.find(t => t.date === dueDate);
+      if (!target) continue;
 
-      let notificationType = null;
+      // Récupérer l'userId depuis le chemin du document (users/{userId}/documents/{docId})
+      const userId = docSnap.ref.parent.parent?.id;
+      if (!userId) continue;
 
-      if (dueDateStr === date3DaysStr) {
-        notificationType = 'J-3';
-      } else if (dueDateStr === todayStr) {
-        notificationType = 'Jour-J';
-      } else if (dueDateStr === date7DaysAgoStr) {
-        notificationType = 'J+7 (En retard)';
+      // 3. Récupérer l'abonnement push de cet utilisateur
+      const pushDoc = await adminDb.doc(`users/${userId}/settings/push`).get();
+      if (!pushDoc.exists) continue;
+
+      const pushData = pushDoc.data();
+      if (!pushData?.enabled || !pushData?.subscription) continue;
+
+      let pushSubscription;
+      try {
+        pushSubscription = JSON.parse(pushData.subscription);
+      } catch {
+        console.error(`Impossible de parser l\'abonnement pour userId=${userId}`);
+        continue;
       }
 
-      if (notificationType) {
-        // Find the user email associated with this document.
-        // If the document is in users/{userId}/documents, we can get userId from the path.
-        const userId = doc.ref.parent.parent?.id;
-        
-        if (userId) {
-            try {
-                // Fetch user email using Firebase Admin Auth
-                const userRecord = await admin.auth().getUser(userId);
-                const userEmail = userRecord.email;
+      const notifMessage = target.message(data.name || 'Document', data.amount || '');
 
-                if (userEmail) {
-                    notificationsToSend.push({
-                        userEmail,
-                        docName: data.name || 'Document sans nom',
-                        dueDate: dueDateStr,
-                        type: notificationType
-                    });
-                }
-            } catch (authError) {
-                console.error(`Could not fetch user ${userId} for document ${doc.id}:`, authError);
-            }
+      // 4. Envoyer la notification push !
+      try {
+        await webpush.sendNotification(
+          pushSubscription,
+          JSON.stringify({
+            title: '🧾 Lawra9 — Rappel Facture',
+            body: notifMessage,
+          })
+        );
+        totalSent++;
+        results.push({ userId, doc: data.name, type: target.label, status: 'sent' });
+      } catch (pushError: any) {
+        console.error(`Erreur push pour userId=${userId}:`, pushError.statusCode, pushError.body);
+        // Si l'abonnement est expiré (410), on le supprime de Firestore
+        if (pushError.statusCode === 410 || pushError.statusCode === 404) {
+          await adminDb.doc(`users/${userId}/settings/push`).set({ enabled: false, subscription: null }, { merge: true });
         }
+        results.push({ userId, doc: data.name, type: target.label, status: 'error', error: pushError.body });
       }
     }
 
-    // Now, send the emails (using Resend, Sendgrid, NodeMailer, etc.)
-    // For this example, we'll just log them. You need to integrate your preferred email provider here.
-    for (const notification of notificationsToSend) {
-        console.log(`[EMAIL SIMULATION] Sending ${notification.type} reminder to ${notification.userEmail} for document ${notification.docName} due on ${notification.dueDate}`);
-        // await sendEmail(notification.userEmail, 'Rappel de facture', `Votre facture ${notification.docName} arrive à échéance le ${notification.dueDate}.`);
-        emailsSent++;
-    }
-
-    return NextResponse.json({ 
-        success: true, 
-        message: `Cron job executed successfully. Simulated sending ${emailsSent} emails.`,
-        details: notificationsToSend
+    return NextResponse.json({
+      success: true,
+      totalNotificationsSent: totalSent,
+      details: results,
     });
 
   } catch (error: any) {
-    console.error('Error executing cron job:', error);
+    console.error('Erreur CRON:', error);
     return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
   }
 }
