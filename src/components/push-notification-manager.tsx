@@ -13,10 +13,6 @@ export function PushNotificationManager() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  const getSwUrl = useCallback(() => {
-    return `/firebase-messaging-sw.js?apiKey=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&projectId=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}&messagingSenderId=${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}&appId=${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}`;
-  }, []);
-
   const checkSupport = useCallback(async () => {
     const ok = await isSupported();
     setSupported(ok);
@@ -32,7 +28,7 @@ export function PushNotificationManager() {
           if (token) setFcmToken(token);
         }
       } catch (e) {
-        console.log('Check initial push status:', e);
+        console.log('Firebase messaging not initialized yet or permission not granted');
       }
     }
   }, [user]);
@@ -49,21 +45,29 @@ export function PushNotificationManager() {
 
     setLoading(true);
     try {
-      console.log('1. Demande de permission...');
-      const permission = await Notification.requestPermission();
+      let permission = Notification.permission;
+      console.log('Etat actuel de la permission:', permission);
+
+      if (permission === 'default') {
+        console.log('1. Demande de permission au navigateur...');
+        permission = await Notification.requestPermission();
+      }
+
       if (permission !== 'granted') {
-        alert('❌ Permission refusée par le navigateur.');
+        alert('❌ Les notifications sont bloquées. Autorise-les dans les paramètres de ton navigateur (clique sur le cadenas dans la barre d\'adresse).');
         setLoading(false);
         return;
       }
 
       console.log('2. Enregistrement du Service Worker...');
-      const swUrl = getSwUrl();
+      const swUrl = `/firebase-messaging-sw.js?apiKey=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&projectId=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}&messagingSenderId=${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}&appId=${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}`;
+      
       const swRegistration = await navigator.serviceWorker.register(swUrl);
       
-      // On attend que le SW soit prêt si besoin
+      // On attend explicitement que le Service Worker soit activé
+      console.log('Attente du Service Worker prêt...');
       await navigator.serviceWorker.ready;
-
+      
       console.log('3. Récupération du token Google FCM...');
       const messaging = getMessaging(app);
       const token = await getToken(messaging, {
@@ -73,9 +77,7 @@ export function PushNotificationManager() {
 
       if (!token) throw new Error('Google n\'a pas renvoyé de Token.');
 
-      console.log('4. Envoi au serveur Vercel...');
-      setFcmToken(token);
-
+      console.log('4. Envoi du token au serveur Vercel...');
       const res = await fetch('/api/web-push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,13 +86,14 @@ export function PushNotificationManager() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || 'Erreur serveur 500');
+        throw new Error(errData.error || 'Erreur lors de la sauvegarde sur le serveur');
       }
 
-      alert('✅ Notifications activées !');
+      setFcmToken(token);
+      alert('✅ Notifications activées avec succès !');
     } catch (err: any) {
       console.error('Erreur complete:', err);
-      alert('❌ Erreur : ' + (err.message || 'Délai d\'attente dépassé'));
+      alert('❌ Erreur : ' + (err.message || 'Problème de connexion avec Google'));
     } finally {
       setLoading(false);
     }
@@ -129,8 +132,8 @@ export function PushNotificationManager() {
           <p className="font-semibold text-sm">Notifications de rappel</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {fcmToken
-              ? 'Actives — tu reçois les alertes factures.'
-              : 'Inactive — active-les pour être rappelé.'}
+              ? 'Actives — tu reçois les alertes factures sur cet appareil.'
+              : 'Inactive — active-les pour être rappelé avant les échéances.'}
           </p>
         </div>
       </div>
