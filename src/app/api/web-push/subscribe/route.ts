@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase-admin';
+import { getAdminDb, admin } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
-// POST : Enregistre le token FCM d'un utilisateur dans Firestore
 export async function POST(request: Request) {
   try {
     const { userId, token } = await request.json();
@@ -13,22 +12,14 @@ export async function POST(request: Request) {
     }
 
     const adminDb = getAdminDb();
+    const pushDocRef = adminDb.doc(`users/${userId}/settings/push`);
 
-    // On sauvegarde ça sous forme de tableau car un user peut avoir plusieurs appareils
-    await adminDb.doc(`users/${userId}/settings/push`).set(
-      {
-        tokens: adminDb.doc(`users/${userId}/settings/push`)['firestore'].FieldValue ? [] : [], // Just pour bypass TS
-        updatedAt: new Date().toISOString(),
-        enabled: true,
-      },
-      { merge: true }
-    );
-    
-    // On ajoute le token sans écraser les autres (si l'utilisateur a un PC et un mobile)
-    const adminRef = await import('firebase-admin');
-    await adminDb.doc(`users/${userId}/settings/push`).update({
-        tokens: adminRef.firestore.FieldValue.arrayUnion(token)
-    });
+    // Utilisation propre de arrayUnion pour ajouter le token sans doublon
+    await pushDocRef.set({
+      tokens: admin.firestore.FieldValue.arrayUnion(token),
+      updatedAt: new Date().toISOString(),
+      enabled: true,
+    }, { merge: true });
 
     return NextResponse.json({ success: true, message: 'Token FCM enregistré.' });
   } catch (error: any) {
@@ -37,7 +28,6 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE : Désabonnement
 export async function DELETE(request: Request) {
   try {
     const { userId } = await request.json();
@@ -47,12 +37,11 @@ export async function DELETE(request: Request) {
     }
 
     const adminDb = getAdminDb();
-
-    // Si on a le token on le retire du tableau, sinon on désactive tout
-    await adminDb.doc(`users/${userId}/settings/push`).set(
-      { enabled: false, tokens: [], updatedAt: new Date().toISOString() },
-      { merge: true }
-    );
+    await adminDb.doc(`users/${userId}/settings/push`).set({
+      enabled: false,
+      tokens: [],
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
 
     return NextResponse.json({ success: true, message: 'Abonnement push supprimé.' });
   } catch (error: any) {
