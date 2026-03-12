@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin';
 import webpush from 'web-push';
 
-// Configure web-push avec tes clés VAPID
-webpush.setVapidDetails(
-  'mailto:admin@lawra9.app', // Remplace par ton email
-  process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY as string,
-  process.env.VAPID_PRIVATE_KEY as string
-);
+// Force Next.js à ne pas pré-rendre cette route au build
+export const dynamic = 'force-dynamic';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -19,6 +15,15 @@ export async function GET(request: Request) {
   }
 
   try {
+    // Configure web-push avec les clés VAPID (à runtime seulement)
+    webpush.setVapidDetails(
+      'mailto:admin@lawra9.app',
+      process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY as string,
+      process.env.VAPID_PRIVATE_KEY as string
+    );
+
+    const adminDb = getAdminDb();
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -44,7 +49,7 @@ export async function GET(request: Request) {
     let totalSent = 0;
     const results: any[] = [];
 
-    // 2. Récupérer tous les documents "pending" avec les dates cibles
+    // 2. Récupérer tous les documents "pending" via collectionGroup
     const pendingDocs = await adminDb.collectionGroup('documents')
       .where('status', '==', 'pending')
       .get();
@@ -57,7 +62,7 @@ export async function GET(request: Request) {
       const target = targets.find(t => t.date === dueDate);
       if (!target) continue;
 
-      // Récupérer l'userId depuis le chemin du document (users/{userId}/documents/{docId})
+      // Récupérer l'userId depuis le chemin (users/{userId}/documents/{docId})
       const userId = docSnap.ref.parent.parent?.id;
       if (!userId) continue;
 
@@ -72,13 +77,13 @@ export async function GET(request: Request) {
       try {
         pushSubscription = JSON.parse(pushData.subscription);
       } catch {
-        console.error(`Impossible de parser l\'abonnement pour userId=${userId}`);
+        console.error(`Impossible de parser l'abonnement pour userId=${userId}`);
         continue;
       }
 
       const notifMessage = target.message(data.name || 'Document', data.amount || '');
 
-      // 4. Envoyer la notification push !
+      // 4. Envoyer la notification push
       try {
         await webpush.sendNotification(
           pushSubscription,
@@ -91,7 +96,6 @@ export async function GET(request: Request) {
         results.push({ userId, doc: data.name, type: target.label, status: 'sent' });
       } catch (pushError: any) {
         console.error(`Erreur push pour userId=${userId}:`, pushError.statusCode, pushError.body);
-        // Si l'abonnement est expiré (410), on le supprime de Firestore
         if (pushError.statusCode === 410 || pushError.statusCode === 404) {
           await adminDb.doc(`users/${userId}/settings/push`).set({ enabled: false, subscription: null }, { merge: true });
         }

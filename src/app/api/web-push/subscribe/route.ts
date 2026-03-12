@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin';
+
+// Force Next.js à ne pas pré-rendre cette route au build
+export const dynamic = 'force-dynamic';
 
 // POST : Enregistre l'abonnement push d'un utilisateur dans Firestore
 export async function POST(request: Request) {
@@ -10,7 +13,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'userId et subscription sont requis.' }, { status: 400 });
     }
 
-    // Stockage dans users/{userId}/settings/push
+    const adminDb = getAdminDb();
+
     await adminDb.doc(`users/${userId}/settings/push`).set(
       {
         subscription: JSON.stringify(subscription),
@@ -35,6 +39,8 @@ export async function DELETE(request: Request) {
     if (!userId) {
       return NextResponse.json({ error: 'userId est requis.' }, { status: 400 });
     }
+
+    const adminDb = getAdminDb();
 
     await adminDb.doc(`users/${userId}/settings/push`).set(
       { enabled: false, subscription: null, updatedAt: new Date().toISOString() },
