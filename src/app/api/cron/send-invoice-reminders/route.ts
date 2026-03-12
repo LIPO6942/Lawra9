@@ -15,8 +15,7 @@ export async function GET(request: Request) {
 
   try {
     const adminDb = getAdminDb();
-    // On s'assure que Firebase Admin est bien initialisé avant d'y accéder (lazy initialization gérée)
-
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -37,68 +36,63 @@ export async function GET(request: Request) {
       { date: formatDate(date7DaysAgo),   label: 'J+7', message: (name: string, amount: string) => `🚨 En retard : La facture "${name}"${amount ? ` (${amount} TND)` : ''} n'a pas été payée depuis 7 jours.` },
     ];
 
-    console.log('CRON FCM lancé. Cibles:', targets.map(t => `${t.label} (${t.date})`).join(', '));
+    console.log('CRON FCM (Iterative) lancé. Cibles:', targets.map(t => `${t.label} (${t.date})`).join(', '));
 
     let totalSent = 0;
     const results: any[] = [];
 
-    // Récupérer tous les documents "pending" via collectionGroup
-    const pendingDocs = await adminDb.collectionGroup('documents')
-      .where('status', '==', 'pending')
-      .get();
-
-    for (const docSnap of pendingDocs.docs) {
-      const data = docSnap.data();
-      const dueDate = data.dueDate as string;
-      if (!dueDate) continue;
-
-      const target = targets.find(t => t.date === dueDate);
-      if (!target) continue;
-
-      // Récupérer l'userId depuis le chemin de la collection (users/{userId}/documents/{docId})
-      const userId = docSnap.ref.parent.parent?.id;
-      if (!userId) continue;
-
-      // Récupérer l'abonnement push de cet utilisateur
+    // 1. On récupère la liste de tous les utilisateurs (chemin sécurisé sans collectionGroup)
+    const usersSnap = await adminDb.collection('users').get();
+    
+    for (const userSnap of usersSnap.docs) {
+      const userId = userSnap.id;
+      
+      // 2. On vérifie si l'utilisateur a activé les notifications push
       const pushDoc = await adminDb.doc(`users/${userId}/settings/push`).get();
       if (!pushDoc.exists) continue;
-
-      const pushData = pushDoc.data();
       
-      // Ici, au lieu d'une "subscription" en chaîne JS, on check le tableau de tokens
+      const pushData = pushDoc.data();
       if (!pushData?.enabled || !pushData?.tokens || pushData.tokens.length === 0) continue;
 
-      const notifMessage = target.message(data.name || 'Document', data.amount || '');
+      // 3. On récupère les factures en attente pour CET utilisateur uniquement
+      const pendingDocs = await adminDb.collection(`users/${userId}/documents`)
+        .where('status', '==', 'pending')
+        .get();
 
-      // On boucle sur tous les tokens enregistrés pour ce User
-      for (const token of pushData.tokens) {
-        try {
-          // Utilisation du module Firebase Admin Messaging intégré
-          await admin.messaging().send({
-            token: token,
-            notification: {
-              title: '🧾 Lawra9 — Rappel Facture',
-              body: notifMessage,
-            },
-            // Le "data" si tu as besoin de re-router sur le frontend
-            data: {
-              url: '/dashboard'
+      for (const docSnap of pendingDocs.docs) {
+        const data = docSnap.data();
+        const dueDate = data.dueDate as string;
+        if (!dueDate) continue;
+
+        const target = targets.find(t => t.date === dueDate);
+        if (!target) continue;
+
+        const notifMessage = target.message(data.name || 'Document', data.amount || '');
+
+        // 4. Envoi aux tokens de l'utilisateur
+        for (const token of pushData.tokens) {
+          try {
+            await admin.messaging().send({
+              token: token,
+              notification: {
+                title: '🧾 Lawra9 — Rappel Facture',
+                body: notifMessage,
+              },
+              data: { url: '/dashboard' }
+            });
+            
+            totalSent++;
+            results.push({ userId, doc: data.name, type: target.label, status: 'sent' });
+          } catch (pushError: any) {
+            console.error(`Erreur push pour userId=${userId}:`, pushError.code);
+            if (pushError.code === 'messaging/invalid-registration-token' ||
+                pushError.code === 'messaging/registration-token-not-registered') {
+               await adminDb.doc(`users/${userId}/settings/push`).update({
+                   tokens: admin.firestore.FieldValue.arrayRemove(token)
+               });
             }
-          });
-          
-          totalSent++;
-          results.push({ userId, doc: data.name, type: target.label, status: 'sent' });
-        } catch (pushError: any) {
-          console.error(`Erreur push (FCM) pour userId=${userId}:`, pushError);
-          // Si le token est expiré (invalid-registration-token ou registration-token-not-registered)
-          if (pushError.code === 'messaging/invalid-registration-token' ||
-              pushError.code === 'messaging/registration-token-not-registered') {
-             // Nettoyage: retirer le vieux token du store
-             await adminDb.doc(`users/${userId}/settings/push`).update({
-                 tokens: admin.firestore.FieldValue.arrayRemove(token)
-             });
+            results.push({ userId, doc: data.name, type: target.label, status: 'error', code: pushError.code });
           }
-          results.push({ userId, doc: data.name, type: target.label, status: 'error', code: pushError.code });
         }
       }
     }
@@ -106,6 +100,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       totalNotificationsSent: totalSent,
+      totalUsersChecked: usersSnap.size,
       details: results,
     });
 
