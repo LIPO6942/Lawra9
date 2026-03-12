@@ -13,27 +13,29 @@ export function PushNotificationManager() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  // Vérifie si FCM est supporté par ce navigateur
+  const getSwUrl = useCallback(() => {
+    return `/firebase-messaging-sw.js?apiKey=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&projectId=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}&messagingSenderId=${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}&appId=${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}`;
+  }, []);
+
   const checkSupport = useCallback(async () => {
     const ok = await isSupported();
     setSupported(ok);
-    if (ok) {
-      // Vérifie si on a déjà un token
+    if (ok && user) {
       try {
         const messaging = getMessaging(app);
-        const swUrl = `/firebase-messaging-sw.js?apiKey=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&projectId=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}&messagingSenderId=${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}&appId=${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}`;
-        const existingToken = await getToken(messaging, {
-          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-          serviceWorkerRegistration: await navigator.serviceWorker.register(swUrl),
-        });
-        if (existingToken) {
-          setFcmToken(existingToken);
+        const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+        if (registration) {
+          const token = await getToken(messaging, {
+            vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration,
+          });
+          if (token) setFcmToken(token);
         }
-      } catch {
-        // Pas encore autorisé, c'est normal
+      } catch (e) {
+        console.log('Check initial push status:', e);
       }
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     checkSupport();
@@ -41,48 +43,54 @@ export function PushNotificationManager() {
 
   async function subscribeToPush() {
     if (!user) {
-      alert('Tu dois être connecté pour activer les notifications.');
+      alert('Tu dois être connecté.');
       return;
     }
 
     setLoading(true);
     try {
-      // Demande la permission au navigateur
+      console.log('1. Demande de permission...');
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        alert('❌ Permission refusée. Active les notifications dans les paramètres de ton navigateur.');
+        alert('❌ Permission refusée par le navigateur.');
         setLoading(false);
         return;
       }
 
-      const messaging = getMessaging(app);
-      const swUrl = `/firebase-messaging-sw.js?apiKey=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&projectId=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}&messagingSenderId=${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}&appId=${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}`;
+      console.log('2. Enregistrement du Service Worker...');
+      const swUrl = getSwUrl();
       const swRegistration = await navigator.serviceWorker.register(swUrl);
+      
+      // On attend que le SW soit prêt si besoin
+      await navigator.serviceWorker.ready;
 
+      console.log('3. Récupération du token Google FCM...');
+      const messaging = getMessaging(app);
       const token = await getToken(messaging, {
         vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
         serviceWorkerRegistration: swRegistration,
       });
 
-      if (!token) {
-        throw new Error('Impossible d\'obtenir le token FCM.');
-      }
+      if (!token) throw new Error('Google n\'a pas renvoyé de Token.');
 
+      console.log('4. Envoi au serveur Vercel...');
       setFcmToken(token);
 
-      // Enregistre le token FCM dans Firestore via notre route API
       const res = await fetch('/api/web-push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, token }),
       });
 
-      if (!res.ok) throw new Error('Erreur lors de l\'enregistrement.');
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erreur serveur 500');
+      }
 
-      alert('✅ Notifications activées avec succès !');
+      alert('✅ Notifications activées !');
     } catch (err: any) {
-      console.error('Erreur abonnement push:', err);
-      alert('❌ Impossible d\'activer les notifications. ' + (err.message || ''));
+      console.error('Erreur complete:', err);
+      alert('❌ Erreur : ' + (err.message || 'Délai d\'attente dépassé'));
     } finally {
       setLoading(false);
     }
@@ -95,14 +103,14 @@ export function PushNotificationManager() {
       const messaging = getMessaging(app);
       await deleteToken(messaging);
       setFcmToken(null);
-
       await fetch('/api/web-push/subscribe', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid }),
       });
+      alert('Notifications désactivées.');
     } catch (err) {
-      console.error('Erreur désabonnement:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -121,8 +129,8 @@ export function PushNotificationManager() {
           <p className="font-semibold text-sm">Notifications de rappel</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {fcmToken
-              ? 'Actives — tu reçois les alertes factures sur cet appareil.'
-              : 'Inactive — active-les pour être rappelé avant les échéances.'}
+              ? 'Actives — tu reçois les alertes factures.'
+              : 'Inactive — active-les pour être rappelé.'}
           </p>
         </div>
       </div>
