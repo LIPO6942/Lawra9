@@ -14,6 +14,8 @@ import {
   deleteDocument as dbDeleteDocument,
   getAllDocuments as dbGetAllDocuments
 } from '@/lib/idb';
+import { db as firestoreDb } from '@/lib/firebase';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 interface MonthlyExpense {
   month: string;
@@ -94,7 +96,20 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       newDoc.file = newDoc.files[0].file;
     }
 
+    // 1. Save to local IndexedDB
     await dbAddDocument(db, newDoc);
+    
+    // 2. Save to Firestore (without the File/Blob object)
+    try {
+      const dbDoc = { ...newDoc };
+      delete dbDoc.file;
+      delete dbDoc.files; // subfiles might also contain File/Blob
+      const docRef = doc(firestoreDb, `users/${user.uid}/documents`, newDoc.id);
+      await setDoc(docRef, dbDoc);
+    } catch (e) {
+      console.error("Failed to save to Firestore", e);
+    }
+
     await loadDocuments();
   };
 
@@ -116,14 +131,38 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       updatedData.file = data.file;
     }
 
+    // 1. Update local IndexedDB
     await dbUpdateDocument(db, updatedData);
+    
+    // 2. Update Firestore
+    try {
+      const dbDoc = { ...updatedData };
+      delete dbDoc.file;
+      delete dbDoc.files;
+      const docRef = doc(firestoreDb, `users/${user.uid}/documents`, updatedData.id);
+      await setDoc(docRef, dbDoc, { merge: true });
+    } catch (e) {
+      console.error("Failed to update Firestore", e);
+    }
+
     await loadDocuments();
   };
 
   const deleteDocument = async (id: string) => {
     if (!user) return;
     const db = await openDB(user.uid);
+    
+    // 1. Delete from IndexedDB
     await dbDeleteDocument(db, id);
+    
+    // 2. Delete from Firestore
+    try {
+      const docRef = doc(firestoreDb, `users/${user.uid}/documents`, id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error("Failed to delete from Firestore", e);
+    }
+
     await loadDocuments();
     toast({ title: 'Document supprimé' });
   };
@@ -139,7 +178,21 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           paymentDate: new Date().toISOString(),
           status: 'paid' as const
         };
+        
+        // 1. Update IndexedDB
         await dbUpdateDocument(db, updatedDoc);
+        
+        // 2. Update Firestore
+        try {
+          const dbDoc = { ...updatedDoc };
+          delete dbDoc.file;
+          delete dbDoc.files;
+          const docRef = doc(firestoreDb, `users/${user.uid}/documents`, updatedDoc.id);
+          await setDoc(docRef, dbDoc, { merge: true });
+        } catch (e) {
+          console.error("Failed to update status in Firestore", e);
+        }
+
         await loadDocuments();
         toast({ title: 'Document marqué comme payé' });
       }
