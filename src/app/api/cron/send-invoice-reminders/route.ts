@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase-admin';
-import webpush from 'web-push';
+import { getAdminDb, admin } from '@/lib/firebase-admin';
 
 // Force Next.js à ne pas pré-rendre cette route au build
 export const dynamic = 'force-dynamic';
@@ -8,21 +7,15 @@ export const dynamic = 'force-dynamic';
 const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function GET(request: Request) {
-  // 1. Vérification du secret CRON
+  // Vérification du secret CRON
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
   try {
-    // Configure web-push avec les clés VAPID (à runtime seulement)
-    webpush.setVapidDetails(
-      'mailto:admin@lawra9.app',
-      process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY as string,
-      process.env.VAPID_PRIVATE_KEY as string
-    );
-
     const adminDb = getAdminDb();
+    // On s'assure que Firebase Admin est bien initialisé avant d'y accéder (lazy initialization gérée)
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -44,12 +37,12 @@ export async function GET(request: Request) {
       { date: formatDate(date7DaysAgo),   label: 'J+7', message: (name: string, amount: string) => `🚨 En retard : La facture "${name}"${amount ? ` (${amount} TND)` : ''} n'a pas été payée depuis 7 jours.` },
     ];
 
-    console.log('CRON lancé. Cibles:', targets.map(t => `${t.label} (${t.date})`).join(', '));
+    console.log('CRON FCM lancé. Cibles:', targets.map(t => `${t.label} (${t.date})`).join(', '));
 
     let totalSent = 0;
     const results: any[] = [];
 
-    // 2. Récupérer tous les documents "pending" via collectionGroup
+    // Récupérer tous les documents "pending" via collectionGroup
     const pendingDocs = await adminDb.collectionGroup('documents')
       .where('status', '==', 'pending')
       .get();
@@ -62,44 +55,51 @@ export async function GET(request: Request) {
       const target = targets.find(t => t.date === dueDate);
       if (!target) continue;
 
-      // Récupérer l'userId depuis le chemin (users/{userId}/documents/{docId})
+      // Récupérer l'userId depuis le chemin de la collection (users/{userId}/documents/{docId})
       const userId = docSnap.ref.parent.parent?.id;
       if (!userId) continue;
 
-      // 3. Récupérer l'abonnement push de cet utilisateur
+      // Récupérer l'abonnement push de cet utilisateur
       const pushDoc = await adminDb.doc(`users/${userId}/settings/push`).get();
       if (!pushDoc.exists) continue;
 
       const pushData = pushDoc.data();
-      if (!pushData?.enabled || !pushData?.subscription) continue;
-
-      let pushSubscription;
-      try {
-        pushSubscription = JSON.parse(pushData.subscription);
-      } catch {
-        console.error(`Impossible de parser l'abonnement pour userId=${userId}`);
-        continue;
-      }
+      
+      // Ici, au lieu d'une "subscription" en chaîne JS, on check le tableau de tokens
+      if (!pushData?.enabled || !pushData?.tokens || pushData.tokens.length === 0) continue;
 
       const notifMessage = target.message(data.name || 'Document', data.amount || '');
 
-      // 4. Envoyer la notification push
-      try {
-        await webpush.sendNotification(
-          pushSubscription,
-          JSON.stringify({
-            title: '🧾 Lawra9 — Rappel Facture',
-            body: notifMessage,
-          })
-        );
-        totalSent++;
-        results.push({ userId, doc: data.name, type: target.label, status: 'sent' });
-      } catch (pushError: any) {
-        console.error(`Erreur push pour userId=${userId}:`, pushError.statusCode, pushError.body);
-        if (pushError.statusCode === 410 || pushError.statusCode === 404) {
-          await adminDb.doc(`users/${userId}/settings/push`).set({ enabled: false, subscription: null }, { merge: true });
+      // On boucle sur tous les tokens enregistrés pour ce User
+      for (const token of pushData.tokens) {
+        try {
+          // Utilisation du module Firebase Admin Messaging intégré
+          await admin.messaging().send({
+            token: token,
+            notification: {
+              title: '🧾 Lawra9 — Rappel Facture',
+              body: notifMessage,
+            },
+            // Le "data" si tu as besoin de re-router sur le frontend
+            data: {
+              url: '/dashboard'
+            }
+          });
+          
+          totalSent++;
+          results.push({ userId, doc: data.name, type: target.label, status: 'sent' });
+        } catch (pushError: any) {
+          console.error(`Erreur push (FCM) pour userId=${userId}:`, pushError);
+          // Si le token est expiré (invalid-registration-token ou registration-token-not-registered)
+          if (pushError.code === 'messaging/invalid-registration-token' ||
+              pushError.code === 'messaging/registration-token-not-registered') {
+             // Nettoyage: retirer le vieux token du store
+             await adminDb.doc(`users/${userId}/settings/push`).update({
+                 tokens: admin.firestore.FieldValue.arrayRemove(token)
+             });
+          }
+          results.push({ userId, doc: data.name, type: target.label, status: 'error', code: pushError.code });
         }
-        results.push({ userId, doc: data.name, type: target.label, status: 'error', error: pushError.body });
       }
     }
 
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('Erreur CRON:', error);
+    console.error('Erreur Firebase Admin CRON:', error);
     return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
   }
 }

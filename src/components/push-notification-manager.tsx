@@ -4,36 +4,39 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Bell, BellOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
+import { getMessaging, getToken, deleteToken, isSupported } from 'firebase/messaging';
+import { app } from '@/lib/firebase';
 
 export function PushNotificationManager() {
-  const [isSupported, setIsSupported] = useState(false);
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+  const [supported, setSupported] = useState(false);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  const checkSubscription = useCallback(async () => {
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    const existingSub = await registration.pushManager.getSubscription();
-    setSubscription(existingSub);
+  // Vérifie si FCM est supporté par ce navigateur
+  const checkSupport = useCallback(async () => {
+    const ok = await isSupported();
+    setSupported(ok);
+    if (ok) {
+      // Vérifie si on a déjà un token
+      try {
+        const messaging = getMessaging(app);
+        const existingToken = await getToken(messaging, {
+          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+          serviceWorkerRegistration: await navigator.serviceWorker.register('/firebase-messaging-sw.js'),
+        });
+        if (existingToken) {
+          setFcmToken(existingToken);
+        }
+      } catch {
+        // Pas encore autorisé, c'est normal
+      }
+    }
   }, []);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      setIsSupported(true);
-      checkSubscription();
-    }
-  }, [checkSubscription]);
+    checkSupport();
+  }, [checkSupport]);
 
   async function subscribeToPush() {
     if (!user) {
@@ -43,46 +46,54 @@ export function PushNotificationManager() {
 
     setLoading(true);
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-
-      if (!vapidKey) {
-        throw new Error('Clé VAPID manquante. Vérifie NEXT_PUBLIC_FIREBASE_VAPID_KEY.');
+      // Demande la permission au navigateur
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('❌ Permission refusée. Active les notifications dans les paramètres de ton navigateur.');
+        setLoading(false);
+        return;
       }
 
-      const sub = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      const messaging = getMessaging(app);
+      const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
+      const token = await getToken(messaging, {
+        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: swRegistration,
       });
 
-      setSubscription(sub);
+      if (!token) {
+        throw new Error('Impossible d\'obtenir le token FCM.');
+      }
 
-      // Enregistre l'abonnement dans Firestore via notre route API
+      setFcmToken(token);
+
+      // Enregistre le token FCM dans Firestore via notre route API
       const res = await fetch('/api/web-push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, subscription: sub }),
+        body: JSON.stringify({ userId: user.uid, token }),
       });
 
       if (!res.ok) throw new Error('Erreur lors de l\'enregistrement.');
 
-      alert('✅ Notifications activées ! Tu recevras des rappels pour tes factures.');
-    } catch (err) {
+      alert('✅ Notifications activées avec succès !');
+    } catch (err: any) {
       console.error('Erreur abonnement push:', err);
-      alert('❌ Impossible d\'activer les notifications. Vérifie que tu as bien autorisé le site.');
+      alert('❌ Impossible d\'activer les notifications. ' + (err.message || ''));
     } finally {
       setLoading(false);
     }
   }
 
   async function unsubscribeFromPush() {
-    if (!subscription || !user) return;
+    if (!user) return;
     setLoading(true);
     try {
-      await subscription.unsubscribe();
-      setSubscription(null);
+      const messaging = getMessaging(app);
+      await deleteToken(messaging);
+      setFcmToken(null);
 
-      // Supprime l'abonnement de Firestore
       await fetch('/api/web-push/subscribe', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -95,32 +106,32 @@ export function PushNotificationManager() {
     }
   }
 
-  if (!isSupported) return null;
+  if (!supported) return null;
 
   return (
     <div className="flex items-center justify-between p-4 border rounded-lg bg-card text-card-foreground">
       <div className="flex items-start gap-3">
-        {subscription
+        {fcmToken
           ? <Bell className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
           : <BellOff className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
         }
         <div>
           <p className="font-semibold text-sm">Notifications de rappel</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {subscription
+            {fcmToken
               ? 'Actives — tu reçois les alertes factures sur cet appareil.'
               : 'Inactive — active-les pour être rappelé avant les échéances.'}
           </p>
         </div>
       </div>
       <Button
-        variant={subscription ? 'outline' : 'default'}
+        variant={fcmToken ? 'outline' : 'default'}
         size="sm"
-        onClick={subscription ? unsubscribeFromPush : subscribeToPush}
+        onClick={fcmToken ? unsubscribeFromPush : subscribeToPush}
         disabled={loading}
       >
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {subscription ? 'Désactiver' : 'Activer'}
+        {fcmToken ? 'Désactiver' : 'Activer'}
       </Button>
     </div>
   );
