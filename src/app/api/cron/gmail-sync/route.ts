@@ -103,10 +103,10 @@ export async function GET(request: Request) {
 
             for (const msg of messages) {
               try {
-                // Anti-doublon : vérifier si emailId déjà importé
-                const existing = await db.collection('documents')
+                // Anti-doublon : vérifier si emailId déjà importé dans la collection de l'utilisateur
+                const userDocsRef = db.collection('users').doc(userId).collection('documents');
+                const existing = await userDocsRef
                   .where('emailId', '==', msg.id)
-                  .where('userId', '==', userId)
                   .limit(1)
                   .get();
 
@@ -126,7 +126,9 @@ export async function GET(request: Request) {
                   notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
                 }
 
-                await db.collection('documents').add({
+                const docId = `gmail-${msg.id}`;
+                await userDocsRef.doc(docId).set({
+                  id: docId,
                   userId,
                   emailId: msg.id,
                   name: buildInvoiceName(provider.name, parsed.periode),
@@ -139,7 +141,7 @@ export async function GET(request: Request) {
                   invoiceNumber: parsed.invoiceNumber || null,
                   consumptionPeriod: parsed.periode || null,
                   referenceClient: parsed.referenceClient || null,
-                  status: 'pending',
+                  status: 'pending' as const,
                   autoImported: true,
                   importedAt: FieldValue.serverTimestamp(),
                   createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),

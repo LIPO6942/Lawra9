@@ -98,10 +98,9 @@ export async function POST(request: NextRequest) {
         for (const msg of messages) {
           try {
             // Vérifier si cet email a déjà été importé (anti-doublon par emailId)
-            const existing = await db
-              .collection('documents')
+            const userDocsRef = db.collection('users').doc(userId).collection('documents');
+            const existing = await userDocsRef
               .where('emailId', '==', msg.id)
-              .where('userId', '==', userId)
               .limit(1)
               .get();
 
@@ -123,7 +122,10 @@ export async function POST(request: NextRequest) {
               notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
             }
 
+            // ID unique basé sur l'ID Gmail pour éviter les conflits et permettre le re-scan si supprimé
+            const docId = `gmail-${msg.id}`;
             const docData = {
+              id: docId,                          // ID requis par le frontend
               userId,
               emailId: msg.id,                    // Clé anti-doublon
               name: buildInvoiceName(provider.name, parsed.periode),
@@ -136,15 +138,15 @@ export async function POST(request: NextRequest) {
               invoiceNumber: parsed.invoiceNumber || null,
               consumptionPeriod: parsed.periode || null,
               referenceClient: parsed.referenceClient || null,
-              status: 'pending',
+              status: 'pending' as const,
               autoImported: true,
               importedAt: FieldValue.serverTimestamp(),
               createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),
               notes: notesText,
             };
 
-            // Sauvegarder dans Firestore
-            await db.collection('documents').add(docData);
+            // Sauvegarder dans Firestore (collection spécifique à l'utilisateur)
+            await userDocsRef.doc(docId).set(docData);
 
             results.imported++;
             results.details.push(
