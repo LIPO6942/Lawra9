@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Document } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle, FileText } from 'lucide-react';
+import { CheckCircle, MoreHorizontal, Edit, Trash2, Home, Droplets, Zap, Landmark, CalendarDays, Wifi, Loader2, Shield, Eye, Info, MessageSquare, CircleDollarSign, AlertTriangle, FileText, Mail } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -195,6 +195,12 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                 <div className="flex-1 min-w-0 flex flex-col gap-1 cursor-pointer" onClick={() => handleViewFile(doc.id)}>
                                     <div className="flex items-center justify-between gap-2 overflow-hidden">
                                         <div className="font-semibold truncate text-[13px] sm:text-base leading-tight flex-1 flex items-center gap-2">
+                                            {doc.autoImported && (
+                                                <Badge variant="outline" className="h-5 px-1.5 text-[9px] uppercase tracking-wider bg-blue-50 text-blue-600 border-blue-200 shrink-0 font-bold flex items-center gap-1">
+                                                    <Mail className="h-2.5 w-2.5" />
+                                                    Gmail
+                                                </Badge>
+                                            )}
                                             {isCoreBill ? (
                                                 <div className="flex items-center gap-1.5 w-full overflow-hidden">
                                                     <div className="shrink-0 opacity-80"><CategoryIcon category={doc.category} /></div>

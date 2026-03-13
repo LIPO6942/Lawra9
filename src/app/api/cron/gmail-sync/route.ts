@@ -11,12 +11,15 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import {
   searchGmailMessages,
   getGmailMessage,
+  getGmailAttachment,
   extractEmailBody,
+  findPdfAttachments,
   refreshAccessToken,
 } from '@/lib/gmail-client';
 import { parseStegEmail } from '@/lib/parsers/steg';
 import { parseOrangeEmail } from '@/lib/parsers/orange';
 import { FieldValue } from 'firebase-admin/firestore';
+import { format, parseISO, isValid, startOfMonth, endOfMonth } from 'date-fns';
 
 // Force Next.js à ne pas pré-rendre cette route au build
 export const dynamic = 'force-dynamic';
@@ -90,6 +93,11 @@ export async function GET(request: Request) {
             continue;
           }
         }
+        
+        // Charger les documents récents pour l'anti-doublon métier de façon optimisée
+        const userDocsRef = db.collection('users').doc(userId).collection('documents');
+        const recentDocsSnap = await userDocsRef.orderBy('createdAt', 'desc').limit(100).get();
+        const recentDocs = recentDocsSnap.docs.map((d: any) => d.data());
 
         // ── 3. Scanner les emails de chaque fournisseur ────────────────────
         for (const provider of PROVIDERS) {
@@ -103,23 +111,14 @@ export async function GET(request: Request) {
 
             for (const msg of messages) {
               try {
-                // ── 1. Anti-doublon technique (emailId) ─────────────────────────
-                const userDocsRef = db.collection('users').doc(userId).collection('documents');
-                const existingByEmail = await userDocsRef
-                  .where('emailId', '==', msg.id)
-                  .limit(1)
-                  .get();
-
-                if (!existingByEmail.empty) {
-                  stats.totalSkipped++;
-                  continue;
-                }
-
                 // Fetch + parse le message complet
                 const fullMsg = await getGmailMessage(accessToken, msg.id);
                 const { text, html } = extractEmailBody(fullMsg.payload);
 
-                // ── 2. Filtrage par statut de paiement ────────────────────────────
+                // Parser selon le fournisseur
+                const parsed = provider.parser(text, html);
+
+                // ── Filtrage par statut de paiement ────────────────────────────
                 const isAlreadyPaid = 
                   text.toLowerCase().includes('facture acquittée') || 
                   text.toLowerCase().includes('paiement reçu') ||
@@ -131,30 +130,74 @@ export async function GET(request: Request) {
                   continue;
                 }
 
-                const parsed = provider.parser(text, html);
+                // ── Anti-doublon technique et métier ───────────────────────────
+                let isDuplicate = false;
+                const targetSupplierTokens = provider.name === 'STEG' ? ['steg'] : ['orange', 'otn'];
+                
+                // Trouver la date de référence pour comparer le mois
+                let dateReference: Date | null = null;
+                if (parsed.dateFacture) dateReference = parseISO(parsed.dateFacture);
+                else if (parsed.dateEcheance) dateReference = parseISO(parsed.dateEcheance);
+                else dateReference = new Date(parseInt(fullMsg.internalDate));
 
-                // ── 3. Anti-doublon métier (Montant + Période) ──────────────────
-                if (parsed.montant && parsed.periode) {
-                  const amountStr = `${parsed.montant.toFixed(3)} TND`;
-                  const supplierName = provider.name === 'ORANGE_TN' ? 'Orange' : provider.supplier;
-                  
-                  const existingSimilar = await userDocsRef
-                    .where('supplier', '==', supplierName)
-                    .where('amount', '==', amountStr)
-                    .where('consumptionPeriod', '==', parsed.periode)
-                    .limit(1)
-                    .get();
-
-                  if (!existingSimilar.empty) {
-                    stats.totalSkipped++;
-                    continue;
+                for (const dData of recentDocs) {
+                  // 1. Anti-doublon technique (déjà importé par Gmail)
+                  if (dData.emailId === msg.id) {
+                    isDuplicate = true; break;
                   }
+
+                  // 2. Anti-doublon métier (Saisie manuelle existante)
+                  const docSupplier = (dData.supplier || dData.category || '').toLowerCase();
+                  const isMatchSupplier = targetSupplierTokens.some((t: string) => docSupplier.includes(t));
+                  if (!isMatchSupplier) continue;
+
+                  // a) Vérifier si le montant est exactement le même
+                  if (parsed.montant && dData.amount === `${parsed.montant.toFixed(3)} TND`) {
+                    isDuplicate = true; break;
+                  }
+
+                  // b) Vérifier si la période textuelle est identique
+                  if (parsed.periode && dData.consumptionPeriod && parsed.periode.toLowerCase() === dData.consumptionPeriod.toLowerCase()) {
+                    isDuplicate = true; break;
+                  }
+
+                  // c) Vérifier le mois et l'année
+                  if (dateReference && isValid(dateReference)) {
+                    // On vérifie de préférence billingStartDate, sinon issueDate,dueDate,createdAt
+                    const docDates = [dData.billingStartDate, dData.issueDate, dData.dueDate, dData.createdAt].filter(Boolean);
+                    for (const dStr of docDates) {
+                      const dDate = new Date(dStr);
+                      if (isValid(dDate) && dDate.getMonth() === dateReference.getMonth() && dDate.getFullYear() === dateReference.getFullYear()) {
+                        isDuplicate = true; break;
+                      }
+                    }
+                  }
+                  if (isDuplicate) break;
+                }
+
+                if (isDuplicate) {
+                  console.log(`[Gmail Cron] Doublon détecté pour l'email ${msg.id}`);
+                  stats.totalSkipped++;
+                  continue;
                 }
 
                 // Construire et sauvegarder le document
                 let notesText = `Importé automatiquement (cron quotidien).\nExtrait : ${parsed.rawText.slice(0, 200)}`;
                 if (parsed.invoiceUrl) {
                   notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
+                }
+
+                // ── Gérer les pièces jointes PDF ────────────────────────────
+                const pdfInfos = findPdfAttachments(fullMsg.payload);
+                let fileData: any = null;
+
+                if (pdfInfos.length > 0) {
+                  const attachment = await getGmailAttachment(accessToken, msg.id, pdfInfos[0].attachmentId);
+                  fileData = {
+                    content: attachment,
+                    contentType: 'application/pdf',
+                    name: pdfInfos[0].filename
+                  };
                 }
 
                 const docId = `gmail-${msg.id}`;
@@ -177,6 +220,8 @@ export async function GET(request: Request) {
                   importedAt: FieldValue.serverTimestamp(),
                   createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),
                   notes: notesText,
+                  fileBase64: fileData?.content || null,
+                  fileName: fileData?.name || null
                 });
 
                 stats.totalImported++;

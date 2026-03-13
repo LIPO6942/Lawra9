@@ -29,6 +29,11 @@ export type Document = {
   status?: 'pending' | 'paid' | 'expired';
   notes?: string; // Free text notes
   paymentDate?: string; // ISO date string when the bill was actually paid
+  // Gmail import fields
+  emailId?: string;
+  autoImported?: boolean;
+  fileBase64?: string; // Base64 content for automated imports
+  fileName?: string;
 };
 
 export type DocumentWithFile = Omit<Document, 'id' | 'createdAt'> & {

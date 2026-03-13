@@ -1,12 +1,12 @@
-
 'use client';
 
+import React from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Document } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Calendar, CircleDollarSign, Hash, FileText, StickyNote, Eye, Download, Activity, Wind, Droplets } from 'lucide-react';
+import { Calendar, CircleDollarSign, Hash, FileText, StickyNote, Eye, Activity, Wind, Droplets } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface DocumentDetailsDialogProps {
@@ -24,14 +24,14 @@ const formatDateSafe = (dateString?: string, dateFormat = 'd MMMM yyyy') => {
     return 'Date invalide';
 };
 
-const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string | null }) => {
-    if (!value) return null;
+const DetailItem = ({ icon: Icon, label, value, renderValue }: { icon: any, label: string, value?: string | null, renderValue?: React.ReactNode }) => {
+    if (!value && !renderValue) return null;
     return (
         <div className="flex items-start gap-4 py-2">
             <Icon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
             <div className="flex-1">
                 <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="font-semibold break-words">{value}</p>
+                {renderValue ? renderValue : <p className="font-semibold break-words">{value}</p>}
             </div>
         </div>
     )
@@ -75,7 +75,7 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
         if ((document.category === 'Internet' || document.name === 'Internet') && (document.billingStartDate || document.consumptionPeriod)) {
             try {
                 // Prioritize billingStartDate but fall back to consumptionPeriod month extraction if needed
-                const d = document.billingStartDate ? new Date(document.billingStartDate) : new Date(document.consumptionPeriod?.split('-')[0] as string, (parseInt(document.consumptionPeriod?.split('-')[1] as string) || 1) - 1, 1);
+                const d = document.billingStartDate ? new Date(document.billingStartDate) : new Date(parseInt(document.consumptionPeriod?.split('-')[0] as string), (parseInt(document.consumptionPeriod?.split('-')[1] as string) || 1) - 1, 1);
                 const monthStr = format(d, 'MMMM', { locale: fr });
                 period = `${monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase()} ${format(d, 'yyyy')}`;
             } catch (e) { }
@@ -107,6 +107,38 @@ export function DocumentDetailsDialog({ open, onOpenChange, document }: Document
                     <DetailItem icon={Calendar} label="Date de paiement" value={formatDateSafe(document.paymentDate)} />
                     <DetailItem icon={Calendar} label="Période de facturation" value={period} />
                     <DetailItem icon={Hash} label="Numéro de facture" value={document.invoiceNumber} />
+                    
+                    {document.notes && (
+                      <DetailItem 
+                        icon={StickyNote} 
+                        label="Notes" 
+                        renderValue={
+                          <div className="mt-1 text-sm space-y-2">
+                            {(() => {
+                              const noteParts = document.notes!.split(/(\[[^\]]+\]\(https?:\/\/[^\s\)]+\))/g);
+                              return noteParts.map((part, i) => {
+                                const match = part.match(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/);
+                                if (match) {
+                                  return (
+                                    <a 
+                                      key={i} 
+                                      href={match[2]} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                                    >
+                                      <FileText className="h-3 w-3" />
+                                      {match[1]}
+                                    </a>
+                                  );
+                                }
+                                return <span key={i} className="text-muted-foreground whitespace-pre-wrap">{part}</span>;
+                              });
+                            })()}
+                          </div>
+                        }
+                      />
+                    )}
 
                     {(document.consumptionQuantity || document.gasConsumptionQuantity) && (
                         <div className="pt-2">

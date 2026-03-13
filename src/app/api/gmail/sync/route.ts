@@ -9,13 +9,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   searchGmailMessages,
   getGmailMessage,
+  getGmailAttachment,
   extractEmailBody,
+  findPdfAttachments,
   refreshAccessToken,
 } from '@/lib/gmail-client';
 import { parseStegEmail } from '@/lib/parsers/steg';
 import { parseOrangeEmail } from '@/lib/parsers/orange';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { format, parseISO, isValid, startOfMonth, endOfMonth } from 'date-fns';
 
 // Fournisseurs ciblés : query Gmail + parser associé
 const PROVIDERS = [
@@ -84,6 +87,11 @@ export async function POST(request: NextRequest) {
       details: [] as string[],
     };
 
+    // Charger les documents récents pour l'anti-doublon métier de façon optimisée
+    const userDocsRef = db.collection('users').doc(userId).collection('documents');
+    const recentDocsSnap = await userDocsRef.orderBy('createdAt', 'desc').limit(100).get();
+    const recentDocs = recentDocsSnap.docs.map((d: any) => d.data());
+
     for (const provider of PROVIDERS) {
       try {
         // Chercher les 10 derniers emails de ce fournisseur
@@ -97,18 +105,6 @@ export async function POST(request: NextRequest) {
 
         for (const msg of messages) {
           try {
-            // ── 4a. Vérifier l'anti-doublon technique (emailId) ─────────────────
-            const userDocsRef = db.collection('users').doc(userId).collection('documents');
-            const existingByEmail = await userDocsRef
-              .where('emailId', '==', msg.id)
-              .limit(1)
-              .get();
-
-            if (!existingByEmail.empty) {
-              results.skipped++;
-              continue; 
-            }
-
             // Récupérer le message complet
             const fullMsg = await getGmailMessage(accessToken, msg.id);
             const { text, html } = extractEmailBody(fullMsg.payload);
@@ -116,26 +112,7 @@ export async function POST(request: NextRequest) {
             // Parser selon le fournisseur
             const parsed = provider.parser(text, html);
 
-            // ── 4b. Vérifier si une facture similaire existe déjà (Montant + Période) ──
-            // Cela permet de ne pas importer via Gmail une facture que l'utilisateur a déjà ajouté manuellement
-            if (parsed.montant && parsed.periode) {
-              const amountStr = `${parsed.montant.toFixed(3)} TND`;
-              const existingSimilar = await userDocsRef
-                .where('supplier', '==', provider.name === 'STEG' ? 'STEG' : 'Orange')
-                .where('amount', '==', amountStr)
-                .where('consumptionPeriod', '==', parsed.periode)
-                .limit(1)
-                .get();
-
-              if (!existingSimilar.empty) {
-                console.log(`[Gmail Sync] Doublon métier trouvé pour ${parsed.periode} (${amountStr})`);
-                results.skipped++;
-                continue;
-              }
-            }
-
             // ── Filtrage par statut de paiement ────────────────────────────
-            // Si l'email contient des preuves de paiement clair, on l'ignore pour ne pas polluer Lawra9 avec des factures payées
             const isAlreadyPaid = 
               text.toLowerCase().includes('facture acquittée') || 
               text.toLowerCase().includes('paiement reçu') ||
@@ -147,18 +124,83 @@ export async function POST(request: NextRequest) {
               continue;
             }
 
+            // ── Anti-doublon technique et métier ───────────────────────────
+            let isDuplicate = false;
+            const targetSupplierTokens = provider.name === 'STEG' ? ['steg'] : ['orange', 'otn'];
+            
+            // Trouver la date de référence pour comparer le mois
+            let dateReference: Date | null = null;
+            if (parsed.dateFacture) dateReference = parseISO(parsed.dateFacture);
+            else if (parsed.dateEcheance) dateReference = parseISO(parsed.dateEcheance);
+            else dateReference = new Date(parseInt(fullMsg.internalDate));
+
+            for (const dData of recentDocs) {
+              // 1. Anti-doublon technique (déjà importé par Gmail)
+              if (dData.emailId === msg.id) {
+                isDuplicate = true; break;
+              }
+
+              // 2. Anti-doublon métier (Saisie manuelle existante)
+              const docSupplier = (dData.supplier || dData.category || '').toLowerCase();
+              const isMatchSupplier = targetSupplierTokens.some(t => docSupplier.includes(t));
+              if (!isMatchSupplier) continue;
+
+              // a) Vérifier si le montant est exactement le même
+              if (parsed.montant && dData.amount === `${parsed.montant.toFixed(3)} TND`) {
+                isDuplicate = true; break;
+              }
+
+              // b) Vérifier si la période textuelle est identique
+              if (parsed.periode && dData.consumptionPeriod && parsed.periode.toLowerCase() === dData.consumptionPeriod.toLowerCase()) {
+                isDuplicate = true; break;
+              }
+
+              // c) Vérifier le mois et l'année
+              if (dateReference && isValid(dateReference)) {
+                // On vérifie de préférence billingStartDate, sinon issueDate,dueDate,createdAt
+                const docDates = [dData.billingStartDate, dData.issueDate, dData.dueDate, dData.createdAt].filter(Boolean);
+                for (const dStr of docDates) {
+                  const dDate = new Date(dStr);
+                  if (isValid(dDate) && dDate.getMonth() === dateReference.getMonth() && dDate.getFullYear() === dateReference.getFullYear()) {
+                    isDuplicate = true; break;
+                  }
+                }
+              }
+              if (isDuplicate) break;
+            }
+
+            if (isDuplicate) {
+              console.log(`[Gmail Sync] Doublon détecté pour l'email ${msg.id}`);
+              results.skipped++;
+              continue;
+            }
+
             // Construire le document Lawra9 (compatible avec le type Document existant)
             let notesText = `Importé automatiquement depuis Gmail.\nExtrait : ${parsed.rawText.slice(0, 200)}`;
             if (parsed.invoiceUrl) {
               notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
             }
 
-            // ID unique basé sur l'ID Gmail pour éviter les conflits et permettre le re-scan si supprimé
+            // ── 4c. Gérer les pièces jointes PDF ────────────────────────────
+            const pdfInfos = findPdfAttachments(fullMsg.payload);
+            let fileData: any = null;
+
+            if (pdfInfos.length > 0) {
+              const attachment = await getGmailAttachment(accessToken, msg.id, pdfInfos[0].attachmentId);
+              // Les fichiers sont stockés en Base64 dans Firestore (compatible avec notre système IDB si chargé)
+              fileData = {
+                content: attachment, // base64url string
+                contentType: 'application/pdf',
+                name: pdfInfos[0].filename
+              };
+            }
+
+            // ID unique basé sur l'ID Gmail pour éviter les conflits
             const docId = `gmail-${msg.id}`;
             const docData = {
-              id: docId,                          // ID requis par le frontend
+              id: docId,
               userId,
-              emailId: msg.id,                    // Clé anti-doublon
+              emailId: msg.id,
               name: buildInvoiceName(provider.name, parsed.periode),
               category: provider.category,
               source: provider.name,
@@ -174,6 +216,8 @@ export async function POST(request: NextRequest) {
               importedAt: FieldValue.serverTimestamp(),
               createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),
               notes: notesText,
+              fileBase64: fileData?.content || null, // On stocke le base64 pour que le frontend puisse créer un Blob
+              fileName: fileData?.name || null
             };
 
             // Sauvegarder dans Firestore (collection spécifique à l'utilisateur)

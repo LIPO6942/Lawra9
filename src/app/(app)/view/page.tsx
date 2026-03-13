@@ -32,9 +32,25 @@ function DocumentView() {
     if (document.category === 'Maison' && document.files && document.files.length > 0) {
       return document.files[activeFileIndex];
     }
-    // Fallback for single-file documents
+  // Fallback for single-file documents
+  if (document.file) {
     return { file: document.file, name: document.name };
-  }, [document, activeFileIndex]);
+  }
+  
+  // Gmail-imported base64 fallback
+  if ((document as any).fileBase64) {
+    const base64 = (document as any).fileBase64.replace(/-/g, '+').replace(/_/g, '/');
+    const binaryString = window.atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    return { file: blob, name: (document as any).fileName || document.name };
+  }
+
+  return undefined;
+}, [document, activeFileIndex]);
 
   useEffect(() => {
     // This effect creates/revokes the object URL when the active file changes
@@ -70,7 +86,16 @@ function DocumentView() {
   
   const hasMultipleFiles = document?.category === 'Maison' && document.files && document.files.length > 1;
 
-  if (!document || !activeFileUrl) {
+  const parsedLink = useMemo(() => {
+    if (!document?.notes) return null;
+    const match = document.notes.match(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/);
+    if (match) {
+      return { text: match[1], url: match[2] };
+    }
+    return null;
+  }, [document?.notes]);
+
+  if (!document || (!activeFileUrl && !document.notes)) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted text-center p-4">
         <FileQuestion className="h-16 w-16 text-destructive" />
@@ -113,13 +138,32 @@ function DocumentView() {
         </Button>
       </header>
       <main className="flex-1 relative">
-        {isImage ? (
-            <div className="w-full h-full p-4 flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={activeFileUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
-            </div>
+        {activeFileUrl ? (
+          isImage ? (
+              <div className="w-full h-full p-4 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={activeFileUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
+              </div>
+          ) : (
+            <embed src={activeFileUrl} type={activeFile?.file?.type || 'application/pdf'} className="h-full w-full" />
+          )
         ) : (
-          <embed src={activeFileUrl} type={activeFile?.file?.type || 'application/pdf'} className="h-full w-full" />
+          <div className="flex h-full w-full flex-col items-center justify-center bg-muted text-center p-4">
+            <FileQuestion className="h-16 w-16 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Aucun fichier joint localement</h2>
+            {parsedLink ? (
+              <div className="flex flex-col items-center gap-4">
+                <p className="text-muted-foreground">Ce document a été importé automatiquement et ne contient pas de pièce jointe, mais inclut un lien vers la facture d'origine.</p>
+                <Button asChild>
+                  <a href={parsedLink.url} target="_blank" rel="noopener noreferrer">Ouvrir la facture en ligne</a>
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground whitespace-pre-line max-w-md bg-background p-4 rounded-md border text-left mt-4 text-sm">
+                {document?.notes || "Ce document ne possède ni fichier ni notes consultables."}
+              </p>
+            )}
+          </div>
         )}
         
         {hasMultipleFiles && (
