@@ -27,48 +27,60 @@ function DocumentView() {
     }
   }, [id, getDocumentById]);
 
-  const activeFile = useMemo((): SubFile | { file?: Blob | File, name: string } | undefined => {
+  const activeFile = useMemo(() => {
     if (!document) return undefined;
+    
+    // 1. Maison multi-fichiers
     if (document.category === 'Maison' && document.files && document.files.length > 0) {
       return document.files[activeFileIndex];
     }
-  // Fallback for single-file documents
-  if (document.file) {
-    return { file: document.file, name: document.name };
-  }
-  
-  // Gmail-imported base64 fallback
-  if ((document as any).fileBase64 && typeof window !== 'undefined') {
-    try {
-      const base64 = (document as any).fileBase64.replace(/-/g, '+').replace(/_/g, '/');
-      const binaryString = window.atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: 'application/pdf' });
-      return { file: blob, name: (document as any).fileName || document.name };
-    } catch (e) {
-      console.error("Base64 decoding failed:", e);
-      return undefined;
+    
+    // 2. Fichier standard (Blob/File)
+    if (document.file && (document.file instanceof Blob || (document.file as any).size > 0)) {
+      return { file: document.file, name: document.name };
     }
-  }
+    
+    // 3. Import Gmail (Base64)
+    if ((document as any).fileBase64 && typeof window !== 'undefined') {
+      try {
+        const base64 = (document as any).fileBase64.replace(/-/g, '+').replace(/_/g, '/');
+        const binaryString = window.atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        return { file: blob, name: (document as any).fileName || document.name };
+      } catch (e) {
+        console.error("Base64 decoding failed:", e);
+      }
+    }
 
-  return undefined;
-}, [document, activeFileIndex]);
+    return undefined;
+  }, [document?.id, document?.file, document?.files, (document as any)?.fileBase64, activeFileIndex]);
 
   useEffect(() => {
-    // This effect creates/revokes the object URL when the active file changes
+    if (!activeFile?.file) {
+      setActiveFileUrl(null);
+      return;
+    }
+
     let fileUrl: string | null = null;
-    if (activeFile?.file) {
-      fileUrl = URL.createObjectURL(activeFile.file);
-      setActiveFileUrl(fileUrl);
-    } else {
+    try {
+      // Vérifier que c'est bien un Blob ou File avant de créer l'URL
+      if (activeFile.file instanceof Blob) {
+        fileUrl = URL.createObjectURL(activeFile.file);
+        setActiveFileUrl(fileUrl);
+      } else {
+        console.warn("Le fichier n'est pas un Blob valide:", activeFile.file);
+        setActiveFileUrl(null);
+      }
+    } catch (err) {
+      console.error("Erreur lors de la création de l'URL du fichier:", err);
       setActiveFileUrl(null);
     }
 
     return () => {
-      // Cleanup by revoking the object URL when the component unmounts or the file changes
       if (fileUrl) {
         URL.revokeObjectURL(fileUrl);
       }

@@ -163,35 +163,30 @@ export async function POST(request: NextRequest) {
                 isDuplicate = true; break;
               }
 
-              // c) Vérifier le mois et l'année
-              if (dateReference && isValid(dateReference)) {
-                // On vérifie de préférence billingStartDate, sinon issueDate,dueDate,createdAt
-                const docDates = [dData.billingStartDate, dData.issueDate, dData.dueDate, dData.createdAt].filter(Boolean);
-                for (const dStr of docDates) {
-                  const dDate = new Date(dStr);
-                  if (isValid(dDate) && dDate.getMonth() === dateReference.getMonth() && dDate.getFullYear() === dateReference.getFullYear()) {
-                    isDuplicate = true; break;
-                  }
+              // c) Vérification poussée par MOIS / ANNÉE
+              // On extrait le mois/année de la facture Gmail (depuis parsed.periode ou dateReference)
+              const gmailPeriod = extractMonthYear(parsed.periode) || 
+                                 (dateReference && isValid(dateReference) ? { month: dateReference.getMonth(), year: dateReference.getFullYear() } : null);
+              
+              if (gmailPeriod) {
+                // On extrait le mois/année du document existant (depuis consumptionPeriod, billingStartDate, etc.)
+                const docPeriod = extractMonthYear(dData.consumptionPeriod) || 
+                                 extractMonthYear(dData.billingStartDate) ||
+                                 (isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null);
+                
+                if (docPeriod && docPeriod.month === gmailPeriod.month && docPeriod.year === gmailPeriod.year) {
+                  console.log(`[Gmail Sync] Doublon détecté par période (${docPeriod.month + 1}/${docPeriod.year}) pour ${provider.name}`);
+                  isDuplicate = true; break;
                 }
               }
-              // d) Vérifier si un document existe déjà et est PAYÉ
+
+              // d) Si le document est déjà PAYÉ dans l'app et que c'est le même fournisseur, on bloque l'import si c'est le même mois
               const isMarkedAsPaid = dData.status === 'paid' || dData.paymentDate;
-              if (isMarkedAsPaid && isMatchSupplier) {
-                 // Si c'est le même mois/année ou même montant, on ignore l'import Gmail
-                 if (parsed.montant) {
-                    const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
-                    if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.001) {
-                      isDuplicate = true; break;
-                    }
-                 }
-                 if (dateReference && isValid(dateReference)) {
-                    const docDates = [dData.billingStartDate, dData.issueDate, dData.dueDate, dData.createdAt].filter(Boolean);
-                    for (const dStr of docDates) {
-                      const dDate = new Date(dStr);
-                      if (isValid(dDate) && dDate.getMonth() === dateReference.getMonth() && dDate.getFullYear() === dateReference.getFullYear()) {
-                        isDuplicate = true; break;
-                      }
-                    }
+              if (isMarkedAsPaid && isMatchSupplier && gmailPeriod) {
+                 const docDate = new Date(dData.paymentDate || dData.createdAt);
+                 if (isValid(docDate) && docDate.getMonth() === gmailPeriod.month && docDate.getFullYear() === gmailPeriod.year) {
+                   console.log(`[Gmail Sync] Facture déjà payée ce mois-ci dans Lawra9 pour ${provider.name}`);
+                   isDuplicate = true; break;
                  }
               }
 
@@ -284,6 +279,36 @@ export async function POST(request: NextRequest) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Tente d'extraire {month, year} (0-indexed month) depuis divers formats de strings */
+function extractMonthYear(str?: string | null): { month: number, year: number } | null {
+  if (!str) return null;
+  
+  // Format : "Janvier 2026" ou "janv. 2026"
+  const months = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
+  const longMonths = ['janvier', 'février', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre'];
+  
+  const lowerStr = str.toLowerCase();
+  
+  // Chercher l'année (4 chiffres)
+  const yearMatch = lowerStr.match(/\b(20\d{2})\b/);
+  if (!yearMatch) return null;
+  const year = parseInt(yearMatch[1]);
+
+  // Chercher le mois
+  for (let i = 0; i < longMonths.length; i++) {
+    if (lowerStr.includes(longMonths[i])) return { month: i % 12, year };
+  }
+  for (let i = 0; i < months.length; i++) {
+    if (lowerStr.includes(months[i])) return { month: i, year };
+  }
+  
+  // Format : "2026-02"
+  const isoMatch = lowerStr.match(/(\d{4})-(\d{2})/);
+  if (isoMatch) return { month: parseInt(isoMatch[2]) - 1, year: parseInt(isoMatch[1]) };
+
+  return null;
+}
 
 function buildInvoiceName(source: string, periode?: string): string {
   const label = source === 'STEG' ? 'Facture STEG' : 'Facture Orange TN';
