@@ -18,28 +18,26 @@ export function parseOrangeEmail(textBody: string, htmlBody: string): ParsedInvo
   };
 
   // ── Montant à payer ──────────────────────────────────────────────────────
-  // Orange TN : "Montant à payer : 45,000 TND", "Total : 45.000 DT"
-  // Peut aussi apparaitre comme "45,000 TND" ou "45 000 DT" dans une ligne isolée
+  // "Montant à payer 40,9DT" ou "Montant à payer : 40,9 DT"
   const montantMatch =
-    raw.match(/(?:montant[^:]*[àa][^:]*payer|total\s+(?:à|a)\s+payer|total\s+factur[eé])[^:]*:\s*([\d\s,.]+)\s*(?:TND|DT|dinars?)/i) ||
-    raw.match(/(?:montant|total)[^:]*:\s*([\d]+[.,][\d]{3})\s*(?:TND|DT)/i) ||
-    raw.match(/([\d]+[.,][\d]{3})\s*(?:TND|DT)/i);
+    raw.match(/(?:montant[^0-9]*payer|total[^0-9]*payer|total[^0-9]*factur[eé])\s*:?\s*([\d\s]+(?:[.,][\d]+)?)\s*(?:TND|DT|dinars?)/i) ||
+    raw.match(/(?:montant|total)\s*:?\s*([\d\s]+(?:[.,][\d]+)?)\s*(?:TND|DT)/i) ||
+    raw.match(/([\d\s]+(?:[.,][\d]+)?)\s*(?:TND|DT)/i);
   if (montantMatch) {
     result.montant = parseAmount(montantMatch[1]);
   }
 
-  // ── Numéro de contrat / ligne ────────────────────────────────────────────
-  // "N° Contrat : OTN-123456", "Ligne : 71234567", "Compte : 123456"
+  // ── Numéro de contrat / ligne / référence ────────────────────────────────
+  // "Référence 2603059885", "N° Contrat : OTN-123456"
   const refMatch =
-    raw.match(/n[°o]?\s*(?:contrat|ligne|compte|abonn[eé])[^:]*:\s*([0-9A-Z\-]{4,})/i) ||
-    raw.match(/(?:contrat|compte)\s*:\s*([0-9A-Z\-]{4,})/i);
+    raw.match(/(?:r[eé]f[eé]rence|n[°o]?\s*(?:contrat|ligne|compte|abonn[eé])|contrat|compte)[^\d]*([0-9A-Z\-]{6,})/i);
   if (refMatch) {
     result.referenceClient = refMatch[1].trim();
   }
 
   // ── Numéro de facture ────────────────────────────────────────────────────
   const invoiceMatch =
-    raw.match(/n[°o]?\s*(?:facture|fact\.?)[^:]*:\s*([0-9A-Z\-\/]+)/i) ||
+    raw.match(/n[°o]?\s*(?:facture|fact\.?)[^:]*:?\s*([0-9A-Z\-\/]+)/i) ||
     raw.match(/facture\s*n[°o]?\s*([0-9A-Z\-\/]+)/i);
   if (invoiceMatch) {
     result.invoiceNumber = invoiceMatch[1].trim();
@@ -48,7 +46,7 @@ export function parseOrangeEmail(textBody: string, htmlBody: string): ParsedInvo
   // ── Période ──────────────────────────────────────────────────────────────
   const MOIS = 'janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre';
   const periodeMatch =
-    raw.match(new RegExp(`(?:p[eé]riode|mois|mensualit[eé])[^:]*:\\s*((?:${MOIS})\\s+\\d{4})`, 'i')) ||
+    raw.match(new RegExp(`(?:p[eé]riode|mois|mensualit[eé])[^:]*:?\\s*((?:${MOIS})\\s+\\d{4})`, 'i')) ||
     raw.match(new RegExp(`((?:${MOIS})\\s+\\d{4})`, 'i'));
   if (periodeMatch) {
     result.periode = periodeMatch[1].trim();
@@ -56,19 +54,26 @@ export function parseOrangeEmail(textBody: string, htmlBody: string): ParsedInvo
 
   // ── Date d'émission ──────────────────────────────────────────────────────
   const dateFactureMatch =
-    raw.match(/(?:date\s*(?:de\s*)?(?:facture|facturation)|[eé]tablie?\s*le)[^:]*:\s*(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/i) ||
+    raw.match(/(?:date\s*(?:de\s*)?(?:facture|facturation)|[eé]tablie?\s*le)[^:]*:?\s*(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/i) ||
     raw.match(/(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/);
   if (dateFactureMatch) {
     result.dateFacture = parseTunisianDate(dateFactureMatch[1]);
   }
 
   // ── Date d'échéance ──────────────────────────────────────────────────────
-  // "avant le 15/03/2026", "Payer avant : 15-03-2026", "Date limite de paiement"
+  // "Date limite de paiement 01/04/2026", "avant le 15/03/2026"
   const echeanceMatch =
-    raw.match(/(?:avant\s*le|date\s*limite|[eé]ch[eé]ance|payer\s*avant)[^:]*:\s*(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/i) ||
+    raw.match(/(?:avant\s*le|date\s*limite(?:[^\d]*paiement)?|[eé]ch[eé]ance|payer\s*avant)[^\d]*(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/i) ||
     raw.match(/avant\s*le\s*(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/i);
   if (echeanceMatch) {
     result.dateEcheance = parseTunisianDate(echeanceMatch[1]);
+  }
+
+  // ── Lien de la facture (extrait du HTML) ─────────────────────────────────
+  // <a href="https://..." ...>Consulter votre facture</a>
+  const urlMatch = htmlBody.match(/href="([^"]+)"[^>]*>Consulter votre facture/i);
+  if (urlMatch) {
+    result.invoiceUrl = urlMatch[1];
   }
 
   return result;

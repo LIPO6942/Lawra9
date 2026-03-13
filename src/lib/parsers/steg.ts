@@ -12,6 +12,7 @@ export interface ParsedInvoice {
   dateEcheance?: string;  // ISO date string
   periode?: string;
   invoiceNumber?: string;
+  invoiceUrl?: string;    // URL to view the invoice online
   rawText: string;
 }
 

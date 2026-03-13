@@ -118,6 +118,11 @@ export async function POST(request: NextRequest) {
             const parsed = provider.parser(text, html);
 
             // Construire le document Lawra9 (compatible avec le type Document existant)
+            let notesText = `Importé automatiquement depuis Gmail.\nExtrait : ${parsed.rawText.slice(0, 200)}`;
+            if (parsed.invoiceUrl) {
+              notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
+            }
+
             const docData = {
               userId,
               emailId: msg.id,                    // Clé anti-doublon
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest) {
               autoImported: true,
               importedAt: FieldValue.serverTimestamp(),
               createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),
-              notes: `Importé automatiquement depuis Gmail.\nExtrait : ${parsed.rawText.slice(0, 200)}`,
+              notes: notesText,
             };
 
             // Sauvegarder dans Firestore

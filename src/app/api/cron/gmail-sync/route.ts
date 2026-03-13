@@ -121,6 +121,11 @@ export async function GET(request: Request) {
                 const parsed = provider.parser(text, html);
 
                 // Construire et sauvegarder le document
+                let notesText = `Importé automatiquement (cron quotidien).\nExtrait : ${parsed.rawText.slice(0, 200)}`;
+                if (parsed.invoiceUrl) {
+                  notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
+                }
+
                 await db.collection('documents').add({
                   userId,
                   emailId: msg.id,
@@ -138,7 +143,7 @@ export async function GET(request: Request) {
                   autoImported: true,
                   importedAt: FieldValue.serverTimestamp(),
                   createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),
-                  notes: `Importé automatiquement (cron quotidien).\nExtrait : ${parsed.rawText.slice(0, 200)}`,
+                  notes: notesText,
                 });
 
                 stats.totalImported++;
