@@ -113,13 +113,18 @@ export async function POST(request: NextRequest) {
             const parsed = provider.parser(text, html);
 
             // ── Filtrage par statut de paiement ────────────────────────────
+            const searchContent = (text + ' ' + (html || '')).toLowerCase();
             const isAlreadyPaid = 
-              text.toLowerCase().includes('facture acquittée') || 
-              text.toLowerCase().includes('paiement reçu') ||
-              text.toLowerCase().includes('votre paiement a bien été pris en compte') ||
-              text.toLowerCase().includes('facture déjà payée');
+              searchContent.includes('facture acquittée') || 
+              searchContent.includes('paiement reçu') ||
+              searchContent.includes('votre paiement a bien été pris en compte') ||
+              searchContent.includes('facture déjà payée') ||
+              searchContent.includes('montant payé') ||
+              searchContent.includes('solde : 0') ||
+              searchContent.includes('solde: 0');
 
             if (isAlreadyPaid) {
+              console.log(`[Gmail Sync] Facture payée ignorée pour l'email ${msg.id}`);
               results.skipped++;
               continue;
             }
@@ -145,9 +150,12 @@ export async function POST(request: NextRequest) {
               const isMatchSupplier = targetSupplierTokens.some(t => docSupplier.includes(t));
               if (!isMatchSupplier) continue;
 
-              // a) Vérifier si le montant est exactement le même
-              if (parsed.montant && dData.amount === `${parsed.montant.toFixed(3)} TND`) {
-                isDuplicate = true; break;
+              // a) Vérifier si le montant est environ le même (gestion virgule/point)
+              if (parsed.montant) {
+                const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+                if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.001) {
+                  isDuplicate = true; break;
+                }
               }
 
               // b) Vérifier si la période textuelle est identique
@@ -166,6 +174,27 @@ export async function POST(request: NextRequest) {
                   }
                 }
               }
+              // d) Vérifier si un document existe déjà et est PAYÉ
+              const isMarkedAsPaid = dData.status === 'paid' || dData.paymentDate;
+              if (isMarkedAsPaid && isMatchSupplier) {
+                 // Si c'est le même mois/année ou même montant, on ignore l'import Gmail
+                 if (parsed.montant) {
+                    const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+                    if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.001) {
+                      isDuplicate = true; break;
+                    }
+                 }
+                 if (dateReference && isValid(dateReference)) {
+                    const docDates = [dData.billingStartDate, dData.issueDate, dData.dueDate, dData.createdAt].filter(Boolean);
+                    for (const dStr of docDates) {
+                      const dDate = new Date(dStr);
+                      if (isValid(dDate) && dDate.getMonth() === dateReference.getMonth() && dDate.getFullYear() === dateReference.getFullYear()) {
+                        isDuplicate = true; break;
+                      }
+                    }
+                 }
+              }
+
               if (isDuplicate) break;
             }
 

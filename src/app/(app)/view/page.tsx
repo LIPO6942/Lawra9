@@ -38,15 +38,20 @@ function DocumentView() {
   }
   
   // Gmail-imported base64 fallback
-  if ((document as any).fileBase64) {
-    const base64 = (document as any).fileBase64.replace(/-/g, '+').replace(/_/g, '/');
-    const binaryString = window.atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+  if ((document as any).fileBase64 && typeof window !== 'undefined') {
+    try {
+      const base64 = (document as any).fileBase64.replace(/-/g, '+').replace(/_/g, '/');
+      const binaryString = window.atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      return { file: blob, name: (document as any).fileName || document.name };
+    } catch (e) {
+      console.error("Base64 decoding failed:", e);
+      return undefined;
     }
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    return { file: blob, name: (document as any).fileName || document.name };
   }
 
   return undefined;

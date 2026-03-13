@@ -119,13 +119,18 @@ export async function GET(request: Request) {
                 const parsed = provider.parser(text, html);
 
                 // ── Filtrage par statut de paiement ────────────────────────────
+                const searchContent = (text + ' ' + (html || '')).toLowerCase();
                 const isAlreadyPaid = 
-                  text.toLowerCase().includes('facture acquittée') || 
-                  text.toLowerCase().includes('paiement reçu') ||
-                  text.toLowerCase().includes('votre paiement a bien été pris en compte') ||
-                  text.toLowerCase().includes('facture déjà payée');
+                  searchContent.includes('facture acquittée') || 
+                  searchContent.includes('paiement reçu') ||
+                  searchContent.includes('votre paiement a bien été pris en compte') ||
+                  searchContent.includes('facture déjà payée') ||
+                  searchContent.includes('montant payé') ||
+                  searchContent.includes('solde : 0') ||
+                  searchContent.includes('solde: 0');
 
                 if (isAlreadyPaid) {
+                  console.log(`[Gmail Cron] Facture payée ignorée pour l'email ${msg.id}`);
                   stats.totalSkipped++;
                   continue;
                 }
@@ -151,9 +156,12 @@ export async function GET(request: Request) {
                   const isMatchSupplier = targetSupplierTokens.some((t: string) => docSupplier.includes(t));
                   if (!isMatchSupplier) continue;
 
-                  // a) Vérifier si le montant est exactement le même
-                  if (parsed.montant && dData.amount === `${parsed.montant.toFixed(3)} TND`) {
-                    isDuplicate = true; break;
+                  // a) Vérifier si le montant est environ le même (gestion virgule/point)
+                  if (parsed.montant) {
+                    const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+                    if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.001) {
+                      isDuplicate = true; break;
+                    }
                   }
 
                   // b) Vérifier si la période textuelle est identique
@@ -172,6 +180,26 @@ export async function GET(request: Request) {
                       }
                     }
                   }
+                  // d) Vérifier si un document existe déjà et est PAYÉ dans l'app
+                  const isMarkedAsPaid = dData.status === 'paid' || dData.paymentDate;
+                  if (isMarkedAsPaid && isMatchSupplier) {
+                    if (parsed.montant) {
+                      const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+                      if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.001) {
+                        isDuplicate = true; break;
+                      }
+                    }
+                    if (dateReference && isValid(dateReference)) {
+                      const docDates = [dData.billingStartDate, dData.issueDate, dData.dueDate, dData.createdAt].filter(Boolean);
+                      for (const dStr of docDates) {
+                        const dDate = new Date(dStr);
+                        if (isValid(dDate) && dDate.getMonth() === dateReference.getMonth() && dDate.getFullYear() === dateReference.getFullYear()) {
+                          isDuplicate = true; break;
+                        }
+                      }
+                    }
+                  }
+
                   if (isDuplicate) break;
                 }
 
