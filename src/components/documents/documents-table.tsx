@@ -196,9 +196,8 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                     <div className="flex items-center justify-between gap-2 overflow-hidden">
                                         <div className="font-semibold truncate text-[13px] sm:text-base leading-tight flex-1 flex items-center gap-2">
                                             {doc.autoImported && (
-                                                <Badge variant="outline" className="h-5 px-1.5 text-[9px] uppercase tracking-wider bg-blue-50 text-blue-600 border-blue-200 shrink-0 font-bold flex items-center gap-1">
-                                                    <Mail className="h-2.5 w-2.5" />
-                                                    Gmail
+                                                <Badge variant="outline" className="h-5 px-1 text-blue-600 bg-blue-50 border-blue-200 shrink-0 flex items-center justify-center" title="Importé via Gmail">
+                                                    <Mail className="h-3 w-3" />
                                                 </Badge>
                                             )}
                                             {isCoreBill ? (
