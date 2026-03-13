@@ -13,6 +13,8 @@ import { auth } from '@/lib/firebase';
 import { Loader2, Settings, User } from 'lucide-react';
 import { PushNotificationManager } from '@/components/push-notification-manager';
 import { useUserPreferences, ISP } from '@/contexts/user-preferences-context';
+import { GmailIntegrationCard } from '@/components/gmail-integration-card';
+import { useSearchParams } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SettingsPage() {
@@ -218,6 +220,9 @@ export default function SettingsPage() {
             <PushNotificationManager />
           </CardContent>
         </Card>
+
+        {/* Section Import Gmail */}
+        <GmailIntegrationCard />
       </div>
     </div>
   );
