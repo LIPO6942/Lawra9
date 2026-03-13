@@ -145,6 +145,9 @@ export async function GET(request: Request) {
                 else if (parsed.dateEcheance) dateReference = parseISO(parsed.dateEcheance);
                 else dateReference = new Date(parseInt(fullMsg.internalDate));
 
+                const gmailPeriod = extractMonthYear(parsed.periode) || 
+                                   (dateReference && isValid(dateReference) ? { month: dateReference.getMonth(), year: dateReference.getFullYear() } : null);
+
                 for (const dData of recentDocs) {
                   // 1. Anti-doublon technique (déjà importé par Gmail)
                   if (dData.emailId === msg.id) {
@@ -169,31 +172,28 @@ export async function GET(request: Request) {
                     isDuplicate = true; break;
                   }
 
-                  // c) Vérification poussée par MOIS / ANNÉE
-                  // On extrait le mois/année de la facture Gmail (depuis parsed.periode ou dateReference)
-                  const gmailPeriod = extractMonthYear(parsed.periode) || 
-                                     (dateReference && isValid(dateReference) ? { month: dateReference.getMonth(), year: dateReference.getFullYear() } : null);
-                  
-                  if (gmailPeriod) {
-                    // On extrait le mois/année du document existant (depuis consumptionPeriod, billingStartDate, etc.)
-                    const docPeriod = extractMonthYear(dData.consumptionPeriod) || 
-                                     extractMonthYear(dData.billingStartDate) ||
-                                     (isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null);
-                    
-                    if (docPeriod && docPeriod.month === gmailPeriod.month && docPeriod.year === gmailPeriod.year) {
-                      console.log(`[Gmail Cron] Doublon détecté par période (${docPeriod.month + 1}/${docPeriod.year}) pour ${provider.name}`);
-                      isDuplicate = true; break;
+                  // d) Si le document est déjà PAYÉ dans l'app et que c'est le même fournisseur, on bloque l'import si c'est le même mois
+                  const existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
+                                           extractMonthYear(dData.billingStartDate) ||
+                                           extractMonthYear(dData.name) ||
+                                           (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null);
+
+                  if (isMatchSupplier && gmailPeriod && existingDocPeriod) {
+                    if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {
+                       console.log(`[Gmail Cron] Doublon détecté (Période: ${gmailPeriod.month + 1}/${gmailPeriod.year}) pour ${provider.name}`);
+                       isDuplicate = true; break;
                     }
                   }
 
-                  // d) Si le document est déjà PAYÉ dans l'app et que c'est le même fournisseur, on bloque l'import si c'est le même mois
                   const isMarkedAsPaid = dData.status === 'paid' || dData.paymentDate;
                   if (isMarkedAsPaid && isMatchSupplier && gmailPeriod) {
-                     const docDate = new Date(dData.paymentDate || dData.createdAt);
-                     if (isValid(docDate) && docDate.getMonth() === gmailPeriod.month && docDate.getFullYear() === gmailPeriod.year) {
-                       console.log(`[Gmail Cron] Facture déjà payée ce mois-ci dans Lawra9 pour ${provider.name}`);
-                       isDuplicate = true; break;
-                     }
+                    if (parsed.montant) {
+                      const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+                      if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.1) {
+                        console.log(`[Gmail Cron] Facture payée ignorée par montant pour ${provider.name}`);
+                        isDuplicate = true; break;
+                      }
+                    }
                   }
 
                   if (isDuplicate) break;

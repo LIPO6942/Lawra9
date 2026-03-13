@@ -139,6 +139,9 @@ export async function POST(request: NextRequest) {
             else if (parsed.dateEcheance) dateReference = parseISO(parsed.dateEcheance);
             else dateReference = new Date(parseInt(fullMsg.internalDate));
 
+            const gmailPeriod = extractMonthYear(parsed.periode) || 
+                               (dateReference && isValid(dateReference) ? { month: dateReference.getMonth(), year: dateReference.getFullYear() } : null);
+
             for (const dData of recentDocs) {
               // 1. Anti-doublon technique (déjà importé par Gmail)
               if (dData.emailId === msg.id) {
@@ -163,30 +166,31 @@ export async function POST(request: NextRequest) {
                 isDuplicate = true; break;
               }
 
-              // c) Vérification poussée par MOIS / ANNÉE
-              // On extrait le mois/année de la facture Gmail (depuis parsed.periode ou dateReference)
-              const gmailPeriod = extractMonthYear(parsed.periode) || 
-                                 (dateReference && isValid(dateReference) ? { month: dateReference.getMonth(), year: dateReference.getFullYear() } : null);
-              
-              if (gmailPeriod) {
-                // On extrait le mois/année du document existant (depuis consumptionPeriod, billingStartDate, etc.)
-                const docPeriod = extractMonthYear(dData.consumptionPeriod) || 
-                                 extractMonthYear(dData.billingStartDate) ||
-                                 (isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null);
-                
-                if (docPeriod && docPeriod.month === gmailPeriod.month && docPeriod.year === gmailPeriod.year) {
-                  console.log(`[Gmail Sync] Doublon détecté par période (${docPeriod.month + 1}/${docPeriod.year}) pour ${provider.name}`);
-                  isDuplicate = true; break;
+              // d) Si le document est déjà PAYÉ dans l'app et que c'est le même fournisseur, on bloque l'import si c'est le même mois
+              // On cherche le mois/année du document par tous les moyens (nom, période, dates)
+              const existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
+                                       extractMonthYear(dData.billingStartDate) ||
+                                       extractMonthYear(dData.name) ||
+                                       (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null);
+
+              if (isMatchSupplier && gmailPeriod && existingDocPeriod) {
+                // Si c'est le même mois/année, c'est un doublon
+                if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {
+                   console.log(`[Gmail Sync] Doublon détecté (Période: ${gmailPeriod.month + 1}/${gmailPeriod.year}) pour ${provider.name}`);
+                   isDuplicate = true; break;
                 }
               }
 
-              // d) Si le document est déjà PAYÉ dans l'app et que c'est le même fournisseur, on bloque l'import si c'est le même mois
+              // Cas particulier : si le document est marqué payé, on est encore plus vigilant
               const isMarkedAsPaid = dData.status === 'paid' || dData.paymentDate;
               if (isMarkedAsPaid && isMatchSupplier && gmailPeriod) {
-                 const docDate = new Date(dData.paymentDate || dData.createdAt);
-                 if (isValid(docDate) && docDate.getMonth() === gmailPeriod.month && docDate.getFullYear() === gmailPeriod.year) {
-                   console.log(`[Gmail Sync] Facture déjà payée ce mois-ci dans Lawra9 pour ${provider.name}`);
-                   isDuplicate = true; break;
+                 // Si le montant correspond, on ignore même si la période est floue
+                 if (parsed.montant) {
+                    const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
+                    if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.1) { // Tolérance 100 millimes
+                      console.log(`[Gmail Sync] Facture payée ignorée par montant pour ${provider.name}`);
+                      isDuplicate = true; break;
+                    }
                  }
               }
 

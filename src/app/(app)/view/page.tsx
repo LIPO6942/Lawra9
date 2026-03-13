@@ -29,17 +29,17 @@ function DocumentView() {
 
   const activeFile = useMemo(() => {
     if (!document) return undefined;
-    
+
     // 1. Maison multi-fichiers
     if (document.category === 'Maison' && document.files && document.files.length > 0) {
       return document.files[activeFileIndex];
     }
-    
+
     // 2. Fichier standard (Blob/File)
     if (document.file && (document.file instanceof Blob || (document.file as any).size > 0)) {
       return { file: document.file, name: document.name };
     }
-    
+
     // 3. Import Gmail (Base64)
     if ((document as any).fileBase64 && typeof window !== 'undefined') {
       try {
@@ -47,7 +47,7 @@ function DocumentView() {
         const binaryString = window.atob(base64);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
+          bytes[i] = binaryString.charCodeAt(i);
         }
         const blob = new Blob([bytes], { type: 'application/pdf' });
         return { file: blob, name: (document as any).fileName || document.name };
@@ -86,7 +86,7 @@ function DocumentView() {
       }
     };
   }, [activeFile]);
-  
+
   const isImage = useMemo(() => {
     if (!activeFile?.file) return false;
     return activeFile.file.type.startsWith('image/');
@@ -100,7 +100,7 @@ function DocumentView() {
       </div>
     );
   }
-  
+
   const hasMultipleFiles = document?.category === 'Maison' && document.files && document.files.length > 1;
 
   const parsedLink = useMemo(() => {
@@ -127,19 +127,19 @@ function DocumentView() {
       </div>
     );
   }
-  
+
   const goNext = () => {
     if (document?.files) {
       setActiveFileIndex(prev => (prev + 1) % document.files!.length);
     }
   }
-  
+
   const goPrev = () => {
-     if (document?.files) {
+    if (document?.files) {
       setActiveFileIndex(prev => (prev - 1 + document.files!.length) % document.files!.length);
     }
   }
-  
+
   return (
     <div className="flex h-screen w-full flex-col bg-muted">
       <header className="flex h-14 items-center justify-between border-b bg-background px-4 sm:px-6 sticky top-0 z-10">
@@ -149,20 +149,20 @@ function DocumentView() {
         </div>
         <Button asChild variant="outline">
           <Link href={document.category === 'Maison' ? '/maison' : '/documents'}>
-             <ArrowLeft className="mr-2 h-4 w-4" />
-             Retour
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour
           </Link>
         </Button>
       </header>
       <main className="flex-1 relative">
         {activeFileUrl ? (
           isImage ? (
-              <div className="w-full h-full p-4 flex items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={activeFileUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
-              </div>
+            <div className="w-full h-full p-4 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img key={activeFileUrl} src={activeFileUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
+            </div>
           ) : (
-            <embed src={activeFileUrl} type={activeFile?.file?.type || 'application/pdf'} className="h-full w-full" />
+            <embed key={activeFileUrl} src={activeFileUrl} type={activeFile?.file?.type || 'application/pdf'} className="h-full w-full" />
           )
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center bg-muted text-center p-4">
@@ -182,13 +182,13 @@ function DocumentView() {
             )}
           </div>
         )}
-        
+
         {hasMultipleFiles && (
           <>
             <Button variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full" onClick={goPrev}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-             <Button variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full" onClick={goNext}>
+            <Button variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full" onClick={goNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </>
@@ -199,14 +199,14 @@ function DocumentView() {
 }
 
 export default function DocumentViewPage() {
-    return (
-        <Suspense fallback={
-            <div className="flex h-screen w-full flex-col items-center justify-center bg-muted">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="mt-4 text-muted-foreground">Chargement...</p>
-            </div>
-        }>
-            <DocumentView />
-        </Suspense>
-    )
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-muted">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Chargement...</p>
+      </div>
+    }>
+      <DocumentView />
+    </Suspense>
+  )
 }
