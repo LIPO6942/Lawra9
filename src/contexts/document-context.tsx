@@ -15,7 +15,7 @@ import {
   getAllDocuments as dbGetAllDocuments
 } from '@/lib/idb';
 import { db as firestoreDb } from '@/lib/firebase';
-import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 
 interface MonthlyExpense {
   month: string;
@@ -57,18 +57,41 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (user) {
       try {
         const db = await openDB(user.uid);
-        const docsFromDb = await dbGetAllDocuments(db);
+        let docsFromDb = await dbGetAllDocuments(db);
 
-        // We no longer create object URLs here to prevent them from becoming stale.
-        // They will be created on-demand in the component that needs them (e.g., DocumentView).
-        setDocuments(docsFromDb.sort((a, b) => {
-          const dateA = getDocumentDate(a);
-          const dateB = getDocumentDate(b);
-          if (dateA && dateB) {
-            return dateB.getTime() - dateA.getTime();
+        // --- SYNC WITH FIRESTORE ---
+        try {
+          const firestoreRef = collection(firestoreDb, `users/${user.uid}/documents`);
+          const firestoreSnap = await getDocs(firestoreRef);
+          
+          const localIds = new Set(docsFromDb.map(d => d.id));
+          let hasChanges = false;
+
+          for (const docSnap of firestoreSnap.docs) {
+            const fireDoc = docSnap.data() as Document;
+            // Si le doc n'est pas dans l'IDB local, on l'ajoute
+            if (!localIds.has(fireDoc.id)) {
+              await dbAddDocument(db, fireDoc);
+              docsFromDb.push(fireDoc);
+              hasChanges = true;
+            }
           }
-          return 0;
-        }));
+
+          if (hasChanges) {
+            // Re-trier si on a ajouté des éléments
+            docsFromDb.sort((a, b) => {
+              const dateA = getDocumentDate(a);
+              const dateB = getDocumentDate(b);
+              if (dateA && dateB) return dateB.getTime() - dateA.getTime();
+              return 0;
+            });
+          }
+        } catch (syncError) {
+          console.error("Firestore sync failed", syncError);
+        }
+        // ---------------------------
+
+        setDocuments([...docsFromDb]);
       } catch (error) {
         console.error("Failed to load documents from IndexedDB", error);
         toast({ variant: 'destructive', title: 'Erreur de chargement', description: 'Impossible de charger vos documents.' });
