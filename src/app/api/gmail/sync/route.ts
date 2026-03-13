@@ -97,16 +97,16 @@ export async function POST(request: NextRequest) {
 
         for (const msg of messages) {
           try {
-            // Vérifier si cet email a déjà été importé (anti-doublon par emailId)
+            // ── 4a. Vérifier l'anti-doublon technique (emailId) ─────────────────
             const userDocsRef = db.collection('users').doc(userId).collection('documents');
-            const existing = await userDocsRef
+            const existingByEmail = await userDocsRef
               .where('emailId', '==', msg.id)
               .limit(1)
               .get();
 
-            if (!existing.empty) {
+            if (!existingByEmail.empty) {
               results.skipped++;
-              continue; // Déjà importé, skip
+              continue; 
             }
 
             // Récupérer le message complet
@@ -115,6 +115,37 @@ export async function POST(request: NextRequest) {
 
             // Parser selon le fournisseur
             const parsed = provider.parser(text, html);
+
+            // ── 4b. Vérifier si une facture similaire existe déjà (Montant + Période) ──
+            // Cela permet de ne pas importer via Gmail une facture que l'utilisateur a déjà ajouté manuellement
+            if (parsed.montant && parsed.periode) {
+              const amountStr = `${parsed.montant.toFixed(3)} TND`;
+              const existingSimilar = await userDocsRef
+                .where('supplier', '==', provider.name === 'STEG' ? 'STEG' : 'Orange')
+                .where('amount', '==', amountStr)
+                .where('consumptionPeriod', '==', parsed.periode)
+                .limit(1)
+                .get();
+
+              if (!existingSimilar.empty) {
+                console.log(`[Gmail Sync] Doublon métier trouvé pour ${parsed.periode} (${amountStr})`);
+                results.skipped++;
+                continue;
+              }
+            }
+
+            // ── Filtrage par statut de paiement ────────────────────────────
+            // Si l'email contient des preuves de paiement clair, on l'ignore pour ne pas polluer Lawra9 avec des factures payées
+            const isAlreadyPaid = 
+              text.toLowerCase().includes('facture acquittée') || 
+              text.toLowerCase().includes('paiement reçu') ||
+              text.toLowerCase().includes('votre paiement a bien été pris en compte') ||
+              text.toLowerCase().includes('facture déjà payée');
+
+            if (isAlreadyPaid) {
+              results.skipped++;
+              continue;
+            }
 
             // Construire le document Lawra9 (compatible avec le type Document existant)
             let notesText = `Importé automatiquement depuis Gmail.\nExtrait : ${parsed.rawText.slice(0, 200)}`;
@@ -132,7 +163,7 @@ export async function POST(request: NextRequest) {
               category: provider.category,
               source: provider.name,
               amount: parsed.montant ? `${parsed.montant.toFixed(3)} TND` : undefined,
-              supplier: provider.name === 'STEG' ? 'STEG' : 'Orange Tunisie',
+              supplier: provider.name === 'STEG' ? 'STEG' : 'Orange',
               dueDate: parsed.dateEcheance || null,
               issueDate: parsed.dateFacture || null,
               invoiceNumber: parsed.invoiceNumber || null,

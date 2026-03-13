@@ -103,14 +103,14 @@ export async function GET(request: Request) {
 
             for (const msg of messages) {
               try {
-                // Anti-doublon : vérifier si emailId déjà importé dans la collection de l'utilisateur
+                // ── 1. Anti-doublon technique (emailId) ─────────────────────────
                 const userDocsRef = db.collection('users').doc(userId).collection('documents');
-                const existing = await userDocsRef
+                const existingByEmail = await userDocsRef
                   .where('emailId', '==', msg.id)
                   .limit(1)
                   .get();
 
-                if (!existing.empty) {
+                if (!existingByEmail.empty) {
                   stats.totalSkipped++;
                   continue;
                 }
@@ -118,7 +118,38 @@ export async function GET(request: Request) {
                 // Fetch + parse le message complet
                 const fullMsg = await getGmailMessage(accessToken, msg.id);
                 const { text, html } = extractEmailBody(fullMsg.payload);
+
+                // ── 2. Filtrage par statut de paiement ────────────────────────────
+                const isAlreadyPaid = 
+                  text.toLowerCase().includes('facture acquittée') || 
+                  text.toLowerCase().includes('paiement reçu') ||
+                  text.toLowerCase().includes('votre paiement a bien été pris en compte') ||
+                  text.toLowerCase().includes('facture déjà payée');
+
+                if (isAlreadyPaid) {
+                  stats.totalSkipped++;
+                  continue;
+                }
+
                 const parsed = provider.parser(text, html);
+
+                // ── 3. Anti-doublon métier (Montant + Période) ──────────────────
+                if (parsed.montant && parsed.periode) {
+                  const amountStr = `${parsed.montant.toFixed(3)} TND`;
+                  const supplierName = provider.name === 'ORANGE_TN' ? 'Orange' : provider.supplier;
+                  
+                  const existingSimilar = await userDocsRef
+                    .where('supplier', '==', supplierName)
+                    .where('amount', '==', amountStr)
+                    .where('consumptionPeriod', '==', parsed.periode)
+                    .limit(1)
+                    .get();
+
+                  if (!existingSimilar.empty) {
+                    stats.totalSkipped++;
+                    continue;
+                  }
+                }
 
                 // Construire et sauvegarder le document
                 let notesText = `Importé automatiquement (cron quotidien).\nExtrait : ${parsed.rawText.slice(0, 200)}`;
@@ -135,7 +166,7 @@ export async function GET(request: Request) {
                   category: provider.category,
                   source: provider.name,
                   amount: parsed.montant ? `${parsed.montant.toFixed(3)} TND` : undefined,
-                  supplier: provider.supplier,
+                  supplier: provider.name === 'ORANGE_TN' ? 'Orange' : provider.supplier,
                   dueDate: parsed.dateEcheance || null,
                   issueDate: parsed.dateFacture || null,
                   invoiceNumber: parsed.invoiceNumber || null,
