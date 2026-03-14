@@ -188,14 +188,32 @@ export async function POST(request: NextRequest) {
               //    (NE PAS utiliser paymentDate ici — c'est la date de paiement,
               //     pas la période de facturation)
               // ══════════════════════════════════════════════════════════════
-              const existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
+              // Période explicite (saisie manuellement ou trouvée)
+              let existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
                                        extractMonthYear(dData.billingStartDate) ||
                                        extractMonthYear(dData.billingEndDate) ||
                                        extractMonthYear(dData.name) ||
                                        (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null) ||
-                                       (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null) ||
-                                       (dData.createdAt && isValid(new Date(dData.createdAt)) ? { month: new Date(dData.createdAt).getMonth(), year: new Date(dData.createdAt).getFullYear() } : null);
+                                       (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null);
 
+              // ── Logique "période déduite" pour les docs manuels ─────────
+              // Généralement, on paie/saisit une facture Orange le mois suivant
+              // Ex: payé le 01 mars -> conso février (mois - 1)
+              if (!existingDocPeriod) {
+                const actionDateStr = dData.paymentDate || dData.createdAt;
+                if (actionDateStr) {
+                  const actionDate = new Date(actionDateStr);
+                  if (isValid(actionDate)) {
+                    const m = actionDate.getMonth();
+                    const y = actionDate.getFullYear();
+                    existingDocPeriod = {
+                      month: m === 0 ? 11 : m - 1,
+                      year: m === 0 ? y - 1 : y
+                    };
+                    console.log(`[Gmail Sync] Période déduite (mois précédent) pour le doc ${dData.id}: ${existingDocPeriod.month + 1}/${existingDocPeriod.year}`);
+                  }
+                }
+              }
               if (gmailPeriod && existingDocPeriod) {
                 if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {
                    console.log(`[Gmail Sync] Doublon par période (${gmailPeriod.month + 1}/${gmailPeriod.year}, payé=${isMarkedAsPaid}) pour ${provider.name}`);

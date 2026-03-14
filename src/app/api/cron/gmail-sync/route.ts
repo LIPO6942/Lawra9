@@ -186,13 +186,31 @@ export async function GET(request: Request) {
 
                   // c) Vérifier par mois/année de facturation
                   //    (NE PAS utiliser paymentDate — c'est la date "marqué payé", pas la période)
-                  const existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
+                  // Période explicite
+                  let existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
                                            extractMonthYear(dData.billingStartDate) ||
                                            extractMonthYear(dData.billingEndDate) ||
                                            extractMonthYear(dData.name) ||
                                            (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null) ||
-                                           (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null) ||
-                                           (dData.createdAt && isValid(new Date(dData.createdAt)) ? { month: new Date(dData.createdAt).getMonth(), year: new Date(dData.createdAt).getFullYear() } : null);
+                                           (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null);
+
+                  // ── Logique "période déduite" pour docs manuels ───────────
+                  // Paiement/Saisie le mois M = conso le mois M-1
+                  if (!existingDocPeriod) {
+                    const actionDateStr = dData.paymentDate || dData.createdAt;
+                    if (actionDateStr) {
+                      const actionDate = new Date(actionDateStr);
+                      if (isValid(actionDate)) {
+                        const m = actionDate.getMonth();
+                        const y = actionDate.getFullYear();
+                        existingDocPeriod = {
+                          month: m === 0 ? 11 : m - 1,
+                          year: m === 0 ? y - 1 : y
+                        };
+                        console.log(`[Gmail Cron] Période déduite (mois-1) pour ${dData.id}: ${existingDocPeriod.month + 1}/${existingDocPeriod.year}`);
+                      }
+                    }
+                  }
 
                   if (gmailPeriod && existingDocPeriod) {
                     if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {
