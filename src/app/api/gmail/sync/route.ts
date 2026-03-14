@@ -150,48 +150,59 @@ export async function POST(request: NextRequest) {
 
               // 2. Anti-doublon métier (Saisie manuelle existante)
               const docSupplier = (dData.supplier || dData.category || '').toLowerCase();
-              const isMatchSupplier = targetSupplierTokens.some(t => docSupplier.includes(t));
+              const docName = (dData.name || '').toLowerCase();
+              const isMatchSupplier = targetSupplierTokens.some(t => docSupplier.includes(t) || docName.includes(t));
               if (!isMatchSupplier) continue;
 
-              // a) Vérifier si le montant est environ le même (gestion virgule/point)
+              // --- Le doc existant est-il marqué comme payé ? ---
+              const isMarkedAsPaid = dData.status === 'paid' || !!dData.paymentDate;
+
+              // a) Vérifier si le montant est environ le même (tolérance élargie à 1 TND)
               if (parsed.montant) {
                 const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
-                if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.001) {
+                const tolerance = isMarkedAsPaid ? 2.0 : 1.0; // Plus tolérant pour les docs payés
+                if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < tolerance) {
+                  console.log(`[Gmail Sync] Doublon par montant (${docAmountNum} ≈ ${parsed.montant}, payé=${isMarkedAsPaid}) pour ${provider.name}`);
                   isDuplicate = true; break;
                 }
               }
 
               // b) Vérifier si la période textuelle est identique
               if (parsed.periode && dData.consumptionPeriod && parsed.periode.toLowerCase() === dData.consumptionPeriod.toLowerCase()) {
+                console.log(`[Gmail Sync] Doublon par période textuelle identique: "${parsed.periode}" pour ${provider.name}`);
                 isDuplicate = true; break;
               }
 
-              // d) Si le document est déjà PAYÉ dans l'app et que c'est le même fournisseur, on bloque l'import si c'est le même mois
-              // On cherche le mois/année du document par tous les moyens (nom, période, dates)
+              // c) Vérifier par mois/année (fonctionne pour les docs payés ET non payés)
               const existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
                                        extractMonthYear(dData.billingStartDate) ||
+                                       extractMonthYear(dData.billingEndDate) ||
                                        extractMonthYear(dData.name) ||
-                                       (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null);
+                                       (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null) ||
+                                       (dData.paymentDate && isValid(new Date(dData.paymentDate)) ? { month: new Date(dData.paymentDate).getMonth(), year: new Date(dData.paymentDate).getFullYear() } : null);
 
-              if (isMatchSupplier && gmailPeriod && existingDocPeriod) {
-                // Si c'est le même mois/année, c'est un doublon
+              if (gmailPeriod && existingDocPeriod) {
                 if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {
-                   console.log(`[Gmail Sync] Doublon détecté (Période: ${gmailPeriod.month + 1}/${gmailPeriod.year}) pour ${provider.name}`);
+                   console.log(`[Gmail Sync] Doublon par période (${gmailPeriod.month + 1}/${gmailPeriod.year}, payé=${isMarkedAsPaid}) pour ${provider.name}`);
                    isDuplicate = true; break;
                 }
               }
 
-              // Cas particulier : si le document est marqué payé, on est encore plus vigilant
-              const isMarkedAsPaid = dData.status === 'paid' || dData.paymentDate;
-              if (isMarkedAsPaid && isMatchSupplier && gmailPeriod) {
-                 // Si le montant correspond, on ignore même si la période est floue
-                 if (parsed.montant) {
-                    const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
-                    if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < 0.1) { // Tolérance 100 millimes
-                      console.log(`[Gmail Sync] Facture payée ignorée par montant pour ${provider.name}`);
-                      isDuplicate = true; break;
+              // d) Pour les docs payés : vérification par proximité de date (45 jours)
+              if (isMarkedAsPaid && dateReference && isValid(dateReference)) {
+                const existingDate = dData.issueDate || dData.paymentDate || dData.dueDate || dData.createdAt;
+                if (existingDate) {
+                  try {
+                    const existDate = new Date(existingDate);
+                    if (isValid(existDate)) {
+                      const daysDiff = Math.abs(dateReference.getTime() - existDate.getTime()) / (1000 * 60 * 60 * 24);
+                      if (daysDiff < 45) {
+                        console.log(`[Gmail Sync] Doublon par proximité date (${Math.round(daysDiff)}j, payé) pour ${provider.name}`);
+                        isDuplicate = true; break;
+                      }
                     }
-                 }
+                  } catch (e) { /* ignore parse error */ }
+                }
               }
 
               if (isDuplicate) break;

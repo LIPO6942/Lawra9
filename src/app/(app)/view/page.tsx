@@ -21,43 +21,49 @@ function DocumentView() {
     // This effect finds the document from context when the ID changes
     if (id) {
       const doc = getDocumentById(id);
-      setDocument(doc);
+      setDocument(doc ?? null);
     } else {
       setDocument(null);
     }
   }, [id, getDocumentById]);
 
   const activeFile = useMemo(() => {
-    if (!document) return undefined;
+    try {
+      if (!document) return undefined;
 
-    // 1. Maison multi-fichiers
-    if (document.category === 'Maison' && document.files && document.files.length > 0) {
-      return document.files[activeFileIndex];
-    }
-
-    // 2. Fichier standard (Blob/File)
-    if (document.file && (document.file instanceof Blob || (document.file as any).size > 0)) {
-      return { file: document.file, name: document.name };
-    }
-
-    // 3. Import Gmail (Base64)
-    if ((document as any).fileBase64 && typeof window !== 'undefined') {
-      try {
-        const base64 = (document as any).fileBase64.replace(/-/g, '+').replace(/_/g, '/');
-        const binaryString = window.atob(base64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        return { file: blob, name: (document as any).fileName || document.name };
-      } catch (e) {
-        console.error("Base64 decoding failed:", e);
+      // 1. Maison multi-fichiers
+      if (document.category === 'Maison' && document.files && document.files.length > 0) {
+        const idx = Math.min(activeFileIndex, document.files.length - 1);
+        return document.files[idx];
       }
-    }
 
-    return undefined;
-  }, [document?.id, document?.file, document?.files, (document as any)?.fileBase64, activeFileIndex]);
+      // 2. Fichier standard (Blob/File)
+      if (document.file && document.file instanceof Blob) {
+        return { file: document.file, name: document.name };
+      }
+
+      // 3. Import Gmail (Base64)
+      if (document.fileBase64 && typeof window !== 'undefined') {
+        try {
+          const base64 = document.fileBase64.replace(/-/g, '+').replace(/_/g, '/');
+          const binaryString = window.atob(base64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: 'application/pdf' });
+          return { file: blob, name: document.fileName || document.name };
+        } catch (e) {
+          console.error("Base64 decoding failed:", e);
+        }
+      }
+
+      return undefined;
+    } catch (err) {
+      console.error("Error computing activeFile:", err);
+      return undefined;
+    }
+  }, [document, activeFileIndex]);
 
   useEffect(() => {
     if (!activeFile?.file) {
@@ -88,8 +94,12 @@ function DocumentView() {
   }, [activeFile]);
 
   const isImage = useMemo(() => {
-    if (!activeFile?.file) return false;
-    return activeFile.file.type.startsWith('image/');
+    try {
+      if (!activeFile?.file || !(activeFile.file instanceof Blob)) return false;
+      return (activeFile.file.type || '').startsWith('image/');
+    } catch {
+      return false;
+    }
   }, [activeFile]);
 
   if (document === undefined) {
@@ -101,23 +111,13 @@ function DocumentView() {
     );
   }
 
-  const hasMultipleFiles = document?.category === 'Maison' && document.files && document.files.length > 1;
-
-  const parsedLink = useMemo(() => {
-    if (!document?.notes) return null;
-    const match = document.notes.match(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/);
-    if (match) {
-      return { text: match[1], url: match[2] };
-    }
-    return null;
-  }, [document?.notes]);
-
-  if (!document || (!activeFileUrl && !document.notes)) {
+  // Document introuvable dans le contexte
+  if (document === null) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted text-center p-4">
         <FileQuestion className="h-16 w-16 text-destructive" />
         <h1 className="mt-6 text-2xl font-bold">Document non trouvé</h1>
-        <p className="mt-2 text-muted-foreground">Le document est introuvable ou le fichier est corrompu/manquant.</p>
+        <p className="mt-2 text-muted-foreground">Le document est introuvable. Il a peut-être été supprimé.</p>
         <Button asChild className="mt-6">
           <Link href="/documents">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -127,6 +127,21 @@ function DocumentView() {
       </div>
     );
   }
+
+  const hasMultipleFiles = document.category === 'Maison' && document.files && document.files.length > 1;
+
+  const parsedLink = (() => {
+    try {
+      if (!document.notes) return null;
+      const match = document.notes.match(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/);
+      if (match) {
+        return { text: match[1], url: match[2] };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  })();
 
   const goNext = () => {
     if (document?.files) {
@@ -162,7 +177,7 @@ function DocumentView() {
               <img key={activeFileUrl} src={activeFileUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
-            <embed key={activeFileUrl} src={activeFileUrl} type={activeFile?.file?.type || 'application/pdf'} className="h-full w-full" />
+            <embed key={activeFileUrl} src={activeFileUrl} type={activeFile?.file instanceof Blob ? activeFile.file.type || 'application/pdf' : 'application/pdf'} className="h-full w-full" />
           )
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center bg-muted text-center p-4">
