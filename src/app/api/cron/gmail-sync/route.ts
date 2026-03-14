@@ -96,7 +96,7 @@ export async function GET(request: Request) {
         
         // Charger les documents récents pour l'anti-doublon métier de façon optimisée
         const userDocsRef = db.collection('users').doc(userId).collection('documents');
-        const recentDocsSnap = await userDocsRef.orderBy('createdAt', 'desc').limit(100).get();
+        const recentDocsSnap = await userDocsRef.orderBy('createdAt', 'desc').limit(200).get();
         const recentDocs = recentDocsSnap.docs.map((d: any) => d.data());
 
         // ── 3. Scanner les emails de chaque fournisseur ────────────────────
@@ -191,7 +191,8 @@ export async function GET(request: Request) {
                                            extractMonthYear(dData.billingEndDate) ||
                                            extractMonthYear(dData.name) ||
                                            (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null) ||
-                                           (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null);
+                                           (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null) ||
+                                           (dData.createdAt && isValid(new Date(dData.createdAt)) ? { month: new Date(dData.createdAt).getMonth(), year: new Date(dData.createdAt).getFullYear() } : null);
 
                   if (gmailPeriod && existingDocPeriod) {
                     if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {

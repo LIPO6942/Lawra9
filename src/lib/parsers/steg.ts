@@ -85,14 +85,25 @@ export function parseStegEmail(textBody: string, htmlBody: string): ParsedInvoic
     result.dateEcheance = parseTunisianDate(echeanceMatch[1]);
   }
 
-  // ── Lien vers la facture en ligne (extrait du HTML) ──────────────────────
+  // ── Lien vers la facture en ligne (Extraction robuste) ──────────────────
   if (htmlBody) {
-    const urlMatch =
-      htmlBody.match(/href="([^"]+)"[^>]*>[^<]*(?:consulter|t[eé]l[eé]charger|voir|acc[eé]der|facture|afficher)[^<]*/i) ||
-      htmlBody.match(/href="(https?:\/\/[^"]*(?:facture|invoice|bill|steg)[^"]*)"/i) ||
-      htmlBody.match(/href="(https?:\/\/[^"]+\.pdf)"/i);
-    if (urlMatch) {
-      result.invoiceUrl = urlMatch[1];
+    const candidates: { url: string; score: number }[] = [];
+    const hrefRegex = /href="([^"]+)"/gi;
+    let match;
+    
+    while ((match = hrefRegex.exec(htmlBody)) !== null) {
+      const url = match[1];
+      let score = 0;
+      if (url.toLowerCase().includes('pdf')) score += 10;
+      if (url.toLowerCase().includes('facture') || url.toLowerCase().includes('invoice')) score += 5;
+      if (url.toLowerCase().includes('steg')) score += 5;
+      if (url.toLowerCase().includes('consulter') || url.toLowerCase().includes('view')) score += 3;
+      if (url.toLowerCase().includes('telecharger') || url.toLowerCase().includes('download')) score += 5;
+      if (score > 0) candidates.push({ url, score });
+    }
+
+    if (candidates.length > 0) {
+      result.invoiceUrl = candidates.sort((a, b) => b.score - a.score)[0].url;
     }
   }
 
@@ -103,6 +114,7 @@ export function parseStegEmail(textBody: string, htmlBody: string): ParsedInvoic
 
 /** Nettoyer balises HTML pour obtenir du texte brut */
 function stripHtml(html: string): string {
+  if (!html) return '';
   return html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')

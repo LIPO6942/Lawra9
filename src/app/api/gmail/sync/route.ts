@@ -87,17 +87,18 @@ export async function POST(request: NextRequest) {
       details: [] as string[],
     };
 
-    // Charger les documents récents pour l'anti-doublon métier de façon optimisée
+    // Charger les documents récents (anti-doublon métier)
+    // On passe à 200 docs pour couvrir une plus large période de saisies manuelles
     const userDocsRef = db.collection('users').doc(userId).collection('documents');
-    const recentDocsSnap = await userDocsRef.orderBy('createdAt', 'desc').limit(100).get();
+    const recentDocsSnap = await userDocsRef.orderBy('createdAt', 'desc').limit(200).get();
     const recentDocs = recentDocsSnap.docs.map((d: any) => d.data());
 
     for (const provider of PROVIDERS) {
       try {
-        // Chercher les 10 derniers emails de ce fournisseur
+        // Chercher les emails récents (120 jours pour être sûr de couvrir les chevauchements)
         const messages = await searchGmailMessages(
           accessToken,
-          `${provider.query} newer_than:90d`,
+          `${provider.query} newer_than:120d`,
           10
         );
 
@@ -192,7 +193,8 @@ export async function POST(request: NextRequest) {
                                        extractMonthYear(dData.billingEndDate) ||
                                        extractMonthYear(dData.name) ||
                                        (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null) ||
-                                       (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null);
+                                       (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null) ||
+                                       (dData.createdAt && isValid(new Date(dData.createdAt)) ? { month: new Date(dData.createdAt).getMonth(), year: new Date(dData.createdAt).getFullYear() } : null);
 
               if (gmailPeriod && existingDocPeriod) {
                 if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {

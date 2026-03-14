@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useDocuments } from '@/contexts/document-context';
 import { useEffect, useState, Suspense, useMemo } from 'react';
 import { Document, SubFile } from '@/lib/types';
-import { Loader2, FileQuestion, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, FileQuestion, ArrowLeft, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -191,10 +191,29 @@ function DocumentView() {
             <h2 className="text-xl font-semibold mb-2">Aucun fichier joint localement</h2>
             {parsedLink ? (
               <div className="flex flex-col items-center gap-4">
-                <p className="text-muted-foreground">Ce document a été importé automatiquement et ne contient pas de pièce jointe, mais inclut un lien vers la facture d'origine.</p>
-                <Button asChild>
-                  <a href={parsedLink.url} target="_blank" rel="noopener noreferrer">Ouvrir la facture en ligne</a>
-                </Button>
+                <p className="text-muted-foreground max-w-sm">Ce document a été importé automatiquement. Vous pouvez accéder à la facture originale via le lien ci-dessous.</p>
+                <div className="flex flex-col gap-2 w-full max-w-xs">
+                  <Button asChild>
+                    <a href={parsedLink.url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      {parsedLink.url.includes('mail.google.com') ? "Ouvrir l'email d'origine" : "Consulter la facture en ligne"}
+                    </a>
+                  </Button>
+                  
+                  {/* Si le lien principal n'est pas Gmail, mais que Gmail est présent dans les notes, on l'affiche en secondaire */}
+                  {!parsedLink.url.includes('mail.google.com') && document.notes?.includes('mail.google.com') && (
+                    <Button variant="outline" asChild>
+                      <a 
+                        href={document.notes.match(/https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/[a-zA-Z0-9]+/)?.[0]} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs"
+                      >
+                        Voir l'email sur Gmail
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : (
               <p className="text-muted-foreground whitespace-pre-line max-w-md bg-background p-4 rounded-md border text-left mt-4 text-sm">
