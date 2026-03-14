@@ -106,11 +106,13 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [user, loadDocuments]);
 
 
-  const addDocument = async (doc: DocumentWithFile) => {
+  const addDocument = async (documentToSave: DocumentWithFile) => {
     if (!user) return;
     const db = await openDB(user.uid);
+    
+    // Ensure createdAt and id are always present
     const newDoc: Document = {
-      ...doc,
+      ...documentToSave,
       id: `doc-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
@@ -126,7 +128,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const dbDoc = { ...newDoc };
       delete dbDoc.file;
-      delete dbDoc.files; // subfiles might also contain File/Blob
+      delete (dbDoc as any).files; // subfiles might also contain File/Blob
       const docRef = doc(firestoreDb, `users/${user.uid}/documents`, newDoc.id);
       await setDoc(docRef, dbDoc);
     } catch (e) {

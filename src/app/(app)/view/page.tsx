@@ -168,12 +168,22 @@ function DocumentView() {
           <h1 className="text-lg font-semibold truncate pr-4" title={document.name}>{document.name}</h1>
           {hasMultipleFiles && activeFile && <p className="text-xs text-muted-foreground">{`Fichier ${activeFileIndex + 1} / ${document.files!.length} - ${activeFile.name}`}</p>}
         </div>
-        <Button asChild variant="outline">
-          <Link href={document.category === 'Maison' ? '/maison' : '/documents'}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {parsedLink && !parsedLink.url.includes('mail.google.com') && !activeFileUrl && (
+            <Button asChild variant="outline" size="sm">
+              <a href={parsedLink.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Ouvrir
+              </a>
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm">
+            <Link href={document.category === 'Maison' ? '/maison' : '/documents'}>
+              <ArrowLeft className="mr-2 h-4 w-4 break-words" />
+              <span className="hidden sm:inline">Retour</span>
+            </Link>
+          </Button>
+        </div>
       </header>
       <main className="flex-1 relative">
         {activeFileUrl ? (
@@ -185,6 +195,13 @@ function DocumentView() {
           ) : (
             <embed key={activeFileUrl} src={activeFileUrl} type={activeFile?.file instanceof Blob ? activeFile.file.type || 'application/pdf' : 'application/pdf'} className="h-full w-full" />
           )
+        ) : parsedLink && !parsedLink.url.includes('mail.google.com') ? (
+          <iframe 
+            key={parsedLink.url} 
+            src={parsedLink.url} 
+            className="h-full w-full border-0 bg-white"
+            title="Facture en ligne"
+          />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center bg-muted text-center p-4">
             <FileQuestion className="h-16 w-16 text-muted-foreground mb-4" />
