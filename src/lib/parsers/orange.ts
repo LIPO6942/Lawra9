@@ -72,21 +72,31 @@ export function parseOrangeEmail(textBody: string, htmlBody: string): ParsedInvo
   // ── Lien de la facture (Extraction robuste) ──────────────────────────────
   if (htmlBody) {
     const candidates: { url: string; score: number }[] = [];
-    const hrefRegex = /href="([^"]+)"/gi;
+    // Recherche des balises <a> pour analyser à la fois l'URL et le texte du lien
+    const linkRegex = /<a\s+(?:[^>]*?\s+)?href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
     let match;
     
-    while ((match = hrefRegex.exec(htmlBody)) !== null) {
+    while ((match = linkRegex.exec(htmlBody)) !== null) {
       const url = match[1];
+      const text = match[2].toLowerCase();
       let score = 0;
+      
+      // Priorité absolue au texte mentionné par l'utilisateur
+      if (text.includes('consulter') && text.includes('facture')) score += 50;
+      else if (text.includes('consulter')) score += 10;
+      else if (text.includes('facture')) score += 10;
+      else if (text.includes('télécharger') || text.includes('telecharger')) score += 10;
+
+      // Bonus sur l'URL elle-même
       if (url.toLowerCase().includes('pdf')) score += 10;
-      if (url.toLowerCase().includes('facture') || url.toLowerCase().includes('invoice')) score += 5;
       if (url.toLowerCase().includes('orange')) score += 5;
-      if (url.toLowerCase().includes('consulter') || url.toLowerCase().includes('view')) score += 3;
-      if (url.toLowerCase().includes('telecharger') || url.toLowerCase().includes('download')) score += 5;
+      if (url.toLowerCase().includes('invoice') || url.toLowerCase().includes('facture')) score += 5;
+      
       if (score > 0) candidates.push({ url, score });
     }
 
     if (candidates.length > 0) {
+      // Trier par score décroissant et prendre le meilleur
       result.invoiceUrl = candidates.sort((a, b) => b.score - a.score)[0].url;
     }
   }
