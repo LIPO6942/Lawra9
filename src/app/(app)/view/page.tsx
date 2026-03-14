@@ -132,6 +132,12 @@ function DocumentView() {
 
   const parsedLink = (() => {
     try {
+      // 1. Priorité au champ structuré invoiceUrl
+      if (document.invoiceUrl) {
+        return { text: "Ouvrir la facture / email", url: document.invoiceUrl };
+      }
+
+      // 2. Fallback sur le parsing des notes (legacy/compatibilité)
       if (!document.notes) return null;
       const match = document.notes.match(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/);
       if (match) {

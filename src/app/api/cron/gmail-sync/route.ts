@@ -138,6 +138,7 @@ export async function GET(request: Request) {
                 // ── Anti-doublon technique et métier ───────────────────────────
                 let isDuplicate = false;
                 const targetSupplierTokens = provider.name === 'STEG' ? ['steg'] : ['orange', 'otn'];
+                const targetCategory = provider.category.toLowerCase();
                 
                 // Trouver la date de référence pour comparer le mois
                 let dateReference: Date | null = null;
@@ -145,6 +146,7 @@ export async function GET(request: Request) {
                 else if (parsed.dateEcheance) dateReference = parseISO(parsed.dateEcheance);
                 else dateReference = new Date(parseInt(fullMsg.internalDate));
 
+                // Période de la facture Gmail
                 const gmailPeriod = extractMonthYear(parsed.periode) || 
                                    (dateReference && isValid(dateReference) ? { month: dateReference.getMonth(), year: dateReference.getFullYear() } : null);
 
@@ -154,16 +156,19 @@ export async function GET(request: Request) {
                     isDuplicate = true; break;
                   }
 
-                  // 2. Anti-doublon métier (Saisie manuelle existante)
-                  const docSupplier = (dData.supplier || dData.category || '').toLowerCase();
+                  // 2. Vérifier si c'est le même fournisseur/catégorie
+                  const docSupplier = (dData.supplier || '').toLowerCase();
+                  const docCategory = (dData.category || '').toLowerCase();
                   const docName = (dData.name || '').toLowerCase();
-                  const isMatchSupplier = targetSupplierTokens.some((t: string) => docSupplier.includes(t) || docName.includes(t));
+                  const isMatchSupplier = 
+                    targetSupplierTokens.some((t: string) => docSupplier.includes(t) || docName.includes(t)) ||
+                    docCategory === targetCategory;
                   if (!isMatchSupplier) continue;
 
                   // --- Le doc existant est-il marqué comme payé ? ---
                   const isMarkedAsPaid = dData.status === 'paid' || !!dData.paymentDate;
 
-                  // a) Vérifier si le montant est environ le même (tolérance élargie à 1 TND)
+                  // a) Vérifier si le montant est environ le même
                   if (parsed.montant) {
                     const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
                     const tolerance = isMarkedAsPaid ? 2.0 : 1.0;
@@ -179,13 +184,14 @@ export async function GET(request: Request) {
                     isDuplicate = true; break;
                   }
 
-                  // c) Vérifier par mois/année (fonctionne pour les docs payés ET non payés)
+                  // c) Vérifier par mois/année de facturation
+                  //    (NE PAS utiliser paymentDate — c'est la date "marqué payé", pas la période)
                   const existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
                                            extractMonthYear(dData.billingStartDate) ||
                                            extractMonthYear(dData.billingEndDate) ||
                                            extractMonthYear(dData.name) ||
                                            (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null) ||
-                                           (dData.paymentDate && isValid(new Date(dData.paymentDate)) ? { month: new Date(dData.paymentDate).getMonth(), year: new Date(dData.paymentDate).getFullYear() } : null);
+                                           (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null);
 
                   if (gmailPeriod && existingDocPeriod) {
                     if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {
@@ -194,20 +200,12 @@ export async function GET(request: Request) {
                     }
                   }
 
-                  // d) Pour les docs payés : vérification par proximité de date (45 jours)
-                  if (isMarkedAsPaid && dateReference && isValid(dateReference)) {
-                    const existingDate = dData.issueDate || dData.paymentDate || dData.dueDate || dData.createdAt;
-                    if (existingDate) {
-                      try {
-                        const existDate = new Date(existingDate);
-                        if (isValid(existDate)) {
-                          const daysDiff = Math.abs(dateReference.getTime() - existDate.getTime()) / (1000 * 60 * 60 * 24);
-                          if (daysDiff < 45) {
-                            console.log(`[Gmail Cron] Doublon par proximité date (${Math.round(daysDiff)}j, payé) pour ${provider.name}`);
-                            isDuplicate = true; break;
-                          }
-                        }
-                      } catch (e) { /* ignore parse error */ }
+                  // d) LOGIQUE CLÉ pour docs PAYÉS :
+                  //    Bloquer l'import SAUF si on peut PROUVER que les périodes sont différentes
+                  if (isMarkedAsPaid) {
+                    if (!existingDocPeriod) {
+                      console.log(`[Gmail Cron] Doc payé sans période trouvé pour ${provider.name} — blocage par précaution (doc: ${dData.id})`);
+                      isDuplicate = true; break;
                     }
                   }
 
@@ -221,22 +219,37 @@ export async function GET(request: Request) {
                 }
 
                 // Construire et sauvegarder le document
-                let notesText = `Importé automatiquement (cron quotidien).\nExtrait : ${parsed.rawText.slice(0, 200)}`;
+                const gmailDirectLink = `https://mail.google.com/mail/u/0/#inbox/${msg.id}`;
+                
+                let notesText = `Importé automatiquement (cron quotidien).`;
                 if (parsed.invoiceUrl) {
                   notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
                 }
+                notesText += `\n📧 [Voir l'email original dans Gmail](${gmailDirectLink})`;
+                notesText += `\n\nExtrait : ${parsed.rawText.slice(0, 200)}`;
 
                 // ── Gérer les pièces jointes PDF ────────────────────────────
                 const pdfInfos = findPdfAttachments(fullMsg.payload);
-                let fileData: any = null;
+                let fileBase64Content: string | null = null;
+                let fileName: string | null = null;
 
                 if (pdfInfos.length > 0) {
-                  const attachment = await getGmailAttachment(accessToken, msg.id, pdfInfos[0].attachmentId);
-                  fileData = {
-                    content: attachment,
-                    contentType: 'application/pdf',
-                    name: pdfInfos[0].filename
-                  };
+                  try {
+                    const attachment = await getGmailAttachment(accessToken, msg.id, pdfInfos[0].attachmentId);
+                    // Firestore a une limite de ~1MB par document
+                    const base64SizeKB = (attachment.length * 3) / 4 / 1024;
+                    if (base64SizeKB < 900) {
+                      fileBase64Content = attachment;
+                      fileName = pdfInfos[0].filename;
+                    } else {
+                      console.log(`[Gmail Cron] PDF trop volumineux (${Math.round(base64SizeKB)}KB), stockage lien uniquement`);
+                      if (!parsed.invoiceUrl) {
+                        notesText = `📎 [Ouvrir l'email pour accéder au PDF](${gmailDirectLink})\n\n${notesText}`;
+                      }
+                    }
+                  } catch (attachErr: any) {
+                    console.error(`[Gmail Cron] Erreur pièce jointe:`, attachErr.message);
+                  }
                 }
 
                 const docId = `gmail-${msg.id}`;
@@ -254,13 +267,14 @@ export async function GET(request: Request) {
                   invoiceNumber: parsed.invoiceNumber || null,
                   consumptionPeriod: parsed.periode || null,
                   referenceClient: parsed.referenceClient || null,
+                  invoiceUrl: parsed.invoiceUrl || gmailDirectLink,
                   status: 'pending' as const,
                   autoImported: true,
                   importedAt: FieldValue.serverTimestamp(),
                   createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),
                   notes: notesText,
-                  fileBase64: fileData?.content || null,
-                  fileName: fileData?.name || null
+                  fileBase64: fileBase64Content,
+                  fileName: fileName
                 });
 
                 stats.totalImported++;

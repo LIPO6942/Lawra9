@@ -70,10 +70,16 @@ export function parseOrangeEmail(textBody: string, htmlBody: string): ParsedInvo
   }
 
   // ── Lien de la facture (extrait du HTML) ─────────────────────────────────
-  // <a href="https://..." ...>Consulter votre facture</a>
-  const urlMatch = htmlBody.match(/href="([^"]+)"[^>]*>Consulter votre facture/i);
-  if (urlMatch) {
-    result.invoiceUrl = urlMatch[1];
+  // <a href="https://..." ...>Consulter votre facture</a> ou autres variantes
+  if (htmlBody) {
+    const urlMatch =
+      htmlBody.match(/href="([^"]+)"[^>]*>[^<]*(?:consulter|t[eé]l[eé]charger|voir|acc[eé]der)[^<]*facture/i) ||
+      htmlBody.match(/href="([^"]+)"[^>]*>[^<]*facture[^<]*/i) ||
+      htmlBody.match(/href="(https?:\/\/[^"]*(?:facture|invoice|bill|orange)[^"]*)"/i) ||
+      htmlBody.match(/href="(https?:\/\/[^"]+\.pdf)"/i);
+    if (urlMatch) {
+      result.invoiceUrl = urlMatch[1];
+    }
   }
 
   return result;

@@ -85,6 +85,17 @@ export function parseStegEmail(textBody: string, htmlBody: string): ParsedInvoic
     result.dateEcheance = parseTunisianDate(echeanceMatch[1]);
   }
 
+  // ── Lien vers la facture en ligne (extrait du HTML) ──────────────────────
+  if (htmlBody) {
+    const urlMatch =
+      htmlBody.match(/href="([^"]+)"[^>]*>[^<]*(?:consulter|t[eé]l[eé]charger|voir|acc[eé]der|facture|afficher)[^<]*/i) ||
+      htmlBody.match(/href="(https?:\/\/[^"]*(?:facture|invoice|bill|steg)[^"]*)"/i) ||
+      htmlBody.match(/href="(https?:\/\/[^"]+\.pdf)"/i);
+    if (urlMatch) {
+      result.invoiceUrl = urlMatch[1];
+    }
+  }
+
   return result;
 }
 

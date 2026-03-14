@@ -34,6 +34,7 @@ export type Document = {
   autoImported?: boolean;
   fileBase64?: string; // Base64 content for automated imports
   fileName?: string;
+  invoiceUrl?: string; // URL to the online invoice or original email
 };
 
 export type DocumentWithFile = Omit<Document, 'id' | 'createdAt'> & {

@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
             // ── Anti-doublon technique et métier ───────────────────────────
             let isDuplicate = false;
             const targetSupplierTokens = provider.name === 'STEG' ? ['steg'] : ['orange', 'otn'];
+            const targetCategory = provider.category.toLowerCase(); // 'steg' ou 'internet'
             
             // Trouver la date de référence pour comparer le mois
             let dateReference: Date | null = null;
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
             else if (parsed.dateEcheance) dateReference = parseISO(parsed.dateEcheance);
             else dateReference = new Date(parseInt(fullMsg.internalDate));
 
+            // Période de la facture Gmail (extraite de la période parsée OU de la date de référence)
             const gmailPeriod = extractMonthYear(parsed.periode) || 
                                (dateReference && isValid(dateReference) ? { month: dateReference.getMonth(), year: dateReference.getFullYear() } : null);
 
@@ -148,38 +150,49 @@ export async function POST(request: NextRequest) {
                 isDuplicate = true; break;
               }
 
-              // 2. Anti-doublon métier (Saisie manuelle existante)
-              const docSupplier = (dData.supplier || dData.category || '').toLowerCase();
+              // 2. Vérifier si c'est le même fournisseur/catégorie
+              const docSupplier = (dData.supplier || '').toLowerCase();
+              const docCategory = (dData.category || '').toLowerCase();
               const docName = (dData.name || '').toLowerCase();
-              const isMatchSupplier = targetSupplierTokens.some(t => docSupplier.includes(t) || docName.includes(t));
+              const isMatchSupplier = 
+                targetSupplierTokens.some(t => docSupplier.includes(t) || docName.includes(t)) ||
+                docCategory === targetCategory;
               if (!isMatchSupplier) continue;
 
               // --- Le doc existant est-il marqué comme payé ? ---
               const isMarkedAsPaid = dData.status === 'paid' || !!dData.paymentDate;
 
-              // a) Vérifier si le montant est environ le même (tolérance élargie à 1 TND)
+              // ══════════════════════════════════════════════════════════════
+              // a) Vérifier si le montant est environ le même
+              // ══════════════════════════════════════════════════════════════
               if (parsed.montant) {
                 const docAmountNum = parseFloat(String(dData.amount).replace(/[^\d.,]/g, '').replace(',', '.'));
-                const tolerance = isMarkedAsPaid ? 2.0 : 1.0; // Plus tolérant pour les docs payés
+                const tolerance = isMarkedAsPaid ? 2.0 : 1.0;
                 if (!isNaN(docAmountNum) && Math.abs(docAmountNum - parsed.montant) < tolerance) {
                   console.log(`[Gmail Sync] Doublon par montant (${docAmountNum} ≈ ${parsed.montant}, payé=${isMarkedAsPaid}) pour ${provider.name}`);
                   isDuplicate = true; break;
                 }
               }
 
+              // ══════════════════════════════════════════════════════════════
               // b) Vérifier si la période textuelle est identique
+              // ══════════════════════════════════════════════════════════════
               if (parsed.periode && dData.consumptionPeriod && parsed.periode.toLowerCase() === dData.consumptionPeriod.toLowerCase()) {
                 console.log(`[Gmail Sync] Doublon par période textuelle identique: "${parsed.periode}" pour ${provider.name}`);
                 isDuplicate = true; break;
               }
 
-              // c) Vérifier par mois/année (fonctionne pour les docs payés ET non payés)
+              // ══════════════════════════════════════════════════════════════
+              // c) Vérifier par mois/année de facturation
+              //    (NE PAS utiliser paymentDate ici — c'est la date de paiement,
+              //     pas la période de facturation)
+              // ══════════════════════════════════════════════════════════════
               const existingDocPeriod = extractMonthYear(dData.consumptionPeriod) || 
                                        extractMonthYear(dData.billingStartDate) ||
                                        extractMonthYear(dData.billingEndDate) ||
                                        extractMonthYear(dData.name) ||
                                        (dData.issueDate && isValid(new Date(dData.issueDate)) ? { month: new Date(dData.issueDate).getMonth(), year: new Date(dData.issueDate).getFullYear() } : null) ||
-                                       (dData.paymentDate && isValid(new Date(dData.paymentDate)) ? { month: new Date(dData.paymentDate).getMonth(), year: new Date(dData.paymentDate).getFullYear() } : null);
+                                       (dData.dueDate && isValid(new Date(dData.dueDate)) ? { month: new Date(dData.dueDate).getMonth(), year: new Date(dData.dueDate).getFullYear() } : null);
 
               if (gmailPeriod && existingDocPeriod) {
                 if (existingDocPeriod.month === gmailPeriod.month && existingDocPeriod.year === gmailPeriod.year) {
@@ -188,21 +201,31 @@ export async function POST(request: NextRequest) {
                 }
               }
 
-              // d) Pour les docs payés : vérification par proximité de date (45 jours)
-              if (isMarkedAsPaid && dateReference && isValid(dateReference)) {
-                const existingDate = dData.issueDate || dData.paymentDate || dData.dueDate || dData.createdAt;
-                if (existingDate) {
-                  try {
-                    const existDate = new Date(existingDate);
-                    if (isValid(existDate)) {
-                      const daysDiff = Math.abs(dateReference.getTime() - existDate.getTime()) / (1000 * 60 * 60 * 24);
-                      if (daysDiff < 45) {
-                        console.log(`[Gmail Sync] Doublon par proximité date (${Math.round(daysDiff)}j, payé) pour ${provider.name}`);
-                        isDuplicate = true; break;
-                      }
-                    }
-                  } catch (e) { /* ignore parse error */ }
+              // ══════════════════════════════════════════════════════════════
+              // d) LOGIQUE CLÉ pour les docs PAYÉS :
+              //    Si un document PAYÉ du même fournisseur existe, BLOQUER
+              //    l'import SAUF si on peut PROUVER que les périodes sont
+              //    différentes.
+              //    
+              //    Pourquoi : les documents manuels n'ont souvent aucune
+              //    info de période (pas de consumptionPeriod, billingStart, 
+              //    etc). Dans ce cas, on préfère NE PAS importer plutôt
+              //    que créer un doublon.
+              // ══════════════════════════════════════════════════════════════
+              if (isMarkedAsPaid) {
+                // Si le doc existant N'A PAS de période extractible,
+                // on ne peut pas prouver qu'il est pour un mois différent
+                // → on bloque par précaution
+                if (!existingDocPeriod) {
+                  console.log(`[Gmail Sync] Doc payé sans période trouvé pour ${provider.name} — blocage par précaution (doc: ${dData.id})`);
+                  isDuplicate = true; break;
                 }
+                
+                // Si le doc existant A une période mais la facture Gmail 
+                // aussi, et les périodes SONT différentes, c'est OK → 
+                // on continue (pas de blocage). 
+                // Si les périodes sont identiques → déjà bloqué en (c).
+                // Donc ici on ne fait rien de plus si existingDocPeriod existe.
               }
 
               if (isDuplicate) break;
@@ -215,23 +238,41 @@ export async function POST(request: NextRequest) {
             }
 
             // Construire le document Lawra9 (compatible avec le type Document existant)
-            let notesText = `Importé automatiquement depuis Gmail.\nExtrait : ${parsed.rawText.slice(0, 200)}`;
+            // ── Lien Gmail direct comme fallback universel ──────────────────
+            const gmailDirectLink = `https://mail.google.com/mail/u/0/#inbox/${msg.id}`;
+            
+            let notesText = `Importé automatiquement depuis Gmail.`;
             if (parsed.invoiceUrl) {
               notesText = `📎 [Consulter la facture en ligne](${parsed.invoiceUrl})\n\n${notesText}`;
             }
+            // Toujours ajouter le lien Gmail direct
+            notesText += `\n📧 [Voir l'email original dans Gmail](${gmailDirectLink})`;
+            notesText += `\n\nExtrait : ${parsed.rawText.slice(0, 200)}`;
 
             // ── 4c. Gérer les pièces jointes PDF ────────────────────────────
             const pdfInfos = findPdfAttachments(fullMsg.payload);
-            let fileData: any = null;
+            let fileBase64Content: string | null = null;
+            let fileName: string | null = null;
 
             if (pdfInfos.length > 0) {
-              const attachment = await getGmailAttachment(accessToken, msg.id, pdfInfos[0].attachmentId);
-              // Les fichiers sont stockés en Base64 dans Firestore (compatible avec notre système IDB si chargé)
-              fileData = {
-                content: attachment, // base64url string
-                contentType: 'application/pdf',
-                name: pdfInfos[0].filename
-              };
+              try {
+                const attachment = await getGmailAttachment(accessToken, msg.id, pdfInfos[0].attachmentId);
+                // Firestore a une limite de ~1MB par document
+                // Un base64 de 900KB = ~675KB de PDF original
+                const base64SizeKB = (attachment.length * 3) / 4 / 1024;
+                if (base64SizeKB < 900) {
+                  fileBase64Content = attachment;
+                  fileName = pdfInfos[0].filename;
+                } else {
+                  console.log(`[Gmail Sync] PDF trop volumineux (${Math.round(base64SizeKB)}KB) pour Firestore, stockage du lien uniquement`);
+                  // Ajouter un lien vers le PDF en pièce jointe via Gmail
+                  if (!parsed.invoiceUrl) {
+                    notesText = `📎 [Ouvrir l'email pour accéder au PDF](${gmailDirectLink})\n\n${notesText}`;
+                  }
+                }
+              } catch (attachErr: any) {
+                console.error(`[Gmail Sync] Erreur téléchargement pièce jointe:`, attachErr.message);
+              }
             }
 
             // ID unique basé sur l'ID Gmail pour éviter les conflits
@@ -250,13 +291,14 @@ export async function POST(request: NextRequest) {
               invoiceNumber: parsed.invoiceNumber || null,
               consumptionPeriod: parsed.periode || null,
               referenceClient: parsed.referenceClient || null,
+              invoiceUrl: parsed.invoiceUrl || gmailDirectLink, // Toujours un lien
               status: 'pending' as const,
               autoImported: true,
               importedAt: FieldValue.serverTimestamp(),
               createdAt: new Date(parseInt(fullMsg.internalDate)).toISOString(),
               notes: notesText,
-              fileBase64: fileData?.content || null, // On stocke le base64 pour que le frontend puisse créer un Blob
-              fileName: fileData?.name || null
+              fileBase64: fileBase64Content,
+              fileName: fileName
             };
 
             // Sauvegarder dans Firestore (collection spécifique à l'utilisateur)
