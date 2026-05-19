@@ -146,6 +146,34 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     let updatedData: Document = { ...docToUpdate, ...data };
 
+    if (data.billingStartDate !== undefined || data.billingEndDate !== undefined) {
+      const startStr = updatedData.billingStartDate;
+      const endStr = updatedData.billingEndDate;
+      if (startStr && endStr) {
+        try {
+          const start = parseISO(startStr);
+          const end = parseISO(endStr);
+          if (isValid(start) && isValid(end)) {
+            const year = format(start, 'yyyy');
+            const months: string[] = [];
+            let current = new Date(start.getFullYear(), start.getMonth(), 1);
+            const targetEnd = new Date(end.getFullYear(), end.getMonth(), 1);
+            let count = 0;
+            while (current <= targetEnd && count < 24) {
+              months.push(format(current, 'MM'));
+              current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+              count++;
+            }
+            updatedData.consumptionPeriod = `${year}-${months.join('-')}`;
+          }
+        } catch (e) {
+          console.error("Error recalculating consumptionPeriod:", e);
+        }
+      } else {
+        updatedData.consumptionPeriod = undefined;
+      }
+    }
+
     if (updatedData.category === 'Maison') {
       if (updatedData.files && updatedData.files.length > 0) {
         updatedData.file = updatedData.files[0].file;

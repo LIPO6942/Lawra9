@@ -149,6 +149,16 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
       if (!showPeriodFields) {
         dataToSave.billingStartDate = undefined;
         dataToSave.billingEndDate = undefined;
+      } else {
+        // Normalize period dates to full ISO format (YYYY-MM-DD)
+        if (dataToSave.billingStartDate && dataToSave.billingStartDate.length === 7) {
+          dataToSave.billingStartDate = `${dataToSave.billingStartDate}-01`;
+        }
+        if (dataToSave.billingEndDate && dataToSave.billingEndDate.length === 7) {
+          const [year, month] = dataToSave.billingEndDate.split('-').map(Number);
+          const lastDay = new Date(year, month, 0).getDate();
+          dataToSave.billingEndDate = `${dataToSave.billingEndDate}-${String(lastDay).padStart(2, '0')}`;
+        }
       }
       if (!showAmountField) {
         dataToSave.amount = undefined;
@@ -282,11 +292,11 @@ export function MaisonUploadDialog({ open, onOpenChange, documentToEdit = null, 
                  <div className="grid grid-cols-2 gap-4 mt-2 animate-in fade-in-0 duration-300">
                      <div className="space-y-2">
                         <Label htmlFor="doc-start-date" className="text-xs text-muted-foreground">Début de période</Label>
-                        <Input id="doc-start-date" type="month" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
+                        <Input id="doc-start-date" type="month" value={(formData.billingStartDate || '').slice(0, 7)} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
                      </div>
                      <div className="space-y-2">
                         <Label htmlFor="doc-end-date" className="text-xs text-muted-foreground">Fin de période</Label>
-                        <Input id="doc-end-date" type="month" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
+                        <Input id="doc-end-date" type="month" value={(formData.billingEndDate || '').slice(0, 7)} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
                      </div>
                 </div>
             )}

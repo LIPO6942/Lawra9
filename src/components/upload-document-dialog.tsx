@@ -558,6 +558,16 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
       if (fileToUpload) {
         dataToSave.file = fileToUpload;
       }
+      // Normalize period dates to full ISO format (YYYY-MM-DD)
+      if (dataToSave.billingStartDate && dataToSave.billingStartDate.length === 7) {
+        dataToSave.billingStartDate = `${dataToSave.billingStartDate}-01`;
+      }
+      if (dataToSave.billingEndDate && dataToSave.billingEndDate.length === 7) {
+        // Set end date to last day of the chosen month
+        const [year, month] = dataToSave.billingEndDate.split('-').map(Number);
+        const lastDay = new Date(year, month, 0).getDate();
+        dataToSave.billingEndDate = `${dataToSave.billingEndDate}-${String(lastDay).padStart(2, '0')}`;
+      }
       await updateDocument(documentToEdit.id, dataToSave);
       toast({ title: "Document modifié", description: "Les informations ont été mises à jour." });
       handleOpenChange(false);
@@ -570,7 +580,47 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
   };
 
   const handleFormChange = (field: keyof Document, value: string | undefined) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+
+      // When a billing period is changed, regenerate the document name
+      if (field === 'billingStartDate' || field === 'billingEndDate') {
+        const startStr = field === 'billingStartDate' ? value : prev.billingStartDate;
+        const endStr = field === 'billingEndDate' ? value : prev.billingEndDate;
+        if (startStr && endStr) {
+          try {
+            // Normalize to full date if only month was given (YYYY-MM -> YYYY-MM-01)
+            const normalizedStart = startStr.length === 7 ? `${startStr}-01` : startStr;
+            const normalizedEnd = endStr.length === 7 ? `${endStr}-01` : endStr;
+            const startDate = parseISO(normalizedStart);
+            const endDate = parseISO(normalizedEnd);
+            if (isValid(startDate) && isValid(endDate)) {
+              const category = (prev.category || 'Autre') as Document['category'];
+              const supplier = prev.supplier || '';
+
+              // Regenerate a name only for known document types
+              if (category === 'STEG') {
+                const startMon = format(startDate, 'MMM', { locale: fr }).replace('.', '');
+                const endMon = format(endDate, 'MMM yy', { locale: fr }).replace('.', '');
+                updated.name = `STEG ${startMon}-${endMon}`;
+              } else if (category === 'Internet' && supplier) {
+                const monthStr = format(startDate, 'MMM', { locale: fr }).replace('.', '');
+                const year = format(startDate, 'yy');
+                const cap = monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
+                updated.name = `${supplier} ${cap} ${year}`;
+              } else if (supplier) {
+                const startMon = format(startDate, 'MMM yy', { locale: fr }).replace('.', '');
+                const endMon = format(endDate, 'MMM yy', { locale: fr }).replace('.', '');
+                const periodPart = ` (${startMon} - ${endMon})`;
+                updated.name = `Facture ${supplier}${periodPart}`;
+              }
+            }
+          } catch (e) { /* ignore */ }
+        }
+      }
+
+      return updated;
+    });
   };
 
   const dialogTitle = isEditMode ? "Modifier le document" : "Ajouter un document";
@@ -678,11 +728,11 @@ export function UploadDocumentDialog({ open, onOpenChange, documentToEdit = null
               </div>
               <div className="space-y-2">
                 <Label>Période (Début)</Label>
-                <Input type="month" value={formData.billingStartDate || ''} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
+                <Input type="month" value={(formData.billingStartDate || '').slice(0, 7)} onChange={e => handleFormChange('billingStartDate', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Période (Fin)</Label>
-                <Input type="month" value={formData.billingEndDate || ''} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
+                <Input type="month" value={(formData.billingEndDate || '').slice(0, 7)} onChange={e => handleFormChange('billingEndDate', e.target.value)} />
               </div>
               <hr className="col-span-2 my-2 border-dashed" />
               <h4 className="col-span-2 text-sm font-medium text-muted-foreground">Rubrique Électricité / Eau</h4>
