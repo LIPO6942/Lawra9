@@ -90,7 +90,7 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
         messages: [
           {
             role: 'system',
-            content: 'Vous êtes un assistant d\'extraction de données. Vous devez répondre UNIQUEMENT par un objet JSON valide, sans aucune balise markdown, sans explications.'
+            content: 'Vous êtes un assistant d\'extraction de données. Ne générez AUCUNE balise <think> ni raisonnement. Vous devez répondre UNIQUEMENT par un objet JSON valide sans aucune balise markdown.'
           },
           {
             role: 'user', content: [
@@ -114,7 +114,8 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
     if (!content) return { data: null, error: "Réponse vide de Groq." };
 
     let cleaned = content.trim();
-    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/gi, '').replace(/\s*```$/gi, '').trim();
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end > start) {
