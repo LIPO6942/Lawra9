@@ -186,7 +186,7 @@ async function extractWithGroq(
       body: JSON.stringify({
         model: 'qwen/qwen3.6-27b',
         messages: [
-          { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes.' },
+          { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes. Répondez UNIQUEMENT avec un objet JSON valide sans aucune balise markdown.' },
           {
             role: 'user',
             content: [
@@ -195,7 +195,6 @@ async function extractWithGroq(
             ],
           },
         ],
-        response_format: { type: 'json_object' },
         temperature: 0.1,
       }),
     });
@@ -205,7 +204,14 @@ async function extractWithGroq(
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     if (content) {
-      const parsed = JSON.parse(content);
+      let cleaned = content.trim();
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end > start) {
+        cleaned = cleaned.slice(start, end + 1);
+      }
+      const parsed = JSON.parse(cleaned);
       return {
         ...parsed,
         ocrText: parsed.ocrText || 'Extrait par Groq',

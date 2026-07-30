@@ -89,13 +89,16 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
         model: 'qwen/qwen3.6-27b',
         messages: [
           {
+            role: 'system',
+            content: 'Vous êtes un assistant d\'extraction de données. Vous devez répondre UNIQUEMENT par un objet JSON valide, sans aucune balise markdown, sans explications.'
+          },
+          {
             role: 'user', content: [
               { type: 'text', text: INVOICE_PROMPT },
               { type: 'image_url', image_url: { url: input.invoiceDataUri } }
             ]
           }
         ],
-        response_format: { type: 'json_object' },
         temperature: 0.1,
       }),
     });
@@ -110,7 +113,15 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
     const content = data.choices?.[0]?.message?.content;
     if (!content) return { data: null, error: "Réponse vide de Groq." };
 
-    return { data: JSON.parse(content) };
+    let cleaned = content.trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      cleaned = cleaned.slice(start, end + 1);
+    }
+
+    return { data: JSON.parse(cleaned) };
   } catch (e: any) {
     console.error('[Groq Invoice] Fetch Exception:', e);
     return { data: null, error: `Erreur de connexion Groq : ${e.message}` };
