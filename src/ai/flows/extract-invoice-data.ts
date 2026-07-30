@@ -86,11 +86,11 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
         messages: [
           {
             role: 'system',
-            content: 'Vous êtes un assistant d\'extraction de données. Ne générez AUCUNE balise <think> ni raisonnement. Vous devez répondre UNIQUEMENT par un objet JSON valide sans aucune balise markdown.'
+            content: 'Vous êtes un assistant d\'extraction de données. Répondez UNIQUEMENT avec un objet JSON valide sans texte d\'accompagnement ni balises markdown.'
           },
           {
             role: 'user', content: [
@@ -100,6 +100,7 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
           }
         ],
         temperature: 0.1,
+        max_tokens: 2048,
       }),
     });
 
@@ -114,12 +115,21 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
     if (!content) return { data: null, error: "Réponse vide de Groq." };
 
     let cleaned = content.trim();
-    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-    cleaned = cleaned.replace(/^```(?:json)?\s*/gi, '').replace(/\s*```$/gi, '').trim();
+    // Strip closed or unclosed <think> tags if model produces reasoning
+    cleaned = cleaned.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+    // Strip codeblock markers
+    cleaned = cleaned.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim();
+
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end > start) {
       cleaned = cleaned.slice(start, end + 1);
+    } else if (start !== -1) {
+      cleaned = cleaned.slice(start);
+    }
+
+    if (!cleaned || !cleaned.startsWith('{')) {
+      return { data: null, error: `Format JSON non détecté dans la réponse de l'IA.` };
     }
 
     return { data: JSON.parse(cleaned) };

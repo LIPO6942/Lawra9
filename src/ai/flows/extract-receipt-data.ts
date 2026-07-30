@@ -184,9 +184,9 @@ async function extractWithGroq(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
         messages: [
-          { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes. Ne générez AUCUNE balise <think> ni raisonnement. Répondez UNIQUEMENT avec un objet JSON valide sans aucune balise markdown.' },
+          { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes. Répondez UNIQUEMENT avec un objet JSON valide sans texte d\'accompagnement ni balises markdown.' },
           {
             role: 'user',
             content: [
@@ -196,6 +196,7 @@ async function extractWithGroq(
           },
         ],
         temperature: 0.1,
+        max_tokens: 2048,
       }),
     });
 
@@ -205,12 +206,14 @@ async function extractWithGroq(
     const content = data.choices?.[0]?.message?.content;
     if (content) {
       let cleaned = content.trim();
-      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-      cleaned = cleaned.replace(/^```(?:json)?\s*/gi, '').replace(/\s*```$/gi, '').trim();
+      cleaned = cleaned.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+      cleaned = cleaned.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim();
       const start = cleaned.indexOf('{');
       const end = cleaned.lastIndexOf('}');
       if (start !== -1 && end > start) {
         cleaned = cleaned.slice(start, end + 1);
+      } else if (start !== -1) {
+        cleaned = cleaned.slice(start);
       }
       const parsed = JSON.parse(cleaned);
       return {
