@@ -86,7 +86,7 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'llama-3.2-11b-vision-preview',
         messages: [
           {
             role: 'user', content: [
