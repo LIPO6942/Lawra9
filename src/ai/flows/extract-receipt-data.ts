@@ -184,7 +184,7 @@ async function extractWithGroq(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+        model: 'qwen/qwen3.6-27b',
         messages: [
           { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes.' },
           {
