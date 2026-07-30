@@ -86,7 +86,7 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.2-11b-vision-preview',
+        model: 'openai/gpt-oss-120b',
         messages: [
           {
             role: 'user', content: [
