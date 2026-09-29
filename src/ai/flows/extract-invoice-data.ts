@@ -41,8 +41,9 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - CONSOMMATION (CHIRURGICAL) : Reperez le tableau des index. Calculez : "Nouveau Index" - "Ancien Index". Si le resultat est 12, retournez "12". Ne prenez pas d'autre chiffre. Verifiez le cadre "Consommation" ou "الكمية". Si vous voyez une consommation d'entretien (ex: 13), assurez-vous de bien prendre la consommation REELLE facturée. Si le texte montre 12 m3, extrayez "12".
 2. **STEG (ELEC/GAZ)** : 
    - RECHERCHEZ : "STEG", "الشركة التونسية للكهرباء والغاز".
-   - PERIODE : Reperez "Du" et "Au" en haut a droite.
-   - ECHEANCE (CRITIQUE) : En bas a droite, dans le cadre de GAUCHE ("Priere de payer").
+   - PERIODE : Reperez "Du" et "Au" en haut a droite. Extrayez les dates pour **billingStartDate** et **billingEndDate**.
+   - ECHEANCE (CRITIQUE) : En bas a droite, dans le cadre de GAUCHE ("Priere de payer"). La date d'echeance est dans ce meme cadre.
+   - MONTANT STEG (CRITIQUE) : Sur une facture STEG, il y a DEUX montants en bas a droite : un cadre GAUCHE "Prière de payer" et un cadre DROIT. Le **amount** a extraire est le montant du cadre GAUCHE, intitule "المبلغ المستوجب" ou "Montant à payer" ou "Net à payer". NE PAS prendre "Montant total", "المجموع", ni "Total TTC" — ces montants sont DIFFERENTS et INCORRECTS pour ce champ.
    - CONSOMMATION : Colonne 5 "Quantite (1)".
 3. **INTERNET (TELECOM)** :
    - RECHERCHEZ : "Orange", "Ooredoo", "Topnet", "GlobalNet", "Tunisie Telecom", "TTnet", "HexaByte", "TOPNET", logo ou nom d'opérateur télécom/internet.
@@ -61,7 +62,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
 
 **REGLES D'EXTRACTION GENERALES :**
 - **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
-- **amount** : Montant Total (ex: "72.000").
+- **amount** : Le montant NET DU a payer ("Montant à payer", "Net à payer", "المبلغ المستوجب"). Pour STEG : c'est le montant du cadre GAUCHE en bas a droite, PAS le "Montant total" ni le "Total TTC".
 - **dueDate** : Date limite de paiement (AAAA-MM-JJ).
 - **consumptionPeriod** : Pour SONEDE uniquement, format "AAAA-MM-MM-MM".
 - **supplier** : Nom du fournisseur (ex: "STEG", "SONEDE", "Orange").
