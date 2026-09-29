@@ -57,6 +57,8 @@ export default function HistoryPage() {
         const filteredDocs = documents.filter(doc => {
             const date = getDocumentDate(doc);
             if (!date) return false;
+            // Only include documents that have actually been paid
+            if (!doc.paymentDate) return false;
 
             const yearMatch = getYear(date).toString() === selectedYear;
             const monthMatch = selectedMonth === 'all' || getMonth(date).toString() === selectedMonth;
