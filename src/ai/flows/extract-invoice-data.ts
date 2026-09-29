@@ -77,66 +77,83 @@ async function extractWithGroq(input: ExtractInvoiceDataInput): Promise<{ data: 
     return { data: null, error: "Clé API Groq manquante (GROQ_API_KEY non trouvée dans l'environnement)." };
   }
 
-  try {
-    console.log('[Groq Invoice] Sending request to Groq API...');
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${groqKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-        messages: [
-          {
-            role: 'system',
-            content: 'Vous êtes un assistant d\'extraction de données. Répondez UNIQUEMENT avec un objet JSON valide sans texte d\'accompagnement ni balises markdown.'
-          },
-          {
-            role: 'user', content: [
-              { type: 'text', text: INVOICE_PROMPT },
-              { type: 'image_url', image_url: { url: input.invoiceDataUri } }
-            ]
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 2048,
-      }),
-    });
+  const candidateModels = [
+    process.env.GROQ_VISION_MODEL,
+    'qwen/qwen3.8-27b',
+    'qwen/qwen3.6-27b',
+  ].filter(Boolean) as string[];
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      console.error('[Groq Invoice] API Error:', response.status, errData);
-      return { data: null, error: `Erreur API Groq (${response.status}): ${errData.error?.message || JSON.stringify(errData)}` };
+  let lastError = '';
+
+  for (const model of candidateModels) {
+    try {
+      console.log(`[Groq Invoice] Sending request to Groq API with model: ${model}...`);
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'Vous êtes un assistant d\'extraction de données. Ne générez AUCUNE balise <think> ni raisonnement. Répondez UNIQUEMENT avec un objet JSON valide sans texte d\'accompagnement ni balises markdown.'
+            },
+            {
+              role: 'user', content: [
+                { type: 'text', text: INVOICE_PROMPT },
+                { type: 'image_url', image_url: { url: input.invoiceDataUri } }
+              ]
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 4096,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error(`[Groq Invoice] API Error for ${model}:`, response.status, errData);
+        if (response.status === 404 || errData.error?.code === 'model_not_found') {
+          lastError = `Modèle ${model} introuvable ou non autorisé (${errData.error?.message || response.status}).`;
+          console.warn(`[Groq Invoice] Model ${model} not available on Groq, trying next candidate...`);
+          continue;
+        }
+        return { data: null, error: `Erreur API Groq (${response.status}): ${errData.error?.message || JSON.stringify(errData)}` };
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) return { data: null, error: "Réponse vide de Groq." };
+
+      let cleaned = content.trim();
+      // Strip closed or unclosed <think> tags if model produces reasoning
+      cleaned = cleaned.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+      // Strip codeblock markers
+      cleaned = cleaned.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim();
+
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end > start) {
+        cleaned = cleaned.slice(start, end + 1);
+      } else if (start !== -1) {
+        cleaned = cleaned.slice(start);
+      }
+
+      if (!cleaned || !cleaned.startsWith('{')) {
+        return { data: null, error: `Format JSON non détecté dans la réponse de l'IA.` };
+      }
+
+      return { data: JSON.parse(cleaned) };
+    } catch (e: any) {
+      console.error(`[Groq Invoice] Fetch Exception for ${model}:`, e);
+      lastError = e.message;
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return { data: null, error: "Réponse vide de Groq." };
-
-    let cleaned = content.trim();
-    // Strip closed or unclosed <think> tags if model produces reasoning
-    cleaned = cleaned.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
-    // Strip codeblock markers
-    cleaned = cleaned.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim();
-
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start !== -1 && end > start) {
-      cleaned = cleaned.slice(start, end + 1);
-    } else if (start !== -1) {
-      cleaned = cleaned.slice(start);
-    }
-
-    if (!cleaned || !cleaned.startsWith('{')) {
-      return { data: null, error: `Format JSON non détecté dans la réponse de l'IA.` };
-    }
-
-    return { data: JSON.parse(cleaned) };
-  } catch (e: any) {
-    console.error('[Groq Invoice] Fetch Exception:', e);
-    return { data: null, error: `Erreur de connexion Groq : ${e.message}` };
   }
+
+  return { data: null, error: `Échec avec tous les modèles Groq testés. Dernière erreur : ${lastError}` };
 }
 
 export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<{ data?: ExtractInvoiceDataOutput; error?: string }> {

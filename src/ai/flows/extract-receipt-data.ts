@@ -176,54 +176,71 @@ async function extractWithGroq(
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) return null;
 
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${groqKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-        messages: [
-          { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes. Répondez UNIQUEMENT avec un objet JSON valide sans texte d\'accompagnement ni balises markdown.' },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: input.receiptDataUri } },
-            ],
-          },
-        ],
-        temperature: 0.1,
-        max_tokens: 2048,
-      }),
-    });
+  const candidateModels = [
+    process.env.GROQ_VISION_MODEL,
+    'qwen/qwen3.8-27b',
+    'qwen/qwen3.6-27b',
+  ].filter(Boolean) as string[];
 
-    if (!response.ok) return null;
+  for (const model of candidateModels) {
+    try {
+      console.log(`[Groq Receipt] Sending request to Groq API with model: ${model}...`);
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: 'Vous êtes un expert en extraction JSON de reçus et tickets de caisse multi-enseignes. Ne générez AUCUNE balise <think> ni raisonnement. Répondez UNIQUEMENT avec un objet JSON valide sans texte d\'accompagnement ni balises markdown.' },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: input.receiptDataUri } },
+              ],
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 4096,
+        }),
+      });
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (content) {
-      let cleaned = content.trim();
-      cleaned = cleaned.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
-      cleaned = cleaned.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim();
-      const start = cleaned.indexOf('{');
-      const end = cleaned.lastIndexOf('}');
-      if (start !== -1 && end > start) {
-        cleaned = cleaned.slice(start, end + 1);
-      } else if (start !== -1) {
-        cleaned = cleaned.slice(start);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error(`[Groq Receipt] API Error for ${model}:`, response.status, errData);
+        if (response.status === 404 || errData.error?.code === 'model_not_found') {
+          console.warn(`[Groq Receipt] Model ${model} not available on Groq, trying next candidate...`);
+          continue;
+        }
+        return null;
       }
-      const parsed = JSON.parse(cleaned);
-      return {
-        ...parsed,
-        ocrText: parsed.ocrText || 'Extrait par Groq',
-        confidence: parsed.confidence || 0.8,
-      };
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content) {
+        let cleaned = content.trim();
+        cleaned = cleaned.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+        cleaned = cleaned.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim();
+        const start = cleaned.indexOf('{');
+        const end = cleaned.lastIndexOf('}');
+        if (start !== -1 && end > start) {
+          cleaned = cleaned.slice(start, end + 1);
+        } else if (start !== -1) {
+          cleaned = cleaned.slice(start);
+        }
+        const parsed = JSON.parse(cleaned);
+        return {
+          ...parsed,
+          ocrText: parsed.ocrText || 'Extrait par Groq',
+          confidence: parsed.confidence || 0.8,
+        };
+      }
+    } catch (e) {
+      console.error(`[Groq Receipt] Exception with model ${model}:`, e);
     }
-  } catch (e) {
-    console.error('[Groq] Exception:', e);
   }
   return null;
 }
