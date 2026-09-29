@@ -334,13 +334,23 @@ export function DocumentsTable({ documents, onUpdate, onDelete, isMaison = false
                                             )}>
                                                 <CalendarDays className="h-2.5 w-2.5" />
                                                 <span>{dueDate}</span>
+                                                {doc.amount && (
+                                                    <span className={cn(
+                                                        "ml-0.5 font-mono font-semibold",
+                                                        doc.paymentDate ? "text-green-600" : "text-inherit"
+                                                    )}>· {doc.amount}</span>
+                                                )}
                                             </div>
                                         ) : docDate && !isMaison && (
                                             <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded">
                                                 <CalendarDays className="h-2.5 w-2.5" />
                                                 <span>{docDate}</span>
+                                                {doc.amount && (
+                                                    <span className="ml-0.5 font-mono font-semibold text-muted-foreground">· {doc.amount}</span>
+                                                )}
                                             </div>
                                         )}
+
 
                                         {!dueDate && !docDate && !isMaison && (
                                             <div className="flex items-center gap-1 shrink-0 bg-secondary/20 px-1 rounded border border-secondary/50">
