@@ -18,7 +18,6 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
         case 'Internet': return <Wifi className="h-6 w-6 text-purple-400" />;
         case 'Maison': return <Home className="h-6 w-6 text-green-400" />;
         case 'Assurance': return <Shield className="h-6 w-6 text-red-400" />;
-        case 'Recus de caisse': return <FileText className="h-6 w-6 text-orange-400" />;
         default: return <FileText className="h-6 w-6 text-gray-400" />;
     }
 };
@@ -71,7 +70,7 @@ export default function HistoryPage() {
             const amount = parseFloat(String(doc.amount).replace(',', '.'));
             if (isNaN(amount)) return acc;
 
-            const categoryKey = doc.category || 'Recus de caisse';
+            const categoryKey = doc.category || 'Autre';
 
             if (!acc[categoryKey]) {
                 acc[categoryKey] = { total: 0, count: 0 };

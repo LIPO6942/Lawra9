@@ -18,7 +18,6 @@ const expenseCategoryConfig = {
     steg: { label: "STEG", color: "hsl(var(--chart-4))" },
     sonede: { label: "SONEDE", color: "hsl(var(--chart-1))" },
     internet: { label: "Internet", color: "hsl(var(--chart-3))" },
-    caisse: { label: "Recus de caisse", color: "hsl(var(--chart-6))" },
     autre: { label: "Autre", color: "hsl(var(--chart-5))" },
 };
 
@@ -26,7 +25,6 @@ const categoryMap: Record<string, string> = {
     "STEG": "steg",
     "SONEDE": "sonede",
     "Internet": "internet",
-    "Recus de caisse": "caisse",
 };
 
 const consumptionConfig = {
@@ -92,7 +90,7 @@ const StatsPage = () => {
 
             // Process expenses
             if (doc.amount) {
-                const category = doc.category || 'Recus de caisse';
+                const category = doc.category || 'Autre';
                 const categoryKey = categoryMap[category] || 'autre';
                 const amount = parseFloat(String(doc.amount).replace(',', '.'));
                 if (!isNaN(amount)) {

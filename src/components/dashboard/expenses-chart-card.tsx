@@ -10,7 +10,6 @@ const chartConfig = {
   STEG: { label: "STEG", color: "#facc15" }, // bright yellow
   SONEDE: { label: "SONEDE", color: "#3b82f6" }, // bright blue
   Internet: { label: "Internet", color: "#8b5cf6" }, // violet
-  "Recus de caisse": { label: "Reçus", color: "#64748b" }, // slate grey
 } satisfies import("@/components/ui/chart").ChartConfig;
 
 interface ExpensesChartCardProps {

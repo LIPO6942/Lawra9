@@ -61,7 +61,7 @@ Votre mission est d'extraire les données avec une précision chirurgicale.
    - **supplier** : Le nom exact de l'opérateur (ex: "Orange", "Ooredoo", "Topnet").
 
 **REGLES D'EXTRACTION GENERALES :**
-- **documentType** : "SONEDE", "STEG", "Internet", "Recus de caisse" ou "Autre".
+- **documentType** : "SONEDE", "STEG", "Internet", "Reçu Bancaire", "Assurance" ou "Autre".
 - **amount** : Le montant NET DU a payer ("Montant à payer", "Net à payer", "المبلغ المستوجب"). Pour STEG : c'est le montant du cadre GAUCHE en bas a droite, PAS le "Montant total" ni le "Total TTC".
 - **dueDate** : Date limite de paiement (AAAA-MM-JJ).
 - **consumptionPeriod** : Pour SONEDE uniquement, format "AAAA-MM-MM-MM".

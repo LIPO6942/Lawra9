@@ -136,12 +136,12 @@ function formatDocumentName(result: AnalysisResult, originalFileName: string): s
   }
 
   // Formatting for receipts
-  if ((docType === 'Reçu Bancaire' || docType === 'Recus de caisse') && result.amount) {
+  if (docType === 'Reçu Bancaire' && result.amount) {
     const supplierPart = result.supplier ? `${result.supplier} ` : '';
     const dateStr = result.issueDate || result.dueDate || '';
     const date = parseISO(dateStr);
     const formattedDate = isValid(date) ? ` du ${format(date, 'dd/MM/yyyy', { locale: fr })}` : '';
-    const typeLabel = docType === 'Recus de caisse' ? 'Reçu de caisse' : 'Reçu Bancaire';
+    const typeLabel = 'Reçu Bancaire';
     return `${typeLabel} ${supplierPart}${formattedDate}${amountLabel}`;
   }
 
@@ -166,7 +166,6 @@ const frenchCategories: Record<string, Document['category']> = {
   "Internet": "Internet",
   "Assurance": "Assurance",
   "Contrat": "Contrat",
-  "Recus de caisse": "Recus de caisse",
   "Autre": "Autre",
 };
 
