@@ -7,13 +7,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { UserPreferencesProvider, useUserPreferences, ISP } from '@/contexts/user-preferences-context';
 import { DocumentProvider } from '@/contexts/document-context';
-import { ReceiptProvider } from '@/contexts/receipt-context';
 import { LearningProvider } from '@/contexts/learning-context';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { LayoutDashboard, Files, History, Home, Settings, LogOut, User as UserIcon, LifeBuoy, Moon, Sun, Zap, Droplets, Wifi, BarChartHorizontal, Receipt } from 'lucide-react';
+import { LayoutDashboard, Files, History, Home, Settings, LogOut, User as UserIcon, LifeBuoy, Moon, Sun, Zap, Droplets, Wifi, BarChartHorizontal } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +30,6 @@ const PaperworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const mainNavItems = [
     { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/documents', label: 'Documents', icon: Files },
-    { href: '/receipts', label: 'Reçus', icon: Receipt },
     { href: '/historique', label: 'Historique', icon: History },
     { href: '/stats', label: 'Statistiques', icon: BarChartHorizontal },
     { href: '/maison', label: 'Espace Maison', icon: Home },
@@ -288,11 +286,9 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
     return (
         <UserPreferencesProvider>
             <DocumentProvider>
-                <ReceiptProvider>
-                    <LearningProvider>
-                        <ProtectedLayout>{children}</ProtectedLayout>
-                    </LearningProvider>
-                </ReceiptProvider>
+                <LearningProvider>
+                    <ProtectedLayout>{children}</ProtectedLayout>
+                </LearningProvider>
             </DocumentProvider>
         </UserPreferencesProvider>
     )
