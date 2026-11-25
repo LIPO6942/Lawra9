@@ -9,19 +9,7 @@ import { Document } from '@/lib/types';
 import { parseISO, getMonth, getYear, isValid, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { LineChart, Info } from 'lucide-react';
-
-const getDocumentDateForExpense = (doc: Document): Date | null => {
-  const datePriority = [doc.paymentDate, doc.issueDate, doc.billingEndDate, doc.createdAt];
-  for (const dateStr of datePriority) {
-    if (dateStr) {
-      const date = parseISO(dateStr);
-      if (isValid(date)) {
-        return date;
-      }
-    }
-  }
-  return null;
-}
+import { getDocumentDate } from '@/lib/utils';
 
 type MonthlyTotal = {
   month: string;
@@ -41,7 +29,7 @@ export function MonthlyExpensesCard() {
       // Ignore documents from 'Maison' category and those without an amount
       if (doc.category === 'Maison' || !doc.amount) return;
 
-      const docDate = getDocumentDateForExpense(doc);
+      const docDate = getDocumentDate(doc);
       if (docDate && getYear(docDate) === currentYear) {
         const monthKey = format(docDate, 'yyyy-MM');
         const amount = parseFloat(String(doc.amount).replace(',', '.'));

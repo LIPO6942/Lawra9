@@ -16,6 +16,7 @@ import {
 } from '@/lib/idb';
 import { db as firestoreDb } from '@/lib/firebase';
 import { collection, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { getDocumentDate } from '@/lib/utils';
 
 interface MonthlyExpense {
   month: string;
@@ -35,19 +36,6 @@ interface DocumentContextType {
 
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
 
-const getDocumentDate = (doc: Document): Date | null => {
-  const datePriority = [doc.paymentDate, doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
-  for (const dateStr of datePriority) {
-    if (dateStr) {
-      const date = parseISO(dateStr);
-      if (isValid(date)) {
-        return date;
-      }
-    }
-  }
-  return null;
-}
-
 export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const { user } = useAuth();
@@ -63,7 +51,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         try {
           const firestoreRef = collection(firestoreDb, `users/${user.uid}/documents`);
           const firestoreSnap = await getDocs(firestoreRef);
-          
+
           const localIds = new Set(docsFromDb.map(d => d.id));
           let hasChanges = false;
 
@@ -109,7 +97,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addDocument = async (documentToSave: DocumentWithFile) => {
     if (!user) return;
     const db = await openDB(user.uid);
-    
+
     // Ensure createdAt and id are always present
     const newDoc: Document = {
       ...documentToSave,
@@ -123,7 +111,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 1. Save to local IndexedDB
     await dbAddDocument(db, newDoc);
-    
+
     // 2. Save to Firestore (without the File/Blob object)
     try {
       const dbDoc = { ...newDoc };
@@ -186,7 +174,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 1. Update local IndexedDB
     await dbUpdateDocument(db, updatedData);
-    
+
     // 2. Update Firestore
     try {
       const dbDoc = { ...updatedData };
@@ -204,10 +192,10 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const deleteDocument = async (id: string) => {
     if (!user) return;
     const db = await openDB(user.uid);
-    
+
     // 1. Delete from IndexedDB
     await dbDeleteDocument(db, id);
-    
+
     // 2. Delete from Firestore
     try {
       const docRef = doc(firestoreDb, `users/${user.uid}/documents`, id);
@@ -231,10 +219,10 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           paymentDate: new Date().toISOString(),
           status: 'paid' as const
         };
-        
+
         // 1. Update IndexedDB
         await dbUpdateDocument(db, updatedDoc);
-        
+
         // 2. Update Firestore
         try {
           const dbDoc = { ...updatedDoc };
@@ -335,9 +323,9 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
-    const result: MonthlyExpense[] = monthOrder.slice(0, getMonth(new Date()) + 1).map(monthName => {
+    const result: MonthlyExpense[] = monthOrder.map(monthName => {
       const monthData: MonthlyExpense = { month: `${monthName}.` };
-      const categories = ['STEG', 'SONEDE', 'Internet', 'Maison', 'Assurance', 'Contrat'];
+      const categories = ['STEG', 'SONEDE', 'Internet', 'Autre', 'Maison', 'Assurance', 'Contrat'];
 
       categories.forEach(cat => {
         monthData[cat] = expensesByMonth[monthName]?.[cat] || 0;

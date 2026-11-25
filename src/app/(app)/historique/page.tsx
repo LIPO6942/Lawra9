@@ -9,6 +9,7 @@ import { History, FileText, Droplets, Zap, Landmark, Wifi, Shield, Home } from '
 import { Document } from '@/lib/types';
 import { getYear, getMonth, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getDocumentDate } from '@/lib/utils';
 
 const CategoryIcon = ({ category }: { category: Document['category'] }) => {
     switch (category) {
@@ -21,19 +22,6 @@ const CategoryIcon = ({ category }: { category: Document['category'] }) => {
         default: return <FileText className="h-6 w-6 text-gray-400" />;
     }
 };
-
-const getDocumentDate = (doc: Document): Date | null => {
-    const datePriority = [doc.paymentDate, doc.issueDate, doc.billingEndDate, doc.dueDate, doc.createdAt];
-    for (const dateStr of datePriority) {
-        if (dateStr) {
-            const date = parseISO(dateStr);
-            if (isValid(date)) {
-                return date;
-            }
-        }
-    }
-    return null;
-}
 
 type Month = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 

@@ -11,6 +11,7 @@ import { fr } from 'date-fns/locale';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Legend, CartesianGrid, LineChart, Line } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Document } from '@/lib/types';
+import { getDocumentDate } from '@/lib/utils';
 
 const monthOrder = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
 
@@ -38,19 +39,6 @@ const consumptionMap: Record<string, string> = {
     "Gaz": "gaz",
     "Eau": "eau"
 };
-
-const getDocumentDate = (doc: Document): Date | null => {
-    const datePriority = [doc.paymentDate, doc.issueDate, doc.billingEndDate, doc.createdAt];
-    for (const dateStr of datePriority) {
-        if (dateStr) {
-            const date = parseISO(dateStr);
-            if (isValid(date)) {
-                return date;
-            }
-        }
-    }
-    return null;
-}
 
 const parseQuantity = (quantityStr: string | number | undefined): number => {
     if (quantityStr === undefined || quantityStr === null) return 0;

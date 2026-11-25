@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { Receipt, ReceiptLine } from './types'
+import { parseISO, isValid } from "date-fns"
+import type { Receipt, ReceiptLine, Document } from './types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -413,4 +414,56 @@ export async function compressImage(file: File, quality = 0.7, maxWidth = 1600, 
     img.onerror = (e) => reject(e);
   });
 }
+
+/**
+ * Determines the primary date for an invoice or document for financial tracking and charts.
+ * Priority:
+ * 1. billingEndDate (end of billing period - when consumption occurred)
+ * 2. issueDate (date invoice was emitted)
+ * 3. dueDate (payment due date)
+ * 4. consumptionPeriod (e.g. SONEDE "2025-11-10-09" -> Nov 2025)
+ * 5. paymentDate (actual payment date)
+ * 6. createdAt (fallback creation timestamp)
+ */
+export function getDocumentDate(doc: Document): Date | null {
+  // 1. Direct date fields reflecting the billing/emission period
+  const priorityDates = [doc.billingEndDate, doc.issueDate, doc.dueDate];
+  for (const dateStr of priorityDates) {
+    if (dateStr) {
+      try {
+        const d = parseISO(dateStr);
+        if (isValid(d)) return d;
+      } catch { }
+    }
+  }
+
+  // 2. Format de période de consommation (ex: SONEDE "2025-11-10-09" ou "2026-03")
+  if (doc.consumptionPeriod && /^\d{4}-\d{2}/.test(doc.consumptionPeriod)) {
+    const parts = doc.consumptionPeriod.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    if (!isNaN(year) && !isNaN(month) && month >= 1 && month <= 12) {
+      return new Date(year, month - 1, 1);
+    }
+  }
+
+  // 3. Date de paiement effective si aucune date de période n'est présente
+  if (doc.paymentDate) {
+    try {
+      const d = parseISO(doc.paymentDate);
+      if (isValid(d)) return d;
+    } catch { }
+  }
+
+  // 4. Date de création (fallback)
+  if (doc.createdAt) {
+    try {
+      const d = parseISO(doc.createdAt);
+      if (isValid(d)) return d;
+    } catch { }
+  }
+
+  return null;
+}
+
 
