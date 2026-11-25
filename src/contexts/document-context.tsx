@@ -309,6 +309,9 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
           if (isNaN(amount)) return;
 
+          const isPaid = !!doc.paymentDate || doc.status === 'paid';
+          if (!isPaid) return;
+
           if (!expensesByMonth[month]) {
             expensesByMonth[month] = {};
           }
